@@ -4,8 +4,66 @@
         <link rel="stylesheet" href="/steam_resource/css/39.css">
         <link rel="stylesheet" href="/steam_resource/css/library.css">
         <script src="/static/library.js"></script>
+        <script>
+            // Python functions
+            function setCPUs(value) {
+                return call_plugin_method("set_cpus", {"count":value});
+            }
+            
+            function getCPUs() {
+                return call_plugin_method("get_cpus", {});
+            }
+            
+            // other logic
+            
+            async function onSetCPUs() {
+                let target = document.getElementById("cpu_threads");
+                let ok = await setCPUs(target.value);
+                target.value = await getCPUs();
+            }
+            
+            async function onReady() {
+                document.getElementById("cpu_threads").value = await getCPUs();
+            }
+            
+            async function decrementCPUs() {
+                let target = document.getElementById("cpu_threads");
+                if (target.value >= 2) {
+                    target.value -= 1;
+                }
+                await onSetCPUs();
+            }
+            
+            async function incrementCPUs() {
+                let target = document.getElementById("cpu_threads");
+                if (target.value <= 7) {
+                    target.value += 1;
+                }
+                await onSetCPUs();
+            }
+            
+            async function resetCPUs() {
+                let target = document.getElementById("cpu_threads");
+                target.value = 8;
+                await onSetCPUs();
+            }
+            
+        </script>
+        <style type="text/css" media="screen">
+            input::-webkit-outer-spin-button,
+            input::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+        </style>
     </head>
-    <body>
-        <h2>Hello World</h2>
+    <body onload="onReady()">
+        <div>
+            <label for="cpu_threads">Online CPUs</label>
+            <input type="number" id="cpu_threads" name="cpu_threads" min="1" max="8">
+            <button type="button" onclick="incrementCPUs()">/\</button>
+            <button type="button" onclick="decrementCPUs()">\/</button>
+            <button type="button" onclick="resetCPUs()">Reset</button>
+        </div>
     </body>
 </html>
