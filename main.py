@@ -24,6 +24,13 @@ class Plugin:
         for cpu in range(1, self.CPU_COUNT):
             online_count += int(status_cpu(cpu))
         return online_count
+    
+    async def set_boost(self, enabled: bool) -> bool:
+        write_to_sys("/sys/devices/system/cpu/cpufreq/boost", int(enabled))
+        return True
+    
+    async def get_boost(self) -> bool:
+        return read_from_sys("/sys/devices/system/cpu/cpufreq/boost") == "1"
 
     # Asyncio-compatible long-running code, executed in a task when the plugin is loaded
     async def _main(self):

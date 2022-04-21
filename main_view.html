@@ -14,6 +14,14 @@
                 return call_plugin_method("get_cpus", {});
             }
             
+            function setCPUBoost(value) {
+                return call_plugin_method("set_boost", {"enabled": value});
+            }
+            
+            function getCPUBoost() {
+                return call_plugin_method("get_boost", {});
+            }
+            
             // other logic
             
             async function onSetCPUs() {
@@ -24,6 +32,8 @@
             
             async function onReady() {
                 document.getElementById("cpu_threads").value = await getCPUs();
+                let boostToggle = document.getElementById("boostToggle");
+                setToggleState(boostToggle, await getCPUBoost());
             }
             
             async function decrementCPUs() {
@@ -48,6 +58,28 @@
                 await onSetCPUs();
             }
             
+            function setToggleState(toggle, state) {
+                const ENABLED_CLASS = "gamepaddialog_On_yLrDA";
+                if (state && !toggle.classList.contains(ENABLED_CLASS)) {
+                    toggle.classList.add(ENABLED_CLASS);
+                }
+
+                if (!state && toggle.classList.contains(ENABLED_CLASS)) {
+                    toggle.classList.remove(ENABLED_CLASS);
+                }
+            }
+            
+            function getToggleState(toggle) {
+                return toggle.classList.contains("gamepaddialog_On_yLrDA");
+            }
+            
+            async function toggleCPUBoost() {
+                let toggle = document.getElementById("boostToggle");
+                let isActive = getToggleState(toggle);
+                await setCPUBoost(!isActive);
+                setToggleState(toggle, await getCPUBoost());
+            }
+            
         </script>
         <style type="text/css" media="screen">
             input::-webkit-outer-spin-button,
@@ -64,6 +96,25 @@
             <button type="button" onclick="incrementCPUs()">/\</button>
             <button type="button" onclick="decrementCPUs()">\/</button>
             <button type="button" onclick="resetCPUs()">Reset</button>
+        </div>
+        <!-- Toggle switch, roughly copied from https://github.com/SteamDeckHomebrew/ExtraSettingsPlugin/blob/main/main_view.html -->
+        <div class="quickaccessmenu_TabGroupPanel_1QO7b Panel Focusable">
+            <div class="quickaccesscontrols_PanelSectionRow_26R5w">
+                <div class="quickaccesscontrols_PanelSectionRow_26R5w">
+                    <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
+                        <div class="gamepaddialog_FieldLabelRow_2VcTl">
+                            <div class="gamepaddialog_FieldLabel_3jMlJ">
+                                CPU Boost
+                            </div>
+                            <div class="gamepaddialog_FieldChildren_2rhav">
+                                <div id="boostToggle" tabindex="0" class="gamepaddialog_Toggle_9Ql-o Focusable" onclick="toggleCPUBoost()">
+                                    <div class="gamepaddialog_ToggleRail_2bl0i"></div>
+                                <div class="gamepaddialog_ToggleSwitch_1PQpp"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </body>
 </html>
