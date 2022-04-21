@@ -21,41 +21,28 @@
             function getCPUBoost() {
                 return call_plugin_method("get_boost", {});
             }
+
+            function setMaxBoost(index) {
+                return call_plugin_method("set_max_boost", {"index": index});
+            }
+
+            function getMaxBoost() {
+                return call_plugin_method("get_max_boost", {});
+            }
             
             // other logic
             
-            async function onSetCPUs() {
-                let target = document.getElementById("cpu_threads");
-                let ok = await setCPUs(target.value);
-                target.value = await getCPUs();
-            }
-            
             async function onReady() {
-                document.getElementById("cpu_threads").value = await getCPUs();
                 let boostToggle = document.getElementById("boostToggle");
                 setToggleState(boostToggle, await getCPUBoost());
+                selectNotch("cpuThreadsNotch", await getCPUs() - 1, 8);
+                selectNotch("frequencyNotch", await getMaxBoost(), 3);
             }
-            
-            async function decrementCPUs() {
-                let target = document.getElementById("cpu_threads");
-                if (target.value >= 2) {
-                    target.value -= 1;
-                }
-                await onSetCPUs();
-            }
-            
-            async function incrementCPUs() {
-                let target = document.getElementById("cpu_threads");
-                if (target.value <= 7) {
-                    target.value += 1;
-                }
-                await onSetCPUs();
-            }
-            
-            async function resetCPUs() {
-                let target = document.getElementById("cpu_threads");
-                target.value = 8;
-                await onSetCPUs();
+
+            async function setCPUNotch(index) {
+                const ROOT_ID = "cpuThreadsNotch";
+                await setCPUs(index);
+                selectNotch(ROOT_ID, await getCPUs() - 1, 8);
             }
             
             function setToggleState(toggle, state) {
@@ -79,29 +66,87 @@
                 await setCPUBoost(!isActive);
                 setToggleState(toggle, await getCPUBoost());
             }
+
+            async function setBoostNotch(index) {
+                const ROOT_ID = "frequencyNotch";
+                await setMaxBoost(index);
+                selectNotch(ROOT_ID, await getMaxBoost(), 3);
+            }
+
+            function selectNotch(rootId, index, elements) {
+                // WARNING: this yeets any style in div of slider
+                const ENABLED_CLASS = "gamepadslider_TickActive_j418S";
+                //console.log("Selecting notches up to " + index);
+                let root = document.getElementById(rootId);
+                root.style = "--normalized-slider-value:" + index/(elements-1) + ";";
+                for (let i = 0; i < elements; i++) {
+                    let notch = document.getElementById(rootId + i);
+                    if (notch.classList.contains(ENABLED_CLASS) && i > index) {
+                        notch.classList.remove(ENABLED_CLASS);
+                    } else if (!notch.classList.contains(ENABLED_CLASS) && i <= index) {
+                        notch.classList.add(ENABLED_CLASS);
+                    }
+                }
+            }
             
         </script>
-        <style type="text/css" media="screen">
-            input::-webkit-outer-spin-button,
-            input::-webkit-inner-spin-button {
-                -webkit-appearance: none;
-                margin: 0;
-            }
-        </style>
+        <style type="text/css" media="screen"></style>
     </head>
     <body onload="onReady()">
-        <div>
-            <label for="cpu_threads">Online CPUs</label>
-            <input type="number" id="cpu_threads" name="cpu_threads" min="1" max="8">
-            <button type="button" onclick="incrementCPUs()">/\</button>
-            <button type="button" onclick="decrementCPUs()">\/</button>
-            <button type="button" onclick="resetCPUs()">Reset</button>
+        <!-- CPUs selector -->
+        <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_WithChildrenBelow_37xzV gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_ChildrenWidthFixed_ljcbL gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable">
+            <div class="gamepaddialog_FieldLabelRow_2VcTl">
+                <div class="gamepaddialog_FieldLabel_3jMlJ">Threads</div>
+            </div>
+            <div id="cpuThreadsNotch" class="gamepadslider_SliderControlAndNotches_23hjX Focusable" tabindex="0" style="--normalized-slider-value:0.5;">
+                <div class="gamepadslider_SliderControl_1udlG">
+                    <div class="gamepadslider_SliderTrack_2_vG6 gamepadslider_SliderHasNotches_1Lr71 "></div>
+                    <div class="gamepadslider_SliderHandleContainer_8xNY6">
+                        <div class="gamepadslider_SliderHandle_11PBf"></div>
+                    </div>
+                </div>
+                <div class="gamepadslider_SliderNotchContainer_2yM7S Panel Focusable">
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="cpuThreadsNotch0" class="gamepadslider_SliderNotchTick_u8QEa" onclick='setCPUNotch(1)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">1</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="cpuThreadsNotch1" class="gamepadslider_SliderNotchTick_u8QEa" onclick='setCPUNotch(2)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">2</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="cpuThreadsNotch2" class="gamepadslider_SliderNotchTick_u8QEa" onclick='setCPUNotch(3)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">3</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="cpuThreadsNotch3" class="gamepadslider_SliderNotchTick_u8QEa" onclick='setCPUNotch(4)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">4</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="cpuThreadsNotch4" class="gamepadslider_SliderNotchTick_u8QEa" onclick='setCPUNotch(5)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">5</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="cpuThreadsNotch5" class="gamepadslider_SliderNotchTick_u8QEa" onclick='setCPUNotch(6)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">6</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="cpuThreadsNotch6" class="gamepadslider_SliderNotchTick_u8QEa" onclick='setCPUNotch(7)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">7</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="cpuThreadsNotch7" class="gamepadslider_SliderNotchTick_u8QEa" onclick='setCPUNotch(8)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">8</div>
+                    </div>
+                </div>
+            </div>
         </div>
+
         <!-- Toggle switch, roughly copied from https://github.com/SteamDeckHomebrew/ExtraSettingsPlugin/blob/main/main_view.html -->
         <div class="quickaccessmenu_TabGroupPanel_1QO7b Panel Focusable">
             <div class="quickaccesscontrols_PanelSectionRow_26R5w">
                 <div class="quickaccesscontrols_PanelSectionRow_26R5w">
-                    <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm gamepaddialog_WithBottomSeparator_3YKpU Panel Focusable" style="--indent-level:0;">
                         <div class="gamepaddialog_FieldLabelRow_2VcTl">
                             <div class="gamepaddialog_FieldLabel_3jMlJ">
                                 CPU Boost
@@ -114,6 +159,36 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+        <!-- Frequency selector -->
+        <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_WithChildrenBelow_37xzV gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_ChildrenWidthFixed_ljcbL gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable">
+            <div class="gamepaddialog_FieldLabelRow_2VcTl">
+                <div class="gamepaddialog_FieldLabel_3jMlJ">Max Frequency</div>
+            </div>
+            <div class="gamepaddialog_FieldChildren_2rhav">
+            <div id="frequencyNotch" class="gamepadslider_SliderControlAndNotches_23hjX Focusable" tabindex="0" style="--normalized-slider-value:0.5;">
+                <div class="gamepadslider_SliderControl_1udlG">
+                    <div class="gamepadslider_SliderTrack_2_vG6 gamepadslider_SliderHasNotches_1Lr71 "></div>
+                    <div class="gamepadslider_SliderHandleContainer_8xNY6">
+                        <div class="gamepadslider_SliderHandle_11PBf"></div>
+                    </div>
+                </div>
+                <div class="gamepadslider_SliderNotchContainer_2yM7S Panel Focusable">
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="frequencyNotch0" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='setBoostNotch(0)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW" style="margin-left:2em;">1.7GHz</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="frequencyNotch1" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='setBoostNotch(1)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">2.4GHz</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="frequencyNotch2" class="gamepadslider_SliderNotchTick_u8QEa" onclick='setBoostNotch(2)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW" style="margin-right:2em;">2.8GHz</div>
+                    </div>
+                </div>
+            </div>
             </div>
         </div>
     </body>

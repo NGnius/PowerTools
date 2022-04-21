@@ -6,7 +6,7 @@
     "flags": ["root", "_debug"],
     "publish": {
         "discord_id": "106537989684887552",
-        "description": "Additional power management settings",
+        "description": "Power tweaks for power users",
         "tags": [ "utility", "power-management" ]
     }
 }
