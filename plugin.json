@@ -3,5 +3,10 @@
     "author": "NGnius",
     "main_view_html": "main_view.html",
     "tile_view_html": "",
-    "flags": ["root", "_debug"]
+    "flags": ["root", "_debug"],
+    "publish": {
+        "discord_id": "106537989684887552",
+        "description": "Additional power management settings",
+        "tags": [ "utility", "power-management" ]
+    }
 }
