@@ -75,7 +75,14 @@
             async function toggleCPUSMT() {
                 let toggle = document.getElementById("smtToggle");
                 let isActive = getToggleState(toggle);
-                await setCPUs(await getCPUs(), !isActive);
+                let currentCPUs = await getCPUs();
+                if (currentCPUs == 4 && !isActive) {
+                    // if all cores are running, enable all the threads as well
+                    await setCPUs(8, !isActive);
+                } else {
+                    await setCPUs(currentCPUs, !isActive);
+                }
+
                 setToggleState(toggle, !isActive);
                 selectNotch("cpuThreadsNotch", await getCPUs() - 1, 8);
             }
