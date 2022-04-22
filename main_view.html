@@ -6,12 +6,16 @@
         <script src="/static/library.js"></script>
         <script>
             // Python functions
-            function setCPUs(value) {
-                return call_plugin_method("set_cpus", {"count":value});
+            function setCPUs(value, smt) {
+                return call_plugin_method("set_cpus", {"count":value, "smt": smt});
             }
             
             function getCPUs() {
                 return call_plugin_method("get_cpus", {});
+            }
+
+            function getSMT() {
+                return call_plugin_method("get_smt", {});
             }
             
             function setCPUBoost(value) {
@@ -35,13 +39,14 @@
             async function onReady() {
                 let boostToggle = document.getElementById("boostToggle");
                 setToggleState(boostToggle, await getCPUBoost());
+                setToggleState(document.getElementById("smtToggle"), await getSMT());
                 selectNotch("cpuThreadsNotch", await getCPUs() - 1, 8);
                 selectNotch("frequencyNotch", await getMaxBoost(), 3);
             }
 
             async function setCPUNotch(index) {
                 const ROOT_ID = "cpuThreadsNotch";
-                await setCPUs(index);
+                await setCPUs(index, getToggleState(document.getElementById("smtToggle")));
                 selectNotch(ROOT_ID, await getCPUs() - 1, 8);
             }
             
@@ -64,7 +69,15 @@
                 let toggle = document.getElementById("boostToggle");
                 let isActive = getToggleState(toggle);
                 await setCPUBoost(!isActive);
-                setToggleState(toggle, await getCPUBoost());
+                setToggleState(toggle, !isActive);
+            }
+
+            async function toggleCPUSMT() {
+                let toggle = document.getElementById("smtToggle");
+                let isActive = getToggleState(toggle);
+                await setCPUs(await getCPUs(), !isActive);
+                setToggleState(toggle, !isActive);
+                selectNotch("cpuThreadsNotch", await getCPUs() - 1, 8);
             }
 
             async function setBoostNotch(index) {
@@ -93,6 +106,26 @@
         <style type="text/css" media="screen"></style>
     </head>
     <body onload="onReady()">
+        <!-- SMT toggle switch, roughly copied from https://github.com/SteamDeckHomebrew/ExtraSettingsPlugin/blob/main/main_view.html -->
+        <div class="quickaccessmenu_TabGroupPanel_1QO7b Panel Focusable">
+            <div class="quickaccesscontrols_PanelSectionRow_26R5w">
+                <div class="quickaccesscontrols_PanelSectionRow_26R5w">
+                    <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
+                        <div class="gamepaddialog_FieldLabelRow_2VcTl">
+                            <div class="gamepaddialog_FieldLabel_3jMlJ">
+                                CPU SMT
+                            </div>
+                            <div class="gamepaddialog_FieldChildren_2rhav">
+                                <div id="smtToggle" tabindex="0" class="gamepaddialog_Toggle_9Ql-o Focusable" onclick="toggleCPUSMT()">
+                                    <div class="gamepaddialog_ToggleRail_2bl0i"></div>
+                                    <div class="gamepaddialog_ToggleSwitch_1PQpp"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- CPUs selector -->
         <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_WithChildrenBelow_37xzV gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_ChildrenWidthFixed_ljcbL gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable">
             <div class="gamepaddialog_FieldLabelRow_2VcTl">
@@ -142,11 +175,11 @@
             </div>
         </div>
 
-        <!-- Toggle switch, roughly copied from https://github.com/SteamDeckHomebrew/ExtraSettingsPlugin/blob/main/main_view.html -->
+        <!-- CPU Boost toggle switch, roughly copied from https://github.com/SteamDeckHomebrew/ExtraSettingsPlugin/blob/main/main_view.html -->
         <div class="quickaccessmenu_TabGroupPanel_1QO7b Panel Focusable">
             <div class="quickaccesscontrols_PanelSectionRow_26R5w">
                 <div class="quickaccesscontrols_PanelSectionRow_26R5w">
-                    <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm gamepaddialog_WithBottomSeparator_3YKpU Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
                         <div class="gamepaddialog_FieldLabelRow_2VcTl">
                             <div class="gamepaddialog_FieldLabel_3jMlJ">
                                 CPU Boost
@@ -154,7 +187,8 @@
                             <div class="gamepaddialog_FieldChildren_2rhav">
                                 <div id="boostToggle" tabindex="0" class="gamepaddialog_Toggle_9Ql-o Focusable" onclick="toggleCPUBoost()">
                                     <div class="gamepaddialog_ToggleRail_2bl0i"></div>
-                                <div class="gamepaddialog_ToggleSwitch_1PQpp"></div>
+                                    <div class="gamepaddialog_ToggleSwitch_1PQpp"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -189,6 +223,9 @@
                     </div>
                 </div>
             </div>
+            </div>
+            <div style="font-size:x-small;">
+            WARNING: this will change the CPU governor, affecting battery life until reboot.
             </div>
         </div>
     </body>

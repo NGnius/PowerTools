@@ -5,26 +5,34 @@ class Plugin:
     SCALING_FREQUENCIES = [1700000, 2400000, 2800000]
     
     # call from main_view.html with setCPUs(onclick_event) or call_plugin_method("set_cpus", count)
-    async def set_cpus(self, count) -> int:
-        print("Setting CPUs")
-        with open("/home/deck/PowerTools.log", "a") as f:
-            f.write(f"Setting {count} CPUs to active\n")
-            f.flush()
+    async def set_cpus(self, count, smt=True) -> int:
+        # print("Setting CPUs")
+        if smt:
             count = min(int(count), self.CPU_COUNT)
             # never touch cpu0, since it's special
             for cpu in range(1, count):
-                f.write(f"Setting CPU {cpu} to online\n")
                 enable_cpu(cpu)
             for cpu in range(count, self.CPU_COUNT):
-                f.write(f"Setting CPU {cpu} to offline\n")
                 disable_cpu(cpu)
-        return self.CPU_COUNT
+            return self.CPU_COUNT
+        else:
+            count = min(int(count), self.CPU_COUNT / 2)
+            for cpu in range(1, self.CPU_COUNT, 2):
+                disable_cpu(cpu)
+            for cpu in range(2, self.CPU_COUNT, 2):
+                if (cpu / 2) + 1 > count:
+                    disable_cpu(cpu)
+                else:
+                    enable_cpu(cpu)
     
     async def get_cpus(self) -> int:
         online_count = 1 # cpu0 is always online
         for cpu in range(1, self.CPU_COUNT):
             online_count += int(status_cpu(cpu))
         return online_count
+
+    async def get_smt(self) -> bool:
+        return status_cpu(1) == status_cpu(2) and status_cpu(3) == status_cpu(4)
     
     async def set_boost(self, enabled: bool) -> bool:
         write_to_sys("/sys/devices/system/cpu/cpufreq/boost", int(enabled))
@@ -40,6 +48,8 @@ class Plugin:
         updated = 0
         for cpu in range(0, self.CPU_COUNT):
             if cpu == 0 or status_cpu(cpu):
+                if read_scaling_governor_cpu(cpu) != "userspace":
+                    write_scaling_governor_cpu(cpu, "userspace")
                 path = cpu_freq_scaling_path(cpu)
                 write_to_sys(path, selected_freq)
                 updated += 1
@@ -47,13 +57,14 @@ class Plugin:
 
     async def get_max_boost(self) -> int:
         path = cpu_freq_scaling_path(0)
-        freq = int(read_from_sys(path, amount=-1).strip())
+        freq_maybe = read_from_sys(path, amount=-1).strip()
+        if freq_maybe is None or len(freq_maybe) == 0 or freq_maybe == "<unsupported>":
+            return len(self.SCALING_FREQUENCIES) - 1
+        freq = int(freq_maybe)
         return self.SCALING_FREQUENCIES.index(freq)
 
     # Asyncio-compatible long-running code, executed in a task when the plugin is loaded
     async def _main(self):
-        with open("/home/deck/PowerTools.log", "w") as f:
-            f.write(f"Main loop\n")
         pass
             
 
@@ -64,6 +75,9 @@ def cpu_online_path(cpu_number: int) -> str:
 
 def cpu_freq_scaling_path(cpu_number: int) -> str:
     return f"/sys/devices/system/cpu/cpu{cpu_number}/cpufreq/scaling_setspeed"
+
+def cpu_governor_scaling_path(cpu_number: int) -> str:
+    return f"/sys/devices/system/cpu/cpu{cpu_number}/cpufreq/scaling_governor"
     
 def write_to_sys(path, value: int):
     with open(path, mode="w") as f:
@@ -84,3 +98,12 @@ def disable_cpu(cpu_number: int):
 def status_cpu(cpu_number: int) -> bool:
     filepath = cpu_online_path(cpu_number)
     return read_from_sys(filepath) == "1"
+
+def read_scaling_governor_cpu(cpu_number: int) -> str:
+    filepath = cpu_governor_scaling_path(cpu_number)
+    return read_from_sys(filepath, amount=-1).trim()
+
+def write_scaling_governor_cpu(cpu_number: int, governor: str):
+    filepath = cpu_governor_scaling_path(cpu_number)
+    with open(filepath, mode="w") as f:
+        f.write(governor)
