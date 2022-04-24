@@ -3,7 +3,7 @@
     "author": "NGnius",
     "main_view_html": "main_view.html",
     "tile_view_html": "",
-    "flags": ["root", "_debug"],
+    "flags": ["root", "debug"],
     "publish": {
         "discord_id": "106537989684887552",
         "description": "Power tweaks for power users",
