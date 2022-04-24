@@ -24,7 +24,7 @@ NOTE: You cannot enable or disable cpu0, hence why there are only 7 in the range
 
 Enable: `echo 1 > /sys/devices/system/cpu/cpufreq/boost` enables boost across all threads.
 
-Disable: `echo 1 > /sys/devices/system/cpu/cpufreq/boost` disables boost across all threads.
+Disable: `echo 0 > /sys/devices/system/cpu/cpufreq/boost` disables boost across all threads.
 
 ### Set CPU frequency
 

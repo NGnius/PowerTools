@@ -4,7 +4,7 @@ class Plugin:
     CPU_COUNT = 8
     SCALING_FREQUENCIES = [1700000, 2400000, 2800000]
     
-    # call from main_view.html with setCPUs(onclick_event) or call_plugin_method("set_cpus", count)
+    # call from main_view.html with setCPUs(count, smt)
     async def set_cpus(self, count, smt=True) -> int:
         # print("Setting CPUs")
         if smt:
@@ -51,7 +51,10 @@ class Plugin:
                 if read_scaling_governor_cpu(cpu) != "userspace":
                     write_scaling_governor_cpu(cpu, "userspace")
                 path = cpu_freq_scaling_path(cpu)
-                write_to_sys(path, selected_freq)
+                if index == len(self.SCALING_FREQUENCIES) - 1:
+                    write_scaling_governor_cpu(cpu, "schedutil")
+                else:
+                    write_to_sys(path, selected_freq)
                 updated += 1
         return updated
 

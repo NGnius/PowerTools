@@ -114,7 +114,8 @@
     </head>
     <body onload="onReady()">
         <!-- SMT toggle switch, roughly copied from https://github.com/SteamDeckHomebrew/ExtraSettingsPlugin/blob/main/main_view.html -->
-        <div class="quickaccessmenu_TabGroupPanel_1QO7b Panel Focusable">
+        <!-- Due to a bug in MangoHud, this has been hidden for now -->
+        <div class="quickaccessmenu_TabGroupPanel_1QO7b Panel Focusable" style="display:none;">
             <div class="quickaccesscontrols_PanelSectionRow_26R5w">
                 <div class="quickaccesscontrols_PanelSectionRow_26R5w">
                     <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
@@ -232,7 +233,7 @@
             </div>
             </div>
             <div style="font-size:x-small;">
-            WARNING: this will change the CPU governor, affecting battery life until reboot.
+            WARNING: This will change the CPU governor.
             </div>
         </div>
     </body>
