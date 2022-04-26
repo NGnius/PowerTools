@@ -104,7 +104,7 @@ def status_cpu(cpu_number: int) -> bool:
 
 def read_scaling_governor_cpu(cpu_number: int) -> str:
     filepath = cpu_governor_scaling_path(cpu_number)
-    return read_from_sys(filepath, amount=-1).trim()
+    return read_from_sys(filepath, amount=-1).strip()
 
 def write_scaling_governor_cpu(cpu_number: int, governor: str):
     filepath = cpu_governor_scaling_path(cpu_number)
