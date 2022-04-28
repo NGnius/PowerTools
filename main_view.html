@@ -33,6 +33,14 @@
             function getMaxBoost() {
                 return call_plugin_method("get_max_boost", {});
             }
+
+            function setFanTick(tick) {
+                return call_plugin_method("set_fan_tick", {"tick": tick});
+            }
+
+            function getFanTick() {
+                return call_plugin_method("get_fan_tick", {});
+            }
             
             // other logic
             
@@ -42,6 +50,7 @@
                 setToggleState(document.getElementById("smtToggle"), await getSMT());
                 selectNotch("cpuThreadsNotch", await getCPUs() - 1, 8);
                 selectNotch("frequencyNotch", await getMaxBoost(), 3);
+                selectNotch("fanNotch", await getFanTick(), 7);
             }
 
             async function setCPUNotch(index) {
@@ -91,6 +100,12 @@
                 const ROOT_ID = "frequencyNotch";
                 await setMaxBoost(index);
                 selectNotch(ROOT_ID, await getMaxBoost(), 3);
+            }
+
+            async function onSetFanNotch(index) {
+                const ROOT_ID = "fanNotch";
+                await setFanTick(index);
+                selectNotch(ROOT_ID, index, 7);
             }
 
             function selectNotch(rootId, index, elements) {
@@ -234,6 +249,53 @@
             </div>
             <div style="font-size:x-small;">
             WARNING: This will change the CPU governor.
+            </div>
+        </div>
+
+        <!-- Fan voltage selector -->
+        <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_WithChildrenBelow_37xzV gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_ChildrenWidthFixed_ljcbL gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable">
+            <div class="gamepaddialog_FieldLabelRow_2VcTl">
+                <div class="gamepaddialog_FieldLabel_3jMlJ">Fan Voltage</div>
+            </div>
+            <div class="gamepaddialog_FieldChildren_2rhav">
+            <div id="fanNotch" class="gamepadslider_SliderControlAndNotches_23hjX Focusable" tabindex="0" style="--normalized-slider-value:0.33;">
+                <div class="gamepadslider_SliderControl_1udlG">
+                    <div class="gamepadslider_SliderTrack_2_vG6 gamepadslider_SliderHasNotches_1Lr71 "></div>
+                    <div class="gamepadslider_SliderHandleContainer_8xNY6">
+                        <div class="gamepadslider_SliderHandle_11PBf"></div>
+                    </div>
+                </div>
+                <div class="gamepadslider_SliderNotchContainer_2yM7S Panel Focusable">
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="fanNotch0" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(0)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">0V</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="fanNotch1" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(1)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">1V</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="fanNotch2" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(2)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">2V</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="fanNotch3" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(3)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">3V</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="fanNotch4" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(4)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">4V</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="fanNotch5" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(5)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">5V</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="fanNotch6" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(6)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">Auto</div>
+                    </div>
+                </div>
+            </div>
             </div>
         </div>
     </body>

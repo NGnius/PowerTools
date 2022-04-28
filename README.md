@@ -32,6 +32,27 @@ Use `cpupower` (usage: `cpupower --help`).
 This isn't strictly how PowerTools does it, but it's a multi-step process which can involve changing the CPU governor.
 All that can be done automatically by `cpupower frequency-set --freq {frequency}` where `{frequency}` is `1.7G`, `2.4G` or `2.8G`.
 
+### Set Fan speed
+
+Enable automatic control: `echo 0 > /sys/class/hwmon/hwmon5/recalculate` enables automatic fan control.
+
+Disable automatic control: `echo 1 > /sys/class/hwmon/hwmon5/recalculate` disables automatic (temperature-based) fan control and starts using the set fan voltage instead.
+
+Set the fan voltage: `echo {voltage} > /sys/class/hwmon/hwmon5/fan1_target` where `{voltage}` is a value from 0 to 4000 mV\*.
+
+Read the actual fan voltage: `cat /sys/class/hwmon/hwmon5/fan1_input` gives the fan voltage in mV\*.
+
+\*WARNING: I'm not sure if that's actually fan voltage. I've set it to 6000 (1V higher!!! than the fan's rated 5V) and the fan responded, so it appears to not be limited. Blow up your fans at your own risk; read the license.
+
+NOTE: There's a bug in the fan controller; if you enable automatic fan control it will forget any previously-set target despite it appearing to be set correctly (i.e. `cat /sys/class/hwmon/hwmon5/fan1_target` will display the correct value).
+When you disable automatic fan control, you will need to set the fan voltage again.
+
+### Steam Deck kernel patches
+
+This is how I figured out how the fan stuff works.
+I've only scratched the surface of what this code allows, I'm sure it has more useful information.
+https://lkml.org/lkml/2022/2/5/391
+
 ## License
 
 This is licensed under GNU GPLv3.

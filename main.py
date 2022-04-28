@@ -3,6 +3,9 @@ import time
 class Plugin:
     CPU_COUNT = 8
     SCALING_FREQUENCIES = [1700000, 2400000, 2800000]
+    FAN_VOLTAGES = [0, 1000, 2000, 3000, 4000, 5000]
+
+    set_fan_voltage = None
     
     # call from main_view.html with setCPUs(count, smt)
     async def set_cpus(self, count, smt=True) -> int:
@@ -65,6 +68,38 @@ class Plugin:
             return len(self.SCALING_FREQUENCIES) - 1
         freq = int(freq_maybe)
         return self.SCALING_FREQUENCIES.index(freq)
+
+    async def set_fan_tick(self, tick: int):
+        self.set_fan_voltage = tick # cache voltage set to echo back in get_fan_tick()
+        if tick >= len(self.FAN_VOLTAGES):
+            # automatic mode
+            write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 0)
+            write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", 4099) # 4099 is default
+        else:
+            # manual voltage
+            write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 1)
+            write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", self.FAN_VOLTAGES[tick])
+
+    async def get_fan_tick(self) -> int:
+        fan_target = int(read_from_sys("/sys/class/hwmon/hwmon5/fan1_target", amount=-1).strip())
+        fan_input = int(read_from_sys("/sys/class/hwmon/hwmon5/fan1_input", amount=-1).strip())
+        fan_target_v = float(fan_target) / 1000
+        fan_input_v = float(fan_input) / 1000
+        if self.set_fan_voltage is not None:
+            x = self.set_fan_voltage
+            self.set_fan_voltage = None
+            return x
+        elif fan_target == 4099 or (int(round(fan_target_v)) != int(round(fan_input_v))):
+            # cannot read /sys/class/hwmon/hwmon5/recalculate, so guess based on available fan info
+            # NOTE: the fan takes time to ramp up, so fan_target will never approximately equal fan_input
+            # when fan_target was changed recently (hence set voltage caching)
+            return len(self.FAN_VOLTAGES)
+        else:
+            # quantize voltage to nearest tick (price is right rules; closest without going over)
+            for i in range(len(self.FAN_VOLTAGES)-1):
+                if fan_target <= self.FAN_VOLTAGES[i]:
+                    return i
+            return len(self.FAN_VOLTAGES)-1 # any higher value is considered as highest manual setting
 
     # Asyncio-compatible long-running code, executed in a task when the plugin is loaded
     async def _main(self):
