@@ -50,7 +50,7 @@
                 setToggleState(document.getElementById("smtToggle"), await getSMT());
                 selectNotch("cpuThreadsNotch", await getCPUs() - 1, 8);
                 selectNotch("frequencyNotch", await getMaxBoost(), 3);
-                selectNotch("fanNotch", await getFanTick(), 7);
+                selectNotch("fanNotch", await getFanTick(), 8);
             }
 
             async function setCPUNotch(index) {
@@ -105,7 +105,7 @@
             async function onSetFanNotch(index) {
                 const ROOT_ID = "fanNotch";
                 await setFanTick(index);
-                selectNotch(ROOT_ID, index, 7);
+                selectNotch(ROOT_ID, index, 8);
             }
 
             function selectNotch(rootId, index, elements) {
@@ -252,10 +252,11 @@
             </div>
         </div>
 
-        <!-- Fan voltage selector -->
+        <!-- Fan RPM selector -->
+        <!-- TODO: Make this is non-notched slider when PluginLoader PR#41 is merged -->
         <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_WithChildrenBelow_37xzV gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_ChildrenWidthFixed_ljcbL gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable">
             <div class="gamepaddialog_FieldLabelRow_2VcTl">
-                <div class="gamepaddialog_FieldLabel_3jMlJ">Fan Voltage</div>
+                <div class="gamepaddialog_FieldLabel_3jMlJ">Fan RPM</div>
             </div>
             <div class="gamepaddialog_FieldChildren_2rhav">
             <div id="fanNotch" class="gamepadslider_SliderControlAndNotches_23hjX Focusable" tabindex="0" style="--normalized-slider-value:0.33;">
@@ -268,30 +269,34 @@
                 <div class="gamepadslider_SliderNotchContainer_2yM7S Panel Focusable">
                     <div class="gamepadslider_SliderNotch_LYPXt">
                         <div id="fanNotch0" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(0)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_dbACW">0V</div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">0</div>
                     </div>
                     <div class="gamepadslider_SliderNotch_LYPXt">
                         <div id="fanNotch1" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(1)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_dbACW">1V</div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">1K</div>
                     </div>
                     <div class="gamepadslider_SliderNotch_LYPXt">
                         <div id="fanNotch2" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(2)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_dbACW">2V</div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">2K</div>
                     </div>
                     <div class="gamepadslider_SliderNotch_LYPXt">
                         <div id="fanNotch3" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(3)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_dbACW">3V</div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">3K</div>
                     </div>
                     <div class="gamepadslider_SliderNotch_LYPXt">
                         <div id="fanNotch4" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(4)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_dbACW">4V</div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">4K</div>
                     </div>
                     <div class="gamepadslider_SliderNotch_LYPXt">
                         <div id="fanNotch5" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(5)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_dbACW">5V</div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">5K</div>
                     </div>
                     <div class="gamepadslider_SliderNotch_LYPXt">
                         <div id="fanNotch6" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(6)'></div>
+                        <div class="gamepadslider_SliderNotchLabel_dbACW">6K</div>
+                    </div>
+                    <div class="gamepadslider_SliderNotch_LYPXt">
+                        <div id="fanNotch7" class="gamepadslider_SliderNotchTick_u8QEa gamepadslider_TickActive_j418S" onclick='onSetFanNotch(7)'></div>
                         <div class="gamepadslider_SliderNotchLabel_dbACW">Auto</div>
                     </div>
                 </div>

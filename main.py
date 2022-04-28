@@ -3,7 +3,7 @@ import time
 class Plugin:
     CPU_COUNT = 8
     SCALING_FREQUENCIES = [1700000, 2400000, 2800000]
-    FAN_VOLTAGES = [0, 1000, 2000, 3000, 4000, 5000]
+    FAN_VOLTAGES = [0, 1000, 2000, 3000, 4000, 5000, 6000]
 
     set_fan_voltage = None
     

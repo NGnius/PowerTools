@@ -36,16 +36,14 @@ All that can be done automatically by `cpupower frequency-set --freq {frequency}
 
 Enable automatic control: `echo 0 > /sys/class/hwmon/hwmon5/recalculate` enables automatic fan control.
 
-Disable automatic control: `echo 1 > /sys/class/hwmon/hwmon5/recalculate` disables automatic (temperature-based) fan control and starts using the set fan voltage instead.
+Disable automatic control: `echo 1 > /sys/class/hwmon/hwmon5/recalculate` disables automatic (temperature-based) fan control and starts using the set fan target instead.
 
-Set the fan voltage: `echo {voltage} > /sys/class/hwmon/hwmon5/fan1_target` where `{voltage}` is a value from 0 to 4000 mV\*.
+Set the fan speed: `echo {rpm} > /sys/class/hwmon/hwmon5/fan1_target` where `{rpm}` is the RPM.
 
-Read the actual fan voltage: `cat /sys/class/hwmon/hwmon5/fan1_input` gives the fan voltage in mV\*.
-
-\*WARNING: I'm not sure if that's actually fan voltage. I've set it to 6000 (1V higher!!! than the fan's rated 5V) and the fan responded, so it appears to not be limited. Blow up your fans at your own risk; read the license.
+Read the actual fan RPM: `cat /sys/class/hwmon/hwmon5/fan1_input` gives the fan speed.
 
 NOTE: There's a bug in the fan controller; if you enable automatic fan control it will forget any previously-set target despite it appearing to be set correctly (i.e. `cat /sys/class/hwmon/hwmon5/fan1_target` will display the correct value).
-When you disable automatic fan control, you will need to set the fan voltage again.
+When you disable automatic fan control, you will need to set the fan RPM again.
 
 ### Steam Deck kernel patches
 
