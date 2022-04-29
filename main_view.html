@@ -41,6 +41,18 @@
             function getFanTick() {
                 return call_plugin_method("get_fan_tick", {});
             }
+
+            function getChargeNow() {
+                return call_plugin_method("get_charge_now", {});
+            }
+
+            function getChargeFull() {
+                return call_plugin_method("get_charge_full", {});
+            }
+
+            function getChargeDesign() {
+                return call_plugin_method("get_charge_design", {});
+            }
             
             // other logic
             
@@ -51,6 +63,7 @@
                 selectNotch("cpuThreadsNotch", await getCPUs() - 1, 8);
                 selectNotch("frequencyNotch", await getMaxBoost(), 3);
                 selectNotch("fanNotch", await getFanTick(), 8);
+                await updateBatteryStats();
             }
 
             async function setCPUNotch(index) {
@@ -123,14 +136,24 @@
                     }
                 }
             }
+
+            async function updateBatteryStats() {
+                let batCapacityNow = document.getElementById("batCapacityNow");
+                let batCapacityFull = document.getElementById("batCapacityFull");
+                let chargeNow = await getChargeNow();
+                let chargeFull = await getChargeFull();
+                let chargeDesign = await getChargeDesign();
+                batCapacityNow.innerText = (7.7 * chargeNow / 1000000).toFixed(2).toString() + " Wh (" + (100 * chargeNow / chargeFull).toFixed(0).toString() + "%)";
+                batCapacityFull.innerText = (7.7 * chargeFull / 1000000).toFixed(2).toString() + " Wh (" + (100 * chargeFull / chargeDesign).toFixed(0).toString() + "%)";
+            }
             
         </script>
         <style type="text/css" media="screen"></style>
     </head>
-    <body onload="onReady()">
+    <body onload="onReady()" style="/*margin:0px;padding:0px;*/">
         <!-- SMT toggle switch, roughly copied from https://github.com/SteamDeckHomebrew/ExtraSettingsPlugin/blob/main/main_view.html -->
         <!-- Due to a bug in MangoHud, this has been hidden for now -->
-        <div class="quickaccessmenu_TabGroupPanel_1QO7b Panel Focusable" style="display:none;">
+        <div class="quickaccessmenu_TabGroupPanel_1QO7b Panel Focusable" style="/*display:none;*/">
             <div class="quickaccesscontrols_PanelSectionRow_26R5w">
                 <div class="quickaccesscontrols_PanelSectionRow_26R5w">
                     <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
@@ -145,10 +168,12 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="gamepaddialog_FieldDescription_1W1to">Disables odd-numbered CPUs</div>
                     </div>
                 </div>
             </div>
         </div>
+
         <!-- CPUs selector -->
         <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_WithChildrenBelow_37xzV gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_ChildrenWidthFixed_ljcbL gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable">
             <div class="gamepaddialog_FieldLabelRow_2VcTl">
@@ -214,10 +239,12 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="gamepaddialog_FieldDescription_1W1to">Allows the CPU to go above max frequency</div>
                     </div>
                 </div>
             </div>
         </div>
+
         <!-- Frequency selector -->
         <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_WithChildrenBelow_37xzV gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_ChildrenWidthFixed_ljcbL gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable">
             <div class="gamepaddialog_FieldLabelRow_2VcTl">
@@ -253,7 +280,7 @@
         </div>
 
         <!-- Fan RPM selector -->
-        <!-- TODO: Make this is non-notched slider when PluginLoader PR#41 is merged -->
+        <!-- TODO: Make this non-notched slider when PluginLoader PR#41 is merged -->
         <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_WithChildrenBelow_37xzV gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_ChildrenWidthFixed_ljcbL gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable">
             <div class="gamepaddialog_FieldLabelRow_2VcTl">
                 <div class="gamepaddialog_FieldLabel_3jMlJ">Fan RPM</div>
@@ -301,6 +328,35 @@
                     </div>
                 </div>
             </div>
+            </div>
+        </div>
+
+        <!-- Battery Info -->
+        <div class="quickaccesscontrols_PanelSection_3gY0a">
+            <div class="quickaccesscontrols_PanelSectionTitle_1IigU">
+                <div class="quickaccesscontrols_Text_1cokl">Battery</div>
+            </div>
+            <div class="Panel Focusable" tabindex="0">
+                <div class="quickaccesscontrols_PanelSectionRow_3LM_Z">
+                    <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
+                        <div class="gamepaddialog_FieldLabelRow_2VcTl">
+                            <div class="gamepaddialog_FieldLabel_3jMlJ">Now</div>
+                            <div class="gamepaddialog_FieldChildren_2rhav">
+                                <div class="gamepaddialog_LabelFieldValue_3pteV" id="batCapacityNow"> ??? (??%) </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="quickaccesscontrols_PanelSectionRow_3LM_Z">
+                    <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
+                        <div class="gamepaddialog_FieldLabelRow_2VcTl">
+                            <div class="gamepaddialog_FieldLabel_3jMlJ">Max</div>
+                            <div class="gamepaddialog_FieldChildren_2rhav">
+                                <div class="gamepaddialog_LabelFieldValue_3pteV" id="batCapacityFull"> ??? (??%) </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </body>

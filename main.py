@@ -6,6 +6,8 @@ class Plugin:
     FAN_VOLTAGES = [0, 1000, 2000, 3000, 4000, 5000, 6000]
 
     set_fan_voltage = None
+
+    # CPU stuff
     
     # call from main_view.html with setCPUs(count, smt)
     async def set_cpus(self, count, smt=True) -> int:
@@ -69,6 +71,8 @@ class Plugin:
         freq = int(freq_maybe)
         return self.SCALING_FREQUENCIES.index(freq)
 
+    # Fan stuff
+
     async def set_fan_tick(self, tick: int):
         self.set_fan_voltage = tick # cache voltage set to echo back in get_fan_tick()
         if tick >= len(self.FAN_VOLTAGES):
@@ -100,6 +104,17 @@ class Plugin:
                 if fan_target <= self.FAN_VOLTAGES[i]:
                     return i
             return len(self.FAN_VOLTAGES)-1 # any higher value is considered as highest manual setting
+
+    # Battery stuff
+
+    async def get_charge_now(self) -> int:
+        return int(read_from_sys("/sys/class/hwmon/hwmon2/device/charge_now", amount=-1).strip())
+
+    async def get_charge_full(self) -> int:
+        return int(read_from_sys("/sys/class/hwmon/hwmon2/device/charge_full", amount=-1).strip())
+
+    async def get_charge_design(self) -> int:
+        return int(read_from_sys("/sys/class/hwmon/hwmon2/device/charge_full_design", amount=-1).strip())
 
     # Asyncio-compatible long-running code, executed in a task when the plugin is loaded
     async def _main(self):
