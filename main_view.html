@@ -6,6 +6,10 @@
         <script src="/static/library.js"></script>
         <script>
             // Python functions
+            function getVersion() {
+                return call_plugin_method("get_version", {});
+            }
+            
             function setCPUs(value, smt) {
                 return call_plugin_method("set_cpus", {"count":value, "smt": smt});
             }
@@ -64,6 +68,9 @@
                 selectNotch("frequencyNotch", await getMaxBoost(), 3);
                 selectNotch("fanNotch", await getFanTick(), 8);
                 await updateBatteryStats();
+                // this is unimportant; always do it last
+                let version = await getVersion();
+                document.getElementById("versionStr").innerText = "v" + version;
             }
 
             async function setCPUNotch(index) {
@@ -138,6 +145,7 @@
             }
 
             async function updateBatteryStats() {
+                console.log("Updating battery stats");
                 let batCapacityNow = document.getElementById("batCapacityNow");
                 let batCapacityFull = document.getElementById("batCapacityFull");
                 let chargeNow = await getChargeNow();
@@ -332,29 +340,39 @@
         </div>
 
         <!-- Battery Info -->
-        <div class="quickaccesscontrols_PanelSection_3gY0a">
+        <div class="quickaccesscontrols_PanelSection_3gY0a" onclick="updateBatteryStats()" style="margin-bottom:0px;">
             <div class="quickaccesscontrols_PanelSectionTitle_1IigU">
                 <div class="quickaccesscontrols_Text_1cokl">Battery</div>
             </div>
             <div class="Panel Focusable" tabindex="0">
                 <div class="quickaccesscontrols_PanelSectionRow_3LM_Z">
-                    <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;padding-left:0px;padding-right:0px;">
                         <div class="gamepaddialog_FieldLabelRow_2VcTl">
                             <div class="gamepaddialog_FieldLabel_3jMlJ">Now</div>
                             <div class="gamepaddialog_FieldChildren_2rhav">
-                                <div class="gamepaddialog_LabelFieldValue_3pteV" id="batCapacityNow"> ??? (??%) </div>
+                                <div class="gamepaddialog_LabelFieldValue_3pteV" id="batCapacityNow"> :'( (|-_-|) </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="quickaccesscontrols_PanelSectionRow_3LM_Z">
-                    <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;padding-left:0px;padding-right:0px;">
                         <div class="gamepaddialog_FieldLabelRow_2VcTl">
                             <div class="gamepaddialog_FieldLabel_3jMlJ">Max</div>
                             <div class="gamepaddialog_FieldChildren_2rhav">
-                                <div class="gamepaddialog_LabelFieldValue_3pteV" id="batCapacityFull"> ??? (??%) </div>
+                                <div class="gamepaddialog_LabelFieldValue_3pteV" id="batCapacityFull"> 9000+ (420%) </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="quickaccesscontrols_PanelSectionRow_3LM_Z">
+            <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
+                <div class="gamepaddialog_FieldLabelRow_2VcTl">
+                    <div class="gamepaddialog_FieldLabel_3jMlJ">PowerTools</div>
+                    <div class="gamepaddialog_FieldChildren_2rhav">
+                        <div class="gamepaddialog_LabelFieldValue_3pteV" id="versionStr"> v0.42.0 </div>
                     </div>
                 </div>
             </div>
