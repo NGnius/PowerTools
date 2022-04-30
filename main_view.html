@@ -78,8 +78,7 @@
                 selectNotch("fanNotch", await getFanTick(), 8);
                 await updateBatteryStats();
                 // this is unimportant; always do it last
-                let version = await getVersion();
-                document.getElementById("versionStr").innerText = "v" + version;
+                await updateVersion();
             }
 
             async function setCPUNotch(index) {
@@ -204,7 +203,7 @@
             }
 
             async function updateBatteryStats() {
-                console.log("Updating battery stats");
+                //console.log("Updating battery stats");
                 let batCapacityNow = document.getElementById("batCapacityNow");
                 let batCapacityFull = document.getElementById("batCapacityFull");
                 let chargeNow = await getChargeNow();
@@ -212,6 +211,19 @@
                 let chargeDesign = await getChargeDesign();
                 batCapacityNow.innerText = (7.7 * chargeNow / 1000000).toFixed(2).toString() + " Wh (" + (100 * chargeNow / chargeFull).toFixed(0).toString() + "%)";
                 batCapacityFull.innerText = (7.7 * chargeFull / 1000000).toFixed(2).toString() + " Wh (" + (100 * chargeFull / chargeDesign).toFixed(0).toString() + "%)";
+            }
+
+            let versionCount = -1;
+            async function updateVersion() {
+                let version = await getVersion();
+                let target = document.getElementById("versionStr");
+                target.innerText = "v" + version;
+                if (versionCount >= 9) {
+                    target.innerText += " by NGnius ;) ";
+                    versionCount = 0;
+                } else {
+                    versionCount += 1;
+                }
             }
             
         </script>
@@ -222,7 +234,7 @@
 
         <!-- SMT toggle switch, roughly copied from https://github.com/SteamDeckHomebrew/ExtraSettingsPlugin/blob/main/main_view.html -->
         <!-- Due to a bug in MangoHud, this has been hidden for now -->
-        <div class="quickaccessmenu_TabGroupPanel_1QO7b Panel Focusable" style="/*display:none;*/">
+        <div class="quickaccessmenu_TabGroupPanel_1QO7b Panel Focusable" style="display:none;">
             <div class="quickaccesscontrols_PanelSectionRow_26R5w">
                 <div class="quickaccesscontrols_PanelSectionRow_26R5w">
                     <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
@@ -473,7 +485,7 @@
                 <div class="quickaccesscontrols_PanelSectionRow_3LM_Z">
                     <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;padding-left:0px;padding-right:0px;">
                         <div class="gamepaddialog_FieldLabelRow_2VcTl">
-                            <div class="gamepaddialog_FieldLabel_3jMlJ">Now</div>
+                            <div class="gamepaddialog_FieldLabel_3jMlJ">Now (Charge%)</div>
                             <div class="gamepaddialog_FieldChildren_2rhav">
                                 <div class="gamepaddialog_LabelFieldValue_3pteV" id="batCapacityNow"> :'( (|-_-|) </div>
                             </div>
@@ -483,7 +495,7 @@
                 <div class="quickaccesscontrols_PanelSectionRow_3LM_Z">
                     <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;padding-left:0px;padding-right:0px;">
                         <div class="gamepaddialog_FieldLabelRow_2VcTl">
-                            <div class="gamepaddialog_FieldLabel_3jMlJ">Max</div>
+                            <div class="gamepaddialog_FieldLabel_3jMlJ">Max (Health%)</div>
                             <div class="gamepaddialog_FieldChildren_2rhav">
                                 <div class="gamepaddialog_LabelFieldValue_3pteV" id="batCapacityFull"> 9000+ (420%) </div>
                             </div>
@@ -492,7 +504,7 @@
                 </div>
             </div>
         </div>
-        <div class="quickaccesscontrols_PanelSectionRow_3LM_Z">
+        <div class="quickaccesscontrols_PanelSectionRow_3LM_Z" onclick="updateVersion()">
             <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
                 <div class="gamepaddialog_FieldLabelRow_2VcTl">
                     <div class="gamepaddialog_FieldLabel_3jMlJ">PowerTools</div>
