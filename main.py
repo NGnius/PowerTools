@@ -77,6 +77,15 @@ class Plugin:
         freq = int(freq_maybe)
         return self.SCALING_FREQUENCIES.index(freq)
 
+    # GPU stuff
+
+    async def set_gpu_power(self, value: int, power_number: int) -> bool:
+        write_to_sys(gpu_power_path(power_number), value)
+        return True
+
+    async def get_gpu_power(self, power_number: int) -> int:
+        return int(read_from_sys(gpu_power_path(power_number), amount=-1).strip())
+
     # Fan stuff
 
     async def set_fan_tick(self, tick: int):
@@ -138,6 +147,9 @@ def cpu_freq_scaling_path(cpu_number: int) -> str:
 
 def cpu_governor_scaling_path(cpu_number: int) -> str:
     return f"/sys/devices/system/cpu/cpu{cpu_number}/cpufreq/scaling_governor"
+
+def gpu_power_path(power_number: int) -> str:
+    return f"/sys/class/hwmon/hwmon4/power{power_number}_cap"
     
 def write_to_sys(path, value: int):
     with open(path, mode="w") as f:
