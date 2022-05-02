@@ -43,7 +43,10 @@ class Plugin:
         return online_count
 
     async def get_smt(self) -> bool:
-        return status_cpu(1) == status_cpu(2) and status_cpu(3) == status_cpu(4)
+        for cpu in range(1, self.CPU_COUNT, 2):
+            if (not status_cpu(cpu)) and status_cpu(cpu+1):
+                return False
+        return True
     
     async def set_boost(self, enabled: bool) -> bool:
         write_to_sys("/sys/devices/system/cpu/cpufreq/boost", int(enabled))
