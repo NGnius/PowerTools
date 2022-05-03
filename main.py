@@ -1,8 +1,19 @@
 import time
+#import subprocess
+
+VERSION = "0.3.0"
 
 class Plugin:
     CPU_COUNT = 8
     SCALING_FREQUENCIES = [1700000, 2400000, 2800000]
+    FAN_SPEEDS = [0, 1000, 2000, 3000, 4000, 5000, 6000]
+
+    auto_fan = True
+    
+    async def get_version(self) -> str:
+        return VERSION
+
+    # CPU stuff
     
     # call from main_view.html with setCPUs(count, smt)
     async def set_cpus(self, count, smt=True) -> int:
@@ -32,7 +43,10 @@ class Plugin:
         return online_count
 
     async def get_smt(self) -> bool:
-        return status_cpu(1) == status_cpu(2) and status_cpu(3) == status_cpu(4)
+        for cpu in range(1, self.CPU_COUNT, 2):
+            if (not status_cpu(cpu)) and status_cpu(cpu+1):
+                return False
+        return True
     
     async def set_boost(self, enabled: bool) -> bool:
         write_to_sys("/sys/devices/system/cpu/cpufreq/boost", int(enabled))
@@ -66,6 +80,61 @@ class Plugin:
         freq = int(freq_maybe)
         return self.SCALING_FREQUENCIES.index(freq)
 
+    # GPU stuff
+
+    async def set_gpu_power(self, value: int, power_number: int) -> bool:
+        write_to_sys(gpu_power_path(power_number), value)
+        return True
+
+    async def get_gpu_power(self, power_number: int) -> int:
+        return int(read_from_sys(gpu_power_path(power_number), amount=-1).strip())
+
+    # Fan stuff
+
+    async def set_fan_tick(self, tick: int):
+        if tick >= len(self.FAN_SPEEDS):
+            # automatic mode
+            self.auto_fan = True
+            write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 0)
+            write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", 4099) # 4099 is default
+            #subprocess.run(["systemctl", "start", "jupiter-fan-control.service"])
+        else:
+            # manual voltage
+            self.auto_fan = False
+            write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 1)
+            write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", self.FAN_SPEEDS[tick])
+            #subprocess.run(["systemctl", "stop", "jupiter-fan-control.service"])
+
+    async def get_fan_tick(self) -> int:
+        fan_target = int(read_from_sys("/sys/class/hwmon/hwmon5/fan1_target", amount=-1).strip())
+        fan_input = int(read_from_sys("/sys/class/hwmon/hwmon5/fan1_input", amount=-1).strip())
+        fan_target_v = float(fan_target) / 1000
+        fan_input_v = float(fan_input) / 1000
+        if self.auto_fan:
+            return len(self.FAN_SPEEDS)
+        elif fan_target == 4099 or (int(round(fan_target_v)) != int(round(fan_input_v)) and fan_target not in self.FAN_SPEEDS):
+            # cannot read /sys/class/hwmon/hwmon5/recalculate, so guess based on available fan info
+            # NOTE: the fan takes time to ramp up, so fan_target will never approximately equal fan_input
+            # when fan_target was changed recently (hence set voltage caching)
+            return len(self.FAN_SPEEDS)
+        else:
+            # quantize voltage to nearest tick (price is right rules; closest without going over)
+            for i in range(len(self.FAN_SPEEDS)-1):
+                if fan_target <= self.FAN_SPEEDS[i]:
+                    return i
+            return len(self.FAN_SPEEDS)-1 # any higher value is considered as highest manual setting
+
+    # Battery stuff
+
+    async def get_charge_now(self) -> int:
+        return int(read_from_sys("/sys/class/hwmon/hwmon2/device/charge_now", amount=-1).strip())
+
+    async def get_charge_full(self) -> int:
+        return int(read_from_sys("/sys/class/hwmon/hwmon2/device/charge_full", amount=-1).strip())
+
+    async def get_charge_design(self) -> int:
+        return int(read_from_sys("/sys/class/hwmon/hwmon2/device/charge_full_design", amount=-1).strip())
+
     # Asyncio-compatible long-running code, executed in a task when the plugin is loaded
     async def _main(self):
         pass
@@ -81,6 +150,9 @@ def cpu_freq_scaling_path(cpu_number: int) -> str:
 
 def cpu_governor_scaling_path(cpu_number: int) -> str:
     return f"/sys/devices/system/cpu/cpu{cpu_number}/cpufreq/scaling_governor"
+
+def gpu_power_path(power_number: int) -> str:
+    return f"/sys/class/hwmon/hwmon4/power{power_number}_cap"
     
 def write_to_sys(path, value: int):
     with open(path, mode="w") as f:
