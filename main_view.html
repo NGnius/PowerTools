@@ -79,6 +79,7 @@
                 await updateBatteryStats();
                 // this is unimportant; always do it last
                 await updateVersion();
+                window.setInterval(function() {updateBatteryStats().then(_ => {})}, 5000);
             }
 
             async function setCPUNotch(index) {
@@ -485,7 +486,7 @@
                 <div class="quickaccesscontrols_PanelSectionRow_3LM_Z">
                     <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;padding-left:0px;padding-right:0px;">
                         <div class="gamepaddialog_FieldLabelRow_2VcTl">
-                            <div class="gamepaddialog_FieldLabel_3jMlJ">Now (Charge%)</div>
+                            <div class="gamepaddialog_FieldLabel_3jMlJ">Now (Charge)</div>
                             <div class="gamepaddialog_FieldChildren_2rhav">
                                 <div class="gamepaddialog_LabelFieldValue_3pteV" id="batCapacityNow"> :'( (|-_-|) </div>
                             </div>
@@ -495,7 +496,7 @@
                 <div class="quickaccesscontrols_PanelSectionRow_3LM_Z">
                     <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;padding-left:0px;padding-right:0px;">
                         <div class="gamepaddialog_FieldLabelRow_2VcTl">
-                            <div class="gamepaddialog_FieldLabel_3jMlJ">Max (Health%)</div>
+                            <div class="gamepaddialog_FieldLabel_3jMlJ">Max (Design)</div>
                             <div class="gamepaddialog_FieldChildren_2rhav">
                                 <div class="gamepaddialog_LabelFieldValue_3pteV" id="batCapacityFull"> 9000+ (420%) </div>
                             </div>
