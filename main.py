@@ -1,7 +1,7 @@
 import time
 #import subprocess
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 class Plugin:
     CPU_COUNT = 8
