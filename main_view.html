@@ -54,6 +54,10 @@
                 return call_plugin_method("get_fan_tick", {});
             }
 
+            function getFantastic() {
+                return call_plugin_method("fantastic_installed", {});
+            }
+
             function getChargeNow() {
                 return call_plugin_method("get_charge_now", {});
             }
@@ -75,7 +79,15 @@
                 selectNotch("cpuThreadsNotch", await getCPUs() - 1, 8);
                 selectNotch("frequencyNotch", await getMaxBoost(), 3);
                 await onReadyGPU();
-                selectNotch("fanNotch", await getFanTick(), 8);
+                let isFantasticInstalled = await getFantastic();
+                if (isFantasticInstalled) {
+                    // Don't fight with Fantastic
+                    let fanRoot = document.getElementById("fanRoot");
+                    fanRoot.style.visibility = "hidden";
+                    fanRoot.style.height = "0px";
+                } else {
+                    selectNotch("fanNotch", await getFanTick(), 8);
+                }
                 await updateBatteryStats();
                 // this is unimportant; always do it last
                 await updateVersion();
@@ -235,7 +247,7 @@
 
         <!-- SMT toggle switch, roughly copied from https://github.com/SteamDeckHomebrew/ExtraSettingsPlugin/blob/main/main_view.html -->
         <!-- Due to a bug in MangoHud, this has been hidden for now -->
-        <div class="quickaccessmenu_TabGroupPanel_1QO7b Panel Focusable" style="display:none;">
+        <div class="quickaccessmenu_TabGroupPanel_1QO7b Panel Focusable">
             <div class="quickaccesscontrols_PanelSectionRow_26R5w">
                 <div class="quickaccesscontrols_PanelSectionRow_26R5w">
                     <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" style="--indent-level:0;">
@@ -250,7 +262,10 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="gamepaddialog_FieldDescription_1W1to">Disables odd-numbered CPUs</div>
+                        <div class="gamepaddialog_FieldDescription_1W1to">Enables odd-numbered CPUs</div>
+                        <div style="font-size:x-small;">
+                        WARNING: Disabling crashes the performance overlay.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -427,7 +442,7 @@
 
         <!-- Fan RPM selector -->
         <!-- TODO: Make this non-notched slider when PluginLoader PR#41 is merged -->
-        <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_WithChildrenBelow_37xzV gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_ChildrenWidthFixed_ljcbL gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable">
+        <div class="gamepaddialog_Field_eKmEX gamepaddialog_WithFirstRow_2bDqk gamepaddialog_WithChildrenBelow_37xzV gamepaddialog_InlineWrapShiftsChildrenBelow_3LCXh gamepaddialog_WithBottomSeparator_3YKpU gamepaddialog_ChildrenWidthFixed_ljcbL gamepaddialog_ExtraPaddingOnChildrenBelow_3nLNL gamepaddialog_StandardPadding_xIITX gamepaddialog_HighlightOnFocus_2HFrm Panel Focusable" id="fanRoot">
             <div class="gamepaddialog_FieldLabelRow_2VcTl">
                 <div class="gamepaddialog_FieldLabel_3jMlJ">Fan RPM</div>
             </div>
@@ -474,6 +489,9 @@
                     </div>
                 </div>
             </div>
+            </div>
+            <div style="font-size:x-small;">
+            WARNING: This can cause component overheating.
             </div>
         </div>
 

@@ -7,6 +7,14 @@ Steam Deck power tweaks for power users.
 This is generated from the template plugin for the [SteamOS Plugin Loader](https://github.com/SteamDeckHomebrew/PluginLoader).
 You will need that installed for this plugin to work.
 
+## What does it do?
+
+- Enable & disable CPU threads & SMT
+- Set CPU max frequency and toggle boost
+- Set some GPU power parameters (fastPPT & slowPPT)
+- Set the fan RPM (unsupported on SteamOS beta)
+- Display supplementary battery info
+
 ## Cool, but that's too much work
 
 Fair enough.

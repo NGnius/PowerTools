@@ -1,7 +1,8 @@
 import time
 #import subprocess
+import os
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 class Plugin:
     CPU_COUNT = 8
@@ -9,6 +10,7 @@ class Plugin:
     FAN_SPEEDS = [0, 1000, 2000, 3000, 4000, 5000, 6000]
 
     auto_fan = True
+    smt = None
     
     async def get_version(self) -> str:
         return VERSION
@@ -17,6 +19,7 @@ class Plugin:
     
     # call from main_view.html with setCPUs(count, smt)
     async def set_cpus(self, count, smt=True) -> int:
+        self.smt = smt
         # print("Setting CPUs")
         if smt:
             count = min(int(count), self.CPU_COUNT)
@@ -43,10 +46,15 @@ class Plugin:
         return online_count
 
     async def get_smt(self) -> bool:
-        for cpu in range(1, self.CPU_COUNT, 2):
-            if (not status_cpu(cpu)) and status_cpu(cpu+1):
-                return False
-        return True
+        if self.smt is None:
+            for cpu in range(1, self.CPU_COUNT, 2):
+                if (not status_cpu(cpu)) and status_cpu(cpu+1):
+                    self.smt = False
+                    return False
+            self.smt = True
+            return True
+        else:
+            return self.smt
     
     async def set_boost(self, enabled: bool) -> bool:
         write_to_sys("/sys/devices/system/cpu/cpufreq/boost", int(enabled))
@@ -123,6 +131,9 @@ class Plugin:
                 if fan_target <= self.FAN_SPEEDS[i]:
                     return i
             return len(self.FAN_SPEEDS)-1 # any higher value is considered as highest manual setting
+
+    async def fantastic_installed(self) -> bool:
+        return os.path.exists("/home/deck/homebrew/plugins/Fantastic")
 
     # Battery stuff
 
