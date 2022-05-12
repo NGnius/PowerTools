@@ -9,11 +9,15 @@
             function getVersion() {
                 return call_plugin_method("get_version", {});
             }
-            
+
+            function onViewReady() {
+                return call_plugin_method("on_ready", {});
+            }
+
             function setCPUs(value, smt) {
                 return call_plugin_method("set_cpus", {"count":value, "smt": smt});
             }
-            
+
             function getCPUs() {
                 return call_plugin_method("get_cpus", {});
             }
@@ -73,6 +77,8 @@
             // other logic
             
             async function onReady() {
+                await onViewReady();
+
                 let boostToggle = document.getElementById("boostToggle");
                 setToggleState(boostToggle, await getCPUBoost());
                 setToggleState(document.getElementById("smtToggle"), await getSMT());
