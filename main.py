@@ -1,16 +1,87 @@
 import time
-#import subprocess
 import os
 
-VERSION = "0.4.1"
+VERSION = "0.4.2"
+
+class CPU:
+    SCALING_FREQUENCIES = [1700000, 2400000, 2800000]
+
+    def __init__(self, number):
+        self.number = number
+
+        if(self.status()):
+            self.max_boost = self._get_max_boost()
+        else:
+            self.max_boost = CPU.SCALING_FREQUENCIES[-1]
+
+    def enable(self):
+        # CPU number 0 is special
+        if(self.number == 0):
+            return
+
+        filepath = cpu_online_path(self.number)
+        write_to_sys(filepath, 1)
+
+        # The user might have changed the maximum cpu clock while the cpu was offline
+        self._set_max_boost(self.max_boost)
+
+    def disable(self):
+        # CPU number 0 is special
+        if(self.number == 0):
+            return
+
+        filepath = cpu_online_path(self.number)
+        write_to_sys(filepath, 0)
+
+    def set_max_boost(self, frequency):
+        self.max_boost = frequency
+        if(self.status()):
+            self._set_max_boost(frequency)
+
+    def status(self) -> bool:
+        # cpu number 0 is always online
+        if(self.number == 0):
+            return True
+
+        filepath = cpu_online_path(self.number)
+        return read_from_sys(filepath) == "1"
+
+    def _read_scaling_governor(self) -> str:
+        filepath = cpu_governor_scaling_path(self.number)
+        return read_from_sys(filepath, amount=-1).strip()
+
+    def _write_scaling_governor(self, governor: str):
+        filepath = cpu_governor_scaling_path(self.number)
+        with open(filepath, mode="w") as f:
+            f.write(governor)
+
+    def _set_max_boost(self, frequency):
+        if(frequency == CPU.SCALING_FREQUENCIES[-1]):
+            self._write_scaling_governor("schedutil")
+            return
+
+        if(self._read_scaling_governor() != "userspace"):
+            self._write_scaling_governor("userspace")
+        else:
+            filepath = cpu_freq_scaling_path(self.number)
+            write_to_sys(filepath, frequency)
+
+    def _get_max_boost(self) -> int:
+        filepath = cpu_freq_scaling_path(self.number)
+        freq_maybe = read_from_sys(filepath, amount=-1).strip()
+
+        if(freq_maybe is None or len(freq_maybe) == 0 or freq_maybe == "<unsupported>"):
+            return CPU.SCALING_FREQUENCIES[-1]
+
+        freq = int(freq_maybe)
+        return freq
+        
 
 class Plugin:
     CPU_COUNT = 8
-    SCALING_FREQUENCIES = [1700000, 2400000, 2800000]
     FAN_SPEEDS = [0, 1000, 2000, 3000, 4000, 5000, 6000]
 
     auto_fan = True
-    smt = None
     
     async def get_version(self) -> str:
         return VERSION
@@ -18,43 +89,36 @@ class Plugin:
     # CPU stuff
     
     # call from main_view.html with setCPUs(count, smt)
-    async def set_cpus(self, count, smt=True) -> int:
+    async def set_cpus(self, count, smt=True):
+        cpu_count = len(self.cpus)
         self.smt = smt
         # print("Setting CPUs")
         if smt:
-            count = min(int(count), self.CPU_COUNT)
-            # never touch cpu0, since it's special
-            for cpu in range(1, count):
-                enable_cpu(cpu)
-            for cpu in range(count, self.CPU_COUNT):
-                disable_cpu(cpu)
-            return self.CPU_COUNT
+            count = min(int(count), cpu_count)
+            for cpu in self.cpus[: count]:
+                cpu.enable()
+            for cpu in self.cpus[count :: 1]:
+                cpu.disable()
         else:
-            count = min(int(count), self.CPU_COUNT / 2)
-            for cpu in range(1, self.CPU_COUNT, 2):
-                disable_cpu(cpu)
-            for cpu in range(2, self.CPU_COUNT, 2):
-                if (cpu / 2) + 1 > count:
-                    disable_cpu(cpu)
+            count = min(int(count), cpu_count / 2)
+            # never touch cpu0, since it's special
+            for cpu in self.cpus[1 : cpu_count : 2]:
+                cpu.disable()
+            for cpu in self.cpus[2 : cpu_count : 2]:
+                if(cpu.number / 2 + 1 > count):
+                    cpu.disable()
                 else:
-                    enable_cpu(cpu)
-    
+                    cpu.enable()
+
     async def get_cpus(self) -> int:
-        online_count = 1 # cpu0 is always online
-        for cpu in range(1, self.CPU_COUNT):
-            online_count += int(status_cpu(cpu))
+        online_count = 0
+        for cpu in self.cpus:
+            if(cpu.status()):
+                online_count += 1
         return online_count
 
     async def get_smt(self) -> bool:
-        if self.smt is None:
-            for cpu in range(1, self.CPU_COUNT, 2):
-                if (not status_cpu(cpu)) and status_cpu(cpu+1):
-                    self.smt = False
-                    return False
-            self.smt = True
-            return True
-        else:
-            return self.smt
+        return self.smt
     
     async def set_boost(self, enabled: bool) -> bool:
         write_to_sys("/sys/devices/system/cpu/cpufreq/boost", int(enabled))
@@ -63,30 +127,19 @@ class Plugin:
     async def get_boost(self) -> bool:
         return read_from_sys("/sys/devices/system/cpu/cpufreq/boost") == "1"
 
-    async def set_max_boost(self, index) -> int:
-        if index >= len(self.SCALING_FREQUENCIES):
-            return False
-        selected_freq = self.SCALING_FREQUENCIES[index]
-        updated = 0
-        for cpu in range(0, self.CPU_COUNT):
-            if cpu == 0 or status_cpu(cpu):
-                if read_scaling_governor_cpu(cpu) != "userspace":
-                    write_scaling_governor_cpu(cpu, "userspace")
-                path = cpu_freq_scaling_path(cpu)
-                if index == len(self.SCALING_FREQUENCIES) - 1:
-                    write_scaling_governor_cpu(cpu, "schedutil")
-                else:
-                    write_to_sys(path, selected_freq)
-                updated += 1
-        return updated
+    async def set_max_boost(self, index):
+        if index < 0 or index >= len(CPU.SCALING_FREQUENCIES):
+            return 0
+
+        selected_freq = CPU.SCALING_FREQUENCIES[index]
+
+        for cpu in self.cpus:
+            cpu.set_max_boost(selected_freq)
+
+        return len(self.cpus)
 
     async def get_max_boost(self) -> int:
-        path = cpu_freq_scaling_path(0)
-        freq_maybe = read_from_sys(path, amount=-1).strip()
-        if freq_maybe is None or len(freq_maybe) == 0 or freq_maybe == "<unsupported>":
-            return len(self.SCALING_FREQUENCIES) - 1
-        freq = int(freq_maybe)
-        return self.SCALING_FREQUENCIES.index(freq)
+        return CPU.SCALING_FREQUENCIES.index(self.cpus[0].max_boost)
 
     # GPU stuff
 
@@ -149,7 +202,22 @@ class Plugin:
     # Asyncio-compatible long-running code, executed in a task when the plugin is loaded
     async def _main(self):
         pass
-            
+
+    # called from main_view::onViewReady
+    async def on_ready(self):
+        self.cpus = []
+
+        for cpu_number in range(0, Plugin.CPU_COUNT):
+            self.cpus.append(CPU(cpu_number))
+
+        # If any core has two threads, smt is True
+        self.smt = self.cpus[1].status()
+        if(not self.smt):
+            for cpu_number in range(2, len(self.cpus), 2):
+                if(self.cpus[cpu_number].status()):
+                    self.smt = True
+                    break
+
 
 # these are stateless (well, the state is not saved internally) functions, so there's no need for these to be called like a class method
 
@@ -172,24 +240,3 @@ def write_to_sys(path, value: int):
 def read_from_sys(path, amount=1):
     with open(path, mode="r") as f:
         return f.read(amount)
-
-def enable_cpu(cpu_number: int):
-    filepath = cpu_online_path(cpu_number)
-    write_to_sys(filepath, 1)
-
-def disable_cpu(cpu_number: int):
-    filepath = cpu_online_path(cpu_number)
-    write_to_sys(filepath, 0)
-
-def status_cpu(cpu_number: int) -> bool:
-    filepath = cpu_online_path(cpu_number)
-    return read_from_sys(filepath) == "1"
-
-def read_scaling_governor_cpu(cpu_number: int) -> str:
-    filepath = cpu_governor_scaling_path(cpu_number)
-    return read_from_sys(filepath, amount=-1).strip()
-
-def write_scaling_governor_cpu(cpu_number: int, governor: str):
-    filepath = cpu_governor_scaling_path(cpu_number)
-    with open(filepath, mode="w") as f:
-        f.write(governor)
