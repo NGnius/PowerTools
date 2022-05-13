@@ -73,6 +73,14 @@
             function getChargeDesign() {
                 return call_plugin_method("get_charge_design", {});
             }
+
+            function setPersistent(value) {
+                return call_plugin_method("set_persistent", {"enabled": value});
+            }
+
+            function getPersistent() {
+                return call_plugin_method("get_persistent", {});
+            }
             
             // other logic
             
@@ -95,6 +103,7 @@
                     selectNotch("fanNotch", await getFanTick(), 8);
                 }
                 await updateBatteryStats();
+                setToggleState(document.getElementById("persistToggle"), await getPersistent());
                 // this is unimportant; always do it last
                 await updateVersion();
                 window.setInterval(function() {updateBatteryStats().then(_ => {})}, 5000);
@@ -231,6 +240,13 @@
                 let chargeDesign = await getChargeDesign();
                 batCapacityNow.innerText = (7.7 * chargeNow / 1000000).toFixed(2).toString() + " Wh (" + (100 * chargeNow / chargeFull).toFixed(0).toString() + "%)";
                 batCapacityFull.innerText = (7.7 * chargeFull / 1000000).toFixed(2).toString() + " Wh (" + (100 * chargeFull / chargeDesign).toFixed(0).toString() + "%)";
+            }
+
+            async function togglePersist() {
+                let toggle = document.getElementById("persistToggle");
+                let isActive = getToggleState(toggle);
+                await setPersistent(!isActive);
+                setToggleState(toggle, !isActive);
             }
 
             let versionCount = -1;
@@ -536,6 +552,23 @@
             </div>
         </div>
         <div class="quickaccesscontrols_PanelSection_2C0g0" style="padding:0px 4px;">
+            <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
+                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_WithDescription_3bMIS gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_FieldLabelRow_H9WOq">
+                        <div class="gamepaddialog_FieldLabel_3b0U-">
+                            Persistent
+                        </div>
+                        <div class="gamepaddialog_FieldChildren_14_HB">
+                            <div id="persistToggle" tabindex="0" class="gamepaddialog_Toggle_24G4g Focusable" onclick="togglePersist()">
+                                <div class="gamepaddialog_ToggleRail_2JtC3"></div>
+                                <div class="gamepaddialog_ToggleSwitch_3__OD"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="gamepaddialog_FieldDescription_2OJfk">Restores settings after a reboot</div>
+                </div>
+            </div>
+        <div class="quickaccesscontrols_PanelSection_2C0g0" style="padding:0px 4px;">
             <div class="quickaccesscontrols_PanelSectionRow_2VQ88" onclick="updateVersion()">
                 <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
                     <div class="gamepaddialog_FieldLabelRow_H9WOq">
@@ -546,6 +579,7 @@
                     </div>
                 </div>
             </div>
+        </div>
         </div>
         </div>
     </body>
