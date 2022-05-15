@@ -14,6 +14,7 @@ You will need that installed for this plugin to work.
 - Set some GPU power parameters (fastPPT & slowPPT)
 - Set the fan RPM (unsupported on SteamOS beta)
 - Display supplementary battery info
+- Keep settings between restarts (stored in `~/.config/powertools.json`)
 
 ## Cool, but that's too much work
 
