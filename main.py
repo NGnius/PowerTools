@@ -4,9 +4,9 @@ import json
 import asyncio
 
 VERSION = "0.5.0"
-SETTINGS_LOCATION = "/home/deck/.config/powertools.json"
-LOG_LOCATION = "/home/deck/.powertools.log"
-FANTASTIC_INSTALL_DIR = "/home/deck/homebrew/plugins/Fantastic"
+SETTINGS_LOCATION = "~/.config/powertools.json"
+LOG_LOCATION = "/tmp/powertools.log"
+FANTASTIC_INSTALL_DIR = "~/homebrew/plugins/Fantastic"
 
 import logging
 
@@ -17,8 +17,9 @@ logging.basicConfig(
     force = True)
 
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-logging.info(f"PowerTools v{VERSION}")
+logger.setLevel(logging.INFO)
+logging.info(f"PowerTools v{VERSION} https://github.com/NGnius/PowerTools")
+startup_time = time.time()
 
 class CPU:
     SCALING_FREQUENCIES = [1700000, 2400000, 2800000]
@@ -246,15 +247,27 @@ class Plugin:
         # startup: load & apply settings
         if os.path.exists(SETTINGS_LOCATION):
             settings = read_json(SETTINGS_LOCATION)
-            logging.debug(f"Loaded settings from file: {settings}")
+            logging.debug(f"Loaded settings from {SETTINGS_LOCATION}: {settings}")
         else:
             settings = None
+            logging.debug(f"Settings {SETTINGS_LOCATION} does not exist, skipped")
         if settings is None or settings["persistent"] == False:
+            logging.debug("Ignoring settings from file")
             self.persistent = False
             self.cpus = []
 
             for cpu_number in range(0, Plugin.CPU_COUNT):
                 self.cpus.append(CPU(cpu_number))
+
+            # If any core has two threads, smt is True
+            self.smt = self.cpus[1].status()
+            if(not self.smt):
+                for cpu_number in range(2, len(self.cpus), 2):
+                    if(self.cpus[cpu_number].status()):
+                        self.smt = True
+                        break
+            logging.info(f"SMT state is guessed to be {self.smt}")
+
         else:
             # apply settings
             logging.debug("Restoring settings from file")
@@ -274,6 +287,7 @@ class Plugin:
                 write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 1)
                 write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", settings["fan"]["target"])
             self.dirty = False
+        logging.info("Handled saved settings, back-end startup complete")
         # work loop
         while True:
             if self.modified_settings and self.persistent:
@@ -283,14 +297,8 @@ class Plugin:
 
     # called from main_view::onViewReady
     async def on_ready(self):
-
-        # If any core has two threads, smt is True
-        self.smt = self.cpus[1].status()
-        if(not self.smt):
-            for cpu_number in range(2, len(self.cpus), 2):
-                if(self.cpus[cpu_number].status()):
-                    self.smt = True
-                    break
+        delta = time.time() - startup_time
+        logging.info(f"Front-end initialised {delta}s after startup")
 
     # persistence
 
@@ -334,7 +342,7 @@ class Plugin:
 
     def save_settings(self):
         settings = self.current_settings(self)
-        logging.debug(f"Saving settings to file: {settings}")
+        logging.info(f"Saving settings to file: {settings}")
         write_json(SETTINGS_LOCATION, settings)
 
 
@@ -371,10 +379,13 @@ def read_fan_target() -> int:
 def write_to_sys(path, value: int):
     with open(path, mode="w") as f:
         f.write(str(value))
+    logging.debug(f"Wrote `{value}` to {path}")
 
 def read_from_sys(path, amount=1):
     with open(path, mode="r") as f:
-        return f.read(amount)
+        value = f.read(amount)
+        logging.debug(f"Read `{value}` from {path}")
+        return value
 
 def read_sys_int(path) -> int:
     return int(read_from_sys(path, amount=-1).strip())
@@ -386,3 +397,6 @@ def write_json(path, data):
 def read_json(path):
     with open(path, mode="r") as f:
         return json.load(f)
+
+os_release = read_from_sys("/etc/os-release", amount=-1).strip()
+logging.info(f"/etc/os-release\n{os_release}")
