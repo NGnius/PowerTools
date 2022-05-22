@@ -81,11 +81,34 @@
             function getPersistent() {
                 return call_plugin_method("get_persistent", {});
             }
+
+            function getCurrentGame() {
+                return call_plugin_method("get_current_game", {});
+            }
             
             // other logic
             
             async function onReady() {
                 await onViewReady();
+
+                // detect game starts and exits
+                console.log("Injecting game detection code into main window (SP)");
+                await execute_in_tab("SP", false,
+                    `SteamClient.Apps.RegisterForGameActionStart((actionType, data) => {
+                        console.log("start game", appStore.GetAppOverviewByGameID(data));
+                        fetch("http://127.0.0.1:5030/on_game_start/" + data.toString(), {method: "POST", body: JSON.stringify(appStore.GetAppOverviewByGameID(data))}).then((_) => {});
+                    });
+                    // this seems to not run when I thought (runs right after ^^^, not when game exits)
+                    /*SteamClient.Apps.RegisterForGameActionEnd((actionType, data) => {
+                        if (data != null && data != undefined) {
+                            console.log("stop game", appStore.GetAppOverviewByGameID(data));
+                            fetch("http://127.0.0.1:5030/on_game_exit/" + data.toString(), {method: "POST", body: JSON.stringify(appStore.GetAppOverviewByGameID(data))}).then((_) => {});
+                        } else {
+                            console.log("stop game null");
+                            fetch("http://127.0.0.1:5030/on_game_exit_null", {method: "POST", body:data}).then((_) => {});
+                        }
+                    });*/`
+                );
 
                 let boostToggle = document.getElementById("boostToggle");
                 setToggleState(boostToggle, await getCPUBoost());
@@ -106,7 +129,10 @@
                 setToggleState(document.getElementById("persistToggle"), await getPersistent());
                 // this is unimportant; always do it last
                 await updateVersion();
-                window.setInterval(function() {updateBatteryStats().then(_ => {})}, 5000);
+                window.setInterval(function() {
+                    updateBatteryStats().then(_ => {});
+                    updateCurrentGame().then(_ => {});
+                }, 5000);
             }
 
             async function setCPUNotch(index) {
@@ -247,6 +273,12 @@
                 let isActive = getToggleState(toggle);
                 await setPersistent(!isActive);
                 setToggleState(toggle, !isActive);
+            }
+
+            async function updateCurrentGame() {
+                let gameNow = document.getElementById("gameNow");
+                let gameNameNow = await getCurrentGame();
+                gameNow.innerText = gameNameNow;
             }
 
             let versionCount = -1;
@@ -566,6 +598,15 @@
                         </div>
                     </div>
                     <div class="gamepaddialog_FieldDescription_2OJfk">Restores settings after a reboot</div>
+                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                        <div class="gamepaddialog_FieldLabelRow_H9WOq">
+                            <div class="gamepaddialog_FieldLabel_3b0U-">Now Playing</div>
+                            <div class="gamepaddialog_FieldChildren_14_HB">
+                                <div class="gamepaddialog_LabelFieldValue_5Mylh" id="gameNow"> Littlewood (894940) </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 </div>
             </div>
         <div class="quickaccesscontrols_PanelSection_2C0g0" style="padding:0px 4px;">

@@ -2,11 +2,13 @@ import time
 import os
 import json
 import asyncio
+import pathlib
 
-VERSION = "0.5.0"
-SETTINGS_LOCATION = "~/.config/powertools.json"
+VERSION = "0.6.0"
+HOME_DIR = str(pathlib.Path(os.getcwd()).parent.parent.resolve())
+DEFAULT_SETTINGS_LOCATION = HOME_DIR + "/.config/powertools/default_settings.json"
 LOG_LOCATION = "/tmp/powertools.log"
-FANTASTIC_INSTALL_DIR = "~/homebrew/plugins/Fantastic"
+FANTASTIC_INSTALL_DIR = HOME_DIR + "/homebrew/plugins/Fantastic"
 
 import logging
 
@@ -17,8 +19,15 @@ logging.basicConfig(
     force = True)
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 logging.info(f"PowerTools v{VERSION} https://github.com/NGnius/PowerTools")
+logging.info(f"CWD: {os.getcwd()} HOME:{HOME_DIR}")
+
+import sys
+#import pathlib
+sys.path.append(str(pathlib.Path(__file__).parent.resolve()))
+import server as pt_server
+
 startup_time = time.time()
 
 class CPU:
@@ -120,6 +129,8 @@ class Plugin:
     auto_fan = True
     persistent = True
     modified_settings = False
+    current_game = None # None means main menu
+    last_recognised_game = None
     
     async def get_version(self) -> str:
         return VERSION
@@ -245,12 +256,12 @@ class Plugin:
     # Asyncio-compatible long-running code, executed in a task when the plugin is loaded
     async def _main(self):
         # startup: load & apply settings
-        if os.path.exists(SETTINGS_LOCATION):
-            settings = read_json(SETTINGS_LOCATION)
-            logging.debug(f"Loaded settings from {SETTINGS_LOCATION}: {settings}")
+        if os.path.exists(DEFAULT_SETTINGS_LOCATION):
+            settings = read_json(DEFAULT_SETTINGS_LOCATION)
+            logging.debug(f"Loaded settings from {DEFAULT_SETTINGS_LOCATION}: {settings}")
         else:
             settings = None
-            logging.debug(f"Settings {SETTINGS_LOCATION} does not exist, skipped")
+            logging.debug(f"Settings {DEFAULT_SETTINGS_LOCATION} does not exist, skipped")
         if settings is None or settings["persistent"] == False:
             logging.debug("Ignoring settings from file")
             self.persistent = False
@@ -288,12 +299,15 @@ class Plugin:
                 write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", settings["fan"]["target"])
             self.dirty = False
         logging.info("Handled saved settings, back-end startup complete")
+        # server setup
+        await pt_server.start(VERSION)
         # work loop
         while True:
             if self.modified_settings and self.persistent:
                 self.save_settings(self)
                 self.modified_settings = False
             await asyncio.sleep(1)
+        await pt_server.shutdown()
 
     # called from main_view::onViewReady
     async def on_ready(self):
@@ -343,7 +357,16 @@ class Plugin:
     def save_settings(self):
         settings = self.current_settings(self)
         logging.info(f"Saving settings to file: {settings}")
-        write_json(SETTINGS_LOCATION, settings)
+        write_json(DEFAULT_SETTINGS_LOCATION, settings)
+
+    # per-game profiles
+
+    async def get_current_game(self) -> str:
+        current_game = pt_server.http_server.game()
+        if current_game is None:
+            return "Menu (default)"
+        else:
+            return f"{current_game.name()} ({current_game.appid()})"
 
 
 
