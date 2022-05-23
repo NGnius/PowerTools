@@ -3,8 +3,9 @@ import json
 import os
 import pathlib
 
-import asyncio
+# import asyncio
 from aiohttp import web
+import aiohttp
 
 HOME_DIR = str(pathlib.Path(os.getcwd()).parent.parent.resolve())
 SETTINGS_DIR = HOME_DIR + "/.config/powertools"
@@ -14,6 +15,7 @@ if not os.path.exists(SETTINGS_DIR):
 
 http_runner = None
 http_server = None
+http_site = None
 
 class GameInfo:
     def __init__(self, gameid: int, game_info: dict):
@@ -27,17 +29,17 @@ class GameInfo:
         return self.game_info["display_name"]
 
     def settings_path(self) -> str:
-        return SETTINGS_DIR + os.pathsep + str(self.appid()) + ".json"
+        return SETTINGS_DIR + os.path.sep + str(self.appid()) + ".json"
 
     def load_settings(self) -> dict:
         settings_path = self.settings_path()
-        if os.exists(settings_path):
+        if os.path.exists(settings_path):
             with open(settings_path, mode="r") as f:
                 return json.load(f)
         return None
 
     def has_settings(self) -> bool:
-        return os.exists(self.settings_path())
+        return os.path.exists(self.settings_path())
 
 
 class Server(web.Application):
@@ -46,28 +48,27 @@ class Server(web.Application):
         super().__init__()
         self.version = version
         self.current_game = None
-        self.last_recognised_game = None
         self.add_routes([
             web.get("/", lambda req: self.index(req)),
             web.post("/on_game_start/{game_id}", lambda req: self.on_game_start(req)),
             web.post("/on_game_exit/{game_id}", lambda req: self.on_game_exit(req)),
-            web.post("/on_game_exit_null", lambda req: self.on_game_exit_null(req))
+            web.post("/on_game_exit_null", lambda req: self.on_game_exit_null(req)),
+            web.get("/self_destruct", lambda req: self.self_destruct(req))
         ])
         logging.debug("Server init complete")
 
     def game(self) -> GameInfo:
         return self.current_game
 
-    def recognised_game(self) -> GameInfo:
-        return self.last_recognised_game
-
     async def index(self, request):
         logging.debug("Debug index page accessed")
+        current_game = None if self.current_game is None else self.current_game.gameid
+        game_info = None if self.current_game is None else self.current_game.game_info
         return web.json_response({
             "name": "PowerTools",
             "version": self.version,
-            "latest_game_id": self.current_game,
-            "latest_recognised_game_id": self.last_recognised_game,
+            "latest_game_id": current_game,
+            "game_info": game_info
         }, headers={"Access-Control-Allow-Origin": "*"})
 
     async def on_game_start(self, request):
@@ -80,9 +81,8 @@ class Server(web.Application):
         except:
             return web.Response(text="WTF", status=400)
         self.current_game = GameInfo(game_id, data)
-        if True: # TODO check for game_id in existing profiles
-            self.last_recognised_game = self.current_game # only set this when profile exists
-            # TODO apply profile
+        if self.current_game.has_settings():
+            self.last_recognised_game = self.current_game
         return web.Response(status=204, headers={"Access-Control-Allow-Origin": "*"})
 
     async def on_game_exit(self, request):
@@ -107,9 +107,21 @@ class Server(web.Application):
         # TODO change settings to default
         return web.Response(status=204, headers={"Access-Control-Allow-Origin": "*"})
 
+    async def self_destruct(self, request):
+        logging.warning("Geodude self-destructed")
+        await shutdown()
+        # unreachable \/ \/ \/
+        return web.Response(status=204, headers={"Access-Control-Allow-Origin": "*"})
+
 async def start(version):
-    global http_runner, http_server
-    loop = asyncio.get_event_loop()
+    global http_runner, http_server, http_site
+    # make sure old server has shutdown
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get('http://127.0.0.1:5030/self_destruct') as response:
+                await response.text()
+    except:
+        pass
     http_server = Server(version)
     http_runner = web.AppRunner(http_server)
     await http_runner.setup()
@@ -117,8 +129,10 @@ async def start(version):
     await site.start()
 
 async def shutdown(): # never really called
-    global http_runner, http_server
+    global http_runner, http_server, http_site
     if http_runner is not None:
         await http_runner.cleanup()
         http_runner = None
+        http_site.stop()
+    http_site = None
     http_server = None

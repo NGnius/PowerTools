@@ -82,6 +82,14 @@
                 return call_plugin_method("get_persistent", {});
             }
 
+            function setPerGameProfile(value) {
+                return call_plugin_method("set_per_game_profile", {"enabled": value});
+            }
+
+            function getPerGameProfile() {
+                return call_plugin_method("get_per_game_profile", {});
+            }
+
             function getCurrentGame() {
                 return call_plugin_method("get_current_game", {});
             }
@@ -94,7 +102,8 @@
                 // detect game starts and exits
                 console.log("Injecting game detection code into main window (SP)");
                 await execute_in_tab("SP", false,
-                    `SteamClient.Apps.RegisterForGameActionStart((actionType, data) => {
+                    `console.log("Hey PowerTools is over here now too!");
+                    SteamClient.Apps.RegisterForGameActionStart((actionType, data) => {
                         console.log("start game", appStore.GetAppOverviewByGameID(data));
                         fetch("http://127.0.0.1:5030/on_game_start/" + data.toString(), {method: "POST", body: JSON.stringify(appStore.GetAppOverviewByGameID(data))}).then((_) => {});
                     });
@@ -110,6 +119,35 @@
                     });*/`
                 );
 
+                await updateCurrentGame();
+                /*let boostToggle = document.getElementById("boostToggle");
+                setToggleState(boostToggle, await getCPUBoost());
+                setToggleState(document.getElementById("smtToggle"), await getSMT());
+                selectNotch("cpuThreadsNotch", await getCPUs() - 1, 8);
+                selectNotch("frequencyNotch", await getMaxBoost(), 3);
+                await onReadyGPU();
+                let isFantasticInstalled = await getFantastic();
+                if (isFantasticInstalled) {
+                    // Don't fight with Fantastic
+                    let fanRoot = document.getElementById("fanRoot");
+                    fanRoot.style.visibility = "hidden";
+                    fanRoot.style.height = "0px";
+                } else {
+                    selectNotch("fanNotch", await getFanTick(), 8);
+                }
+                await updateBatteryStats();
+                setToggleState(document.getElementById("persistToggle"), await getPersistent());
+                setToggleState(document.getElementById("gameProfileToggle"), await getPerGameProfile());
+                await updateCurrentGame();*/
+                // this is unimportant; always do it last
+                await updateVersion();
+                window.setInterval(function() {
+                    updateBatteryStats().then(_ => {});
+                    updateCurrentGame().then(_ => {});
+                }, 1000);
+            }
+
+            async function reloadSettings() {
                 let boostToggle = document.getElementById("boostToggle");
                 setToggleState(boostToggle, await getCPUBoost());
                 setToggleState(document.getElementById("smtToggle"), await getSMT());
@@ -127,12 +165,7 @@
                 }
                 await updateBatteryStats();
                 setToggleState(document.getElementById("persistToggle"), await getPersistent());
-                // this is unimportant; always do it last
-                await updateVersion();
-                window.setInterval(function() {
-                    updateBatteryStats().then(_ => {});
-                    updateCurrentGame().then(_ => {});
-                }, 5000);
+                setToggleState(document.getElementById("gameProfileToggle"), await getPerGameProfile());
             }
 
             async function setCPUNotch(index) {
@@ -193,7 +226,7 @@
 
             async function onSlideBoostNotch(e) {
                 const ROOT_ID = "frequencyNotch";
-                let closest = closestNotch(e, ROOT_ID, 8);
+                let closest = closestNotch(e, ROOT_ID, 3);
                 await setBoostNotch(closest);
             }
 
@@ -318,9 +351,23 @@
                 setToggleState(toggle, !isActive);
             }
 
+            async function toggleGameProfile() {
+                let toggle = document.getElementById("gameProfileToggle");
+                let isActive = getToggleState(toggle);
+                await setPerGameProfile(!isActive);
+                setToggleState(toggle, await getPerGameProfile());
+            }
+
+            let lastGameName = "";
+
             async function updateCurrentGame() {
                 let gameNow = document.getElementById("gameNow");
                 let gameNameNow = await getCurrentGame();
+                if (lastGameName != gameNameNow) {
+                    setToggleState(document.getElementById("gameProfileToggle"), await getPerGameProfile());
+                    await reloadSettings();
+                }
+                lastGameName = gameNameNow
                 gameNow.innerText = gameNameNow;
             }
 
@@ -369,7 +416,7 @@
 
 
         <!-- CPUs selector -->
-        <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
+        <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
             <div class="gamepaddialog_FieldLabelRow_H9WOq">
                 <div class="gamepaddialog_FieldLabel_3b0U-">Threads</div>
             </div>
@@ -440,12 +487,12 @@
 
 
         <!-- Frequency selector -->
-        <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
+        <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
             <div class="gamepaddialog_FieldLabelRow_H9WOq">
                 <div class="gamepaddialog_FieldLabel_3b0U-">Max Frequency</div>
             </div>
             <div class="gamepaddialog_FieldChildren_14_HB">
-            <div id="frequencyNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.5;">
+            <div id="frequencyNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.5;" onmousemove="onSlideBoostNotch(event)">
                 <div class="gamepadslider_SliderControl_3o137">
                     <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
                     <div class="gamepadslider_SliderHandleContainer_1pQZi">
@@ -485,7 +532,7 @@
                 <div class="gamepaddialog_FieldLabel_3b0U-">GPU SlowPPT Power</div>
             </div>
             <div class="gamepaddialog_FieldChildren_14_HB">
-            <div id="slowPPTNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.33;">
+            <div id="slowPPTNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.33;" onmousemove="onSlideSlowPPTNotch(event)">
                 <div class="gamepadslider_SliderControl_3o137">
                     <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
                     <div class="gamepadslider_SliderHandleContainer_1pQZi">
@@ -511,12 +558,12 @@
         </div>
 
         <!-- FastPPT power limit (number 2) -->
-        <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
+        <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
             <div class="gamepaddialog_FieldLabelRow_H9WOq">
                 <div class="gamepaddialog_FieldLabel_3b0U-">GPU FastPPT Power</div>
             </div>
             <div class="gamepaddialog_FieldChildren_14_HB">
-            <div id="fastPPTNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.33;">
+            <div id="fastPPTNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.33;" onmousemove="onSlideFastPPTNotch(event)">
                 <div class="gamepadslider_SliderControl_3o137">
                     <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
                     <div class="gamepadslider_SliderHandleContainer_1pQZi">
@@ -545,12 +592,12 @@
 
         <!-- Fan RPM selector -->
         <!-- TODO: Make this non-notched slider when PluginLoader PR#41 is merged -->
-        <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" id="fanRoot">
+        <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" id="fanRoot">
             <div class="gamepaddialog_FieldLabelRow_H9WOq">
                 <div class="gamepaddialog_FieldLabel_3b0U-">Fan RPM</div>
             </div>
             <div class="gamepaddialog_FieldChildren_14_HB">
-            <div id="fanNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.33;">
+            <div id="fanNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.33;" onmousemove="onSlideFanNotch(event)">
                 <div class="gamepadslider_SliderControl_3o137">
                     <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
                     <div class="gamepadslider_SliderHandleContainer_1pQZi">
@@ -605,7 +652,7 @@
             </div>
             <div class="Panel Focusable" tabindex="0">
                 <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
-                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
                         <div class="gamepaddialog_FieldLabelRow_H9WOq">
                             <div class="gamepaddialog_FieldLabel_3b0U-">Now (Charge)</div>
                             <div class="gamepaddialog_FieldChildren_14_HB">
@@ -615,7 +662,7 @@
                     </div>
                 </div>
                 <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
-                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
                         <div class="gamepaddialog_FieldLabelRow_H9WOq">
                             <div class="gamepaddialog_FieldLabel_3b0U-">Max (Design)</div>
                             <div class="gamepaddialog_FieldChildren_14_HB">
@@ -640,21 +687,34 @@
                             </div>
                         </div>
                     </div>
-                    <div class="gamepaddialog_FieldDescription_2OJfk">Restores settings after a reboot</div>
-                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
-                        <div class="gamepaddialog_FieldLabelRow_H9WOq">
-                            <div class="gamepaddialog_FieldLabel_3b0U-">Now Playing</div>
-                            <div class="gamepaddialog_FieldChildren_14_HB">
-                                <div class="gamepaddialog_LabelFieldValue_5Mylh" id="gameNow"> Littlewood (894940) </div>
+                    <div class="gamepaddialog_FieldDescription_2OJfk">Restores settings after an app or OS restart</div>
+                </div>
+                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_WithDescription_3bMIS gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_FieldLabelRow_H9WOq">
+                        <div class="gamepaddialog_FieldLabel_3b0U-">
+                            Use per-game profile
+                        </div>
+                        <div class="gamepaddialog_FieldChildren_14_HB">
+                            <div id="gameProfileToggle" tabindex="0" class="gamepaddialog_Toggle_24G4g Focusable" onclick="toggleGameProfile()">
+                                <div class="gamepaddialog_ToggleRail_2JtC3"></div>
+                                <div class="gamepaddialog_ToggleSwitch_3__OD"></div>
                             </div>
                         </div>
                     </div>
                 </div>
+                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_FieldLabelRow_H9WOq">
+                        <div class="gamepaddialog_FieldLabel_3b0U-">Now Playing</div>
+                        <div class="gamepaddialog_FieldChildren_14_HB">
+                            <div class="gamepaddialog_LabelFieldValue_5Mylh" id="gameNow"> the bongos </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
         <div class="quickaccesscontrols_PanelSection_2C0g0" style="padding:0px 4px;">
             <div class="quickaccesscontrols_PanelSectionRow_2VQ88" onclick="updateVersion()">
-                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
                     <div class="gamepaddialog_FieldLabelRow_H9WOq">
                         <div class="gamepaddialog_FieldLabel_3b0U-">PowerTools</div>
                         <div class="gamepaddialog_FieldChildren_14_HB">

@@ -21,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 logging.info(f"PowerTools v{VERSION} https://github.com/NGnius/PowerTools")
-logging.info(f"CWD: {os.getcwd()} HOME:{HOME_DIR}")
+logging.debug(f"CWD: {os.getcwd()} HOME:{HOME_DIR}")
 
 import sys
 #import pathlib
@@ -129,8 +129,7 @@ class Plugin:
     auto_fan = True
     persistent = True
     modified_settings = False
-    current_game = None # None means main menu
-    last_recognised_game = None
+    current_gameid = None
     
     async def get_version(self) -> str:
         return VERSION
@@ -265,47 +264,44 @@ class Plugin:
         if settings is None or settings["persistent"] == False:
             logging.debug("Ignoring settings from file")
             self.persistent = False
-            self.cpus = []
-
-            for cpu_number in range(0, Plugin.CPU_COUNT):
-                self.cpus.append(CPU(cpu_number))
-
-            # If any core has two threads, smt is True
-            self.smt = self.cpus[1].status()
-            if(not self.smt):
-                for cpu_number in range(2, len(self.cpus), 2):
-                    if(self.cpus[cpu_number].status()):
-                        self.smt = True
-                        break
-            logging.info(f"SMT state is guessed to be {self.smt}")
-
+            self.guess_settings(self)
+            self.modified_settings = True
         else:
             # apply settings
             logging.debug("Restoring settings from file")
             self.persistent = True
-            # CPU
-            self.cpus = []
-
-            for cpu_number in range(0, Plugin.CPU_COUNT):
-                self.cpus.append(CPU(cpu_number, settings=settings["cpu"]["threads"][cpu_number]))
-            self.smt = settings["cpu"]["smt"]
-            write_cpu_boost(settings["cpu"]["boost"])
-            # GPU
-            write_gpu_ppt(1, settings["gpu"]["slowppt"])
-            write_gpu_ppt(2, settings["gpu"]["fastppt"])
-            # Fan
-            if not (os.path.exists(FANTASTIC_INSTALL_DIR) or settings["fan"]["auto"]):
-                write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 1)
-                write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", settings["fan"]["target"])
-            self.dirty = False
+            self.apply_settings(self, settings)
+            # self.modified_settings = False
         logging.info("Handled saved settings, back-end startup complete")
         # server setup
         await pt_server.start(VERSION)
         # work loop
         while True:
+            # persistence
             if self.modified_settings and self.persistent:
                 self.save_settings(self)
                 self.modified_settings = False
+            if self.persistent:
+                # per-game profiles
+                current_game = pt_server.http_server.game()
+                old_gameid = self.current_gameid
+                if current_game is not None and current_game.has_settings():
+                    self.current_gameid = current_game.gameid
+                    if old_gameid != self.current_gameid:
+                        logging.info(f"Applying custom settings for {current_game.name()} {current_game.appid()}")
+                        # new game; apply settings
+                        settings = current_game.load_settings()
+                        if settings is not None:
+                            self.apply_settings(self, settings)
+                else:
+                    self.current_gameid = None
+                    if old_gameid != self.current_gameid:
+                        logging.info("Reapplying default settings; game without custom settings found")
+                        # game without custom settings; apply defaults
+                        settings = read_json(DEFAULT_SETTINGS_LOCATION)
+                        self.apply_settings(self, settings)
+                logging.debug(f"gameid update: {old_gameid} -> {self.current_gameid}")
+
             await asyncio.sleep(1)
         await pt_server.shutdown()
 
@@ -356,8 +352,44 @@ class Plugin:
 
     def save_settings(self):
         settings = self.current_settings(self)
-        logging.info(f"Saving settings to file: {settings}")
-        write_json(DEFAULT_SETTINGS_LOCATION, settings)
+        logging.debug(f"Saving settings to file: {settings}")
+        current_game = pt_server.http_server.game()
+        if current_game is not None and self.current_gameid is not None:
+            save_location = current_game.settings_path()
+        else:
+            save_location = DEFAULT_SETTINGS_LOCATION
+        write_json(save_location, settings)
+        logging.info(f"Saved settings to {save_location}")
+
+    def apply_settings(self, settings: dict):
+        # CPU
+        self.cpus = []
+
+        for cpu_number in range(0, Plugin.CPU_COUNT):
+            self.cpus.append(CPU(cpu_number, settings=settings["cpu"]["threads"][cpu_number]))
+        self.smt = settings["cpu"]["smt"]
+        write_cpu_boost(settings["cpu"]["boost"])
+        # GPU
+        write_gpu_ppt(1, settings["gpu"]["slowppt"])
+        write_gpu_ppt(2, settings["gpu"]["fastppt"])
+        # Fan
+        if not (os.path.exists(FANTASTIC_INSTALL_DIR) or settings["fan"]["auto"]):
+            write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 1)
+            write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", settings["fan"]["target"])
+
+    def guess_settings(self):
+        self.cpus = []
+        for cpu_number in range(0, Plugin.CPU_COUNT):
+            self.cpus.append(CPU(cpu_number))
+
+        # If any core has two threads, smt is True
+        self.smt = self.cpus[1].status()
+        if(not self.smt):
+            for cpu_number in range(2, len(self.cpus), 2):
+                if(self.cpus[cpu_number].status()):
+                    self.smt = True
+                    break
+        logging.info(f"SMT state is guessed to be {self.smt}")
 
     # per-game profiles
 
@@ -367,6 +399,17 @@ class Plugin:
             return "Menu (default)"
         else:
             return f"{current_game.name()} ({current_game.appid()})"
+
+    async def set_per_game_profile(self, enabled: bool):
+        current_game = pt_server.http_server.game()
+        if enabled and self.persistent and current_game is not None:
+            self.current_gameid = current_game.gameid
+            self.modified_settings = True
+        else:
+            self.current_gameid = None
+
+    async def get_per_game_profile(self) -> bool:
+        return self.current_gameid is not None
 
 
 
