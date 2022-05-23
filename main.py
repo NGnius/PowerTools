@@ -406,6 +406,9 @@ class Plugin:
             self.current_gameid = current_game.gameid
             self.modified_settings = True
         else:
+            if not enabled and current_game is not None and current_game.has_settings():
+                # delete settings; disable settings loading
+                os.remove(current_game.settings_path())
             self.current_gameid = None
 
     async def get_per_game_profile(self) -> bool:

@@ -64,11 +64,13 @@ class Server(web.Application):
         logging.debug("Debug index page accessed")
         current_game = None if self.current_game is None else self.current_game.gameid
         game_info = None if self.current_game is None else self.current_game.game_info
+        settings_info = None if self.current_game is None else self.current_game.load_settings()
         return web.json_response({
             "name": "PowerTools",
             "version": self.version,
             "latest_game_id": current_game,
-            "game_info": game_info
+            "game_info": game_info,
+            "settings": settings_info
         }, headers={"Access-Control-Allow-Origin": "*"})
 
     async def on_game_start(self, request):
@@ -125,7 +127,7 @@ async def start(version):
     http_server = Server(version)
     http_runner = web.AppRunner(http_server)
     await http_runner.setup()
-    site = web.TCPSite(http_runner, '0.0.0.0', 5030)
+    site = web.TCPSite(http_runner, '127.0.0.1', 5030)
     await site.start()
 
 async def shutdown(): # never really called

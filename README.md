@@ -14,7 +14,7 @@ You will need that installed for this plugin to work.
 - Set some GPU power parameters (fastPPT & slowPPT)
 - Set the fan RPM (unsupported on SteamOS beta)
 - Display supplementary battery info
-- Keep settings between restarts (stored in `~/.config/powertools.json`)
+- Keep settings between restarts (stored in `~/.config/powertools/<appid>.json`)
 
 ## Cool, but that's too much work
 
@@ -78,6 +78,24 @@ Get whether the deck is plugged in: `cat /sys/class/hwmon/hwmon5/curr1_input` gi
 This is how I figured out how the fan stuff works.
 I've only scratched the surface of what this code allows, I'm sure it has more useful information.
 https://lkml.org/lkml/2022/2/5/391
+
+### Game launch detection
+
+The biggest limitation right now is it can't detect a game closing -- only opening -- and only after PowerTools is looked at at least once (per SteamOS restart).
+
+From a plugin, this can be accomplished by running some front-end Javascript.
+
+```javascript
+await execute_in_tab("SP", false,
+    `SteamClient.Apps.RegisterForGameActionStart((actionType, data) => {
+        console.log("start game", appStore.GetAppOverviewByGameID(data));
+    });`
+);
+```
+
+In PowerTools, the callback (the part surrounded by `{` and `}`, containing `console.log(...)`) sends a message to a local HTTP server to notify the PowerTools back-end that a game has been launched.
+
+If you go to `http://127.0.0.1:5030` on your Steam Deck with PowerTools >=0.6.0, you can see some info about the last game you launched.
 
 ## License
 
