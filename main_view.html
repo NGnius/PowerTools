@@ -141,6 +141,12 @@
                 selectNotch(ROOT_ID, await getCPUs() - 1, 8);
             }
 
+            async function onSlideCPUNotch(e) {
+                const ROOT_ID = "cpuThreadsNotch";
+                let closest = closestNotch(e, ROOT_ID, 8);
+                await setCPUNotch(closest);
+            }
+
             const TOGGLE_ON_CLASS = "gamepaddialog_On_3ld7T";
             
             function setToggleState(toggle, state) {
@@ -185,10 +191,22 @@
                 selectNotch(ROOT_ID, await getMaxBoost(), 3);
             }
 
+            async function onSlideBoostNotch(e) {
+                const ROOT_ID = "frequencyNotch";
+                let closest = closestNotch(e, ROOT_ID, 8);
+                await setBoostNotch(closest);
+            }
+
             async function onSetFanNotch(index) {
                 const ROOT_ID = "fanNotch";
                 await setFanTick(index);
                 selectNotch(ROOT_ID, index, 8);
+            }
+
+            async function onSlideFanNotch(e) {
+                const ROOT_ID = "fanNotch";
+                let closest = closestNotch(e, ROOT_ID, 8);
+                await onSetFanNotch(closest);
             }
 
             async function onReadyGPU() {
@@ -228,6 +246,12 @@
                 selectNotch(ROOT_ID, index, 3);
             }
 
+            async function onSlideSlowPPTNotch(e) {
+                const ROOT_ID = "slowPPTNotch";
+                let closest = closestNotch(e, ROOT_ID, 3);
+                onSetSlowPPTNotch(closest);
+            }
+
             async function onSetFastPPTNotch(index) {
                 const ROOT_ID = "fastPPTNotch";
                 document.getElementById("fastPPTAutoDefault").innerText = "Default";
@@ -239,6 +263,12 @@
                     await setGPUPower(30000000, 2);
                 }
                 selectNotch(ROOT_ID, index, 3);
+            }
+
+            async function onSlideFastPPTNotch(e) {
+                const ROOT_ID = "fastPPTNotch";
+                let closest = closestNotch(e, ROOT_ID, 3);
+                await onSetFastPPTNotch(closest);
             }
 
             function selectNotch(rootId, index, elements) {
@@ -255,6 +285,19 @@
                         notch.classList.add(ENABLED_CLASS);
                     }
                 }
+            }
+
+            function closestNotch(e, rootId, elements) {
+                let root = document.getElementById(rootId);
+                let val = e.x / root.scrollWidth;
+                let closest_notch = Math.round(val * elements);
+                if (closest_notch > elements) {
+                    closest_notch = elements;
+                } else if (closest_notch < 0) {
+                    closest_notch = 0;
+                }
+                return closest_notch
+                //selectNotch(closest_notch);
             }
 
             async function updateBatteryStats() {
@@ -330,7 +373,7 @@
             <div class="gamepaddialog_FieldLabelRow_H9WOq">
                 <div class="gamepaddialog_FieldLabel_3b0U-">Threads</div>
             </div>
-            <div id="cpuThreadsNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.5;">
+            <div id="cpuThreadsNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.5;" onmousemove="onSlideCPUNotch(event)">
                 <div class="gamepadslider_SliderControl_3o137">
                     <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
                     <div class="gamepadslider_SliderHandleContainer_1pQZi">
