@@ -340,8 +340,8 @@
                 let chargeNow = await getChargeNow();
                 let chargeFull = await getChargeFull();
                 let chargeDesign = await getChargeDesign();
-                batCapacityNow.innerText = (7.7 * chargeNow / 1000000).toFixed(2).toString() + " Wh (" + (100 * chargeNow / chargeFull).toFixed(2).toString() + "%)";
-                batCapacityFull.innerText = (7.7 * chargeFull / 1000000).toFixed(2).toString() + " Wh (" + (100 * chargeFull / chargeDesign).toFixed(2).toString() + "%)";
+                batCapacityNow.innerText = (7.7 * chargeNow / 1000000).toFixed(1).toString() + " Wh (" + (100 * chargeNow / chargeFull).toFixed(1).toString() + "%)";
+                batCapacityFull.innerText = (7.7 * chargeFull / 1000000).toFixed(1).toString() + " Wh (" + (100 * chargeFull / chargeDesign).toFixed(1).toString() + "%)";
             }
 
             async function togglePersist() {
