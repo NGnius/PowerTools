@@ -81,12 +81,73 @@
             function getPersistent() {
                 return call_plugin_method("get_persistent", {});
             }
+
+            function setPerGameProfile(value) {
+                return call_plugin_method("set_per_game_profile", {"enabled": value});
+            }
+
+            function getPerGameProfile() {
+                return call_plugin_method("get_per_game_profile", {});
+            }
+
+            function getCurrentGame() {
+                return call_plugin_method("get_current_game", {});
+            }
             
             // other logic
             
             async function onReady() {
                 await onViewReady();
 
+                // detect game starts and exits
+                console.log("Injecting game detection code into main window (SP)");
+                await execute_in_tab("SP", false,
+                    `console.log("Hey PowerTools is over here now too!");
+                    SteamClient.Apps.RegisterForGameActionStart((actionType, data) => {
+                        console.log("start game", appStore.GetAppOverviewByGameID(data));
+                        fetch("http://127.0.0.1:5030/on_game_start/" + data.toString(), {method: "POST", body: JSON.stringify(appStore.GetAppOverviewByGameID(data))}).then((_) => {});
+                    });
+                    // this seems to not run when I thought (runs right after ^^^, not when game exits)
+                    /*SteamClient.Apps.RegisterForGameActionEnd((actionType, data) => {
+                        if (data != null && data != undefined) {
+                            console.log("stop game", appStore.GetAppOverviewByGameID(data));
+                            fetch("http://127.0.0.1:5030/on_game_exit/" + data.toString(), {method: "POST", body: JSON.stringify(appStore.GetAppOverviewByGameID(data))}).then((_) => {});
+                        } else {
+                            console.log("stop game null");
+                            fetch("http://127.0.0.1:5030/on_game_exit_null", {method: "POST", body:data}).then((_) => {});
+                        }
+                    });*/`
+                );
+
+                await updateCurrentGame();
+                /*let boostToggle = document.getElementById("boostToggle");
+                setToggleState(boostToggle, await getCPUBoost());
+                setToggleState(document.getElementById("smtToggle"), await getSMT());
+                selectNotch("cpuThreadsNotch", await getCPUs() - 1, 8);
+                selectNotch("frequencyNotch", await getMaxBoost(), 3);
+                await onReadyGPU();
+                let isFantasticInstalled = await getFantastic();
+                if (isFantasticInstalled) {
+                    // Don't fight with Fantastic
+                    let fanRoot = document.getElementById("fanRoot");
+                    fanRoot.style.visibility = "hidden";
+                    fanRoot.style.height = "0px";
+                } else {
+                    selectNotch("fanNotch", await getFanTick(), 8);
+                }
+                await updateBatteryStats();
+                setToggleState(document.getElementById("persistToggle"), await getPersistent());
+                setToggleState(document.getElementById("gameProfileToggle"), await getPerGameProfile());
+                await updateCurrentGame();*/
+                // this is unimportant; always do it last
+                await updateVersion();
+                window.setInterval(function() {
+                    updateBatteryStats().then(_ => {});
+                    updateCurrentGame().then(_ => {});
+                }, 1000);
+            }
+
+            async function reloadSettings() {
                 let boostToggle = document.getElementById("boostToggle");
                 setToggleState(boostToggle, await getCPUBoost());
                 setToggleState(document.getElementById("smtToggle"), await getSMT());
@@ -104,15 +165,19 @@
                 }
                 await updateBatteryStats();
                 setToggleState(document.getElementById("persistToggle"), await getPersistent());
-                // this is unimportant; always do it last
-                await updateVersion();
-                window.setInterval(function() {updateBatteryStats().then(_ => {})}, 5000);
+                setToggleState(document.getElementById("gameProfileToggle"), await getPerGameProfile());
             }
 
             async function setCPUNotch(index) {
                 const ROOT_ID = "cpuThreadsNotch";
                 await setCPUs(index, getToggleState(document.getElementById("smtToggle")));
                 selectNotch(ROOT_ID, await getCPUs() - 1, 8);
+            }
+
+            async function onSlideCPUNotch(e) {
+                const ROOT_ID = "cpuThreadsNotch";
+                let closest = closestNotch(e, ROOT_ID, 8);
+                await setCPUNotch(closest);
             }
 
             const TOGGLE_ON_CLASS = "gamepaddialog_On_3ld7T";
@@ -159,10 +224,22 @@
                 selectNotch(ROOT_ID, await getMaxBoost(), 3);
             }
 
+            async function onSlideBoostNotch(e) {
+                const ROOT_ID = "frequencyNotch";
+                let closest = closestNotch(e, ROOT_ID, 3);
+                await setBoostNotch(closest);
+            }
+
             async function onSetFanNotch(index) {
                 const ROOT_ID = "fanNotch";
                 await setFanTick(index);
                 selectNotch(ROOT_ID, index, 8);
+            }
+
+            async function onSlideFanNotch(e) {
+                const ROOT_ID = "fanNotch";
+                let closest = closestNotch(e, ROOT_ID, 8);
+                await onSetFanNotch(closest);
             }
 
             async function onReadyGPU() {
@@ -202,6 +279,12 @@
                 selectNotch(ROOT_ID, index, 3);
             }
 
+            async function onSlideSlowPPTNotch(e) {
+                const ROOT_ID = "slowPPTNotch";
+                let closest = closestNotch(e, ROOT_ID, 3);
+                onSetSlowPPTNotch(closest);
+            }
+
             async function onSetFastPPTNotch(index) {
                 const ROOT_ID = "fastPPTNotch";
                 document.getElementById("fastPPTAutoDefault").innerText = "Default";
@@ -213,6 +296,12 @@
                     await setGPUPower(30000000, 2);
                 }
                 selectNotch(ROOT_ID, index, 3);
+            }
+
+            async function onSlideFastPPTNotch(e) {
+                const ROOT_ID = "fastPPTNotch";
+                let closest = closestNotch(e, ROOT_ID, 3);
+                await onSetFastPPTNotch(closest);
             }
 
             function selectNotch(rootId, index, elements) {
@@ -231,6 +320,19 @@
                 }
             }
 
+            function closestNotch(e, rootId, elements) {
+                let root = document.getElementById(rootId);
+                let val = e.x / root.scrollWidth;
+                let closest_notch = Math.round(val * elements);
+                if (closest_notch > elements) {
+                    closest_notch = elements;
+                } else if (closest_notch < 0) {
+                    closest_notch = 0;
+                }
+                return closest_notch
+                //selectNotch(closest_notch);
+            }
+
             async function updateBatteryStats() {
                 //console.log("Updating battery stats");
                 let batCapacityNow = document.getElementById("batCapacityNow");
@@ -238,8 +340,8 @@
                 let chargeNow = await getChargeNow();
                 let chargeFull = await getChargeFull();
                 let chargeDesign = await getChargeDesign();
-                batCapacityNow.innerText = (7.7 * chargeNow / 1000000).toFixed(2).toString() + " Wh (" + (100 * chargeNow / chargeFull).toFixed(0).toString() + "%)";
-                batCapacityFull.innerText = (7.7 * chargeFull / 1000000).toFixed(2).toString() + " Wh (" + (100 * chargeFull / chargeDesign).toFixed(0).toString() + "%)";
+                batCapacityNow.innerText = (7.7 * chargeNow / 1000000).toFixed(1).toString() + " Wh (" + (100 * chargeNow / chargeFull).toFixed(1).toString() + "%)";
+                batCapacityFull.innerText = (7.7 * chargeFull / 1000000).toFixed(1).toString() + " Wh (" + (100 * chargeFull / chargeDesign).toFixed(1).toString() + "%)";
             }
 
             async function togglePersist() {
@@ -247,6 +349,26 @@
                 let isActive = getToggleState(toggle);
                 await setPersistent(!isActive);
                 setToggleState(toggle, !isActive);
+            }
+
+            async function toggleGameProfile() {
+                let toggle = document.getElementById("gameProfileToggle");
+                let isActive = getToggleState(toggle);
+                await setPerGameProfile(!isActive);
+                setToggleState(toggle, await getPerGameProfile());
+            }
+
+            let lastGameName = "";
+
+            async function updateCurrentGame() {
+                let gameNow = document.getElementById("gameNow");
+                let gameNameNow = await getCurrentGame();
+                if (lastGameName != gameNameNow) {
+                    setToggleState(document.getElementById("gameProfileToggle"), await getPerGameProfile());
+                    await reloadSettings();
+                }
+                lastGameName = gameNameNow
+                gameNow.innerText = gameNameNow;
             }
 
             let versionCount = -1;
@@ -266,94 +388,100 @@
         <style type="text/css" media="screen"></style>
     </head>
     <body onload="onReady()" style="/*margin:0px;padding:0px;*/overflow-x:hidden;margin:0px;">
+        <!-- Spacer (moves top out of shadow above it) -->
+        <div class="quickaccessmenu_TabGroupPanel_1QO7b">
+            <div class="quickaccesscontrols_PanelSection_2C0g0" style="margin-bottom:6px;">
+                <!--<div class="quickaccesscontrols_PanelSectionRow_2VQ88">
+                </div>-->
+            </div>
+        </div>
         <!-- CPU -->
 
         <!-- SMT toggle switch, roughly copied from https://github.com/SteamDeckHomebrew/ExtraSettingsPlugin/blob/main/main_view.html -->
         <!-- Due to a bug in MangoHud, this has a warning for now -->
         <div class="quickaccessmenu_TabGroupPanel_1QO7b Panel Focusable">
-            <div class="quickaccesscontrols_PanelSection_2C0g0" style="padding:0px 4px;">
+            <div class="quickaccesscontrols_PanelSection_2C0g0" style="">
                 <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
-                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_WithDescription_3bMIS gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_WithDescription_3bMIS gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;" onclick="toggleCPUSMT()">
                         <div class="gamepaddialog_FieldLabelRow_H9WOq">
                             <div class="gamepaddialog_FieldLabel_3b0U-">
                                 CPU SMT
                             </div>
                             <div class="gamepaddialog_FieldChildren_14_HB">
-                                <div id="smtToggle" tabindex="0" class="gamepaddialog_Toggle_24G4g Focusable" onclick="toggleCPUSMT()">
+                                <div id="smtToggle" tabindex="0" class="gamepaddialog_Toggle_24G4g Focusable" >
                                     <div class="gamepaddialog_ToggleRail_2JtC3"></div>
                                     <div class="gamepaddialog_ToggleSwitch_3__OD"></div>
                                 </div>
                             </div>
                         </div>
                         <div class="gamepaddialog_FieldDescription_2OJfk">Enables odd-numbered CPUs</div>
-                        <div style="font-size:x-small;">
-                        WARNING: Disabling crashes the performance overlay.
+                    </div>
+                </div>
+
+
+            <!-- CPUs selector -->
+            <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
+                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
+                    <div class="gamepaddialog_FieldLabelRow_H9WOq">
+                        <div class="gamepaddialog_FieldLabel_3b0U-">Threads</div>
+                    </div>
+                    <div id="cpuThreadsNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.5;" onmousemove="onSlideCPUNotch(event)">
+                        <div class="gamepadslider_SliderControl_3o137">
+                            <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
+                            <div class="gamepadslider_SliderHandleContainer_1pQZi">
+                                <div class="gamepadslider_SliderHandle_2yVKj"></div>
+                            </div>
+                        </div>
+                        <div class="gamepadslider_SliderNotchContainer_2N-a5 Panel Focusable">
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="cpuThreadsNotch0" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(1)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">1</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="cpuThreadsNotch1" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(2)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">2</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="cpuThreadsNotch2" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(3)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">3</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="cpuThreadsNotch3" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(4)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">4</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="cpuThreadsNotch4" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(5)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">5</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="cpuThreadsNotch5" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(6)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">6</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="cpuThreadsNotch6" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(7)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">7</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="cpuThreadsNotch7" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(8)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">8</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-
-
-        <!-- CPUs selector -->
-        <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
-            <div class="gamepaddialog_FieldLabelRow_H9WOq">
-                <div class="gamepaddialog_FieldLabel_3b0U-">Threads</div>
             </div>
-            <div id="cpuThreadsNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.5;">
-                <div class="gamepadslider_SliderControl_3o137">
-                    <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
-                    <div class="gamepadslider_SliderHandleContainer_1pQZi">
-                        <div class="gamepadslider_SliderHandle_2yVKj"></div>
-                    </div>
-                </div>
-                <div class="gamepadslider_SliderNotchContainer_2N-a5 Panel Focusable">
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="cpuThreadsNotch0" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(1)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">1</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="cpuThreadsNotch1" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(2)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">2</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="cpuThreadsNotch2" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(3)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">3</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="cpuThreadsNotch3" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(4)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">4</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="cpuThreadsNotch4" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(5)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">5</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="cpuThreadsNotch5" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(6)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">6</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="cpuThreadsNotch6" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(7)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">7</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="cpuThreadsNotch7" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setCPUNotch(8)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">8</div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         </div>
 
         <!-- CPU Boost toggle switch, roughly copied from https://github.com/SteamDeckHomebrew/ExtraSettingsPlugin/blob/main/main_view.html -->
-        <div class="quickaccesscontrols_PanelSection_2C0g0" style="padding:0px 4px;">
+        <div class="quickaccesscontrols_PanelSection_2C0g0" style="">
                 <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
-                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_WithDescription_3bMIS gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_WithDescription_3bMIS gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;" onclick="toggleCPUBoost()">
                         <div class="gamepaddialog_FieldLabelRow_H9WOq">
                             <div class="gamepaddialog_FieldLabel_3b0U-">
                                 CPU Boost
                             </div>
                             <div class="gamepaddialog_FieldChildren_14_HB">
-                                <div id="boostToggle" tabindex="0" class="gamepaddialog_Toggle_24G4g Focusable" onclick="toggleCPUBoost()">
+                                <div id="boostToggle" tabindex="0" class="gamepaddialog_Toggle_24G4g Focusable">
                                     <div class="gamepaddialog_ToggleRail_2JtC3"></div>
                                     <div class="gamepaddialog_ToggleSwitch_3__OD"></div>
                                 </div>
@@ -364,173 +492,182 @@
                 </div>
 
 
-        <!-- Frequency selector -->
-        <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
-            <div class="gamepaddialog_FieldLabelRow_H9WOq">
-                <div class="gamepaddialog_FieldLabel_3b0U-">Max Frequency</div>
-            </div>
-            <div class="gamepaddialog_FieldChildren_14_HB">
-            <div id="frequencyNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.5;">
-                <div class="gamepadslider_SliderControl_3o137">
-                    <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
-                    <div class="gamepadslider_SliderHandleContainer_1pQZi">
-                        <div class="gamepadslider_SliderHandle_2yVKj"></div>
+            <!-- Frequency selector -->
+            <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
+                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
+                    <div class="gamepaddialog_FieldLabelRow_H9WOq">
+                        <div class="gamepaddialog_FieldLabel_3b0U-">Max Frequency</div>
+                    </div>
+                    <div class="gamepaddialog_FieldChildren_14_HB">
+                    <div id="frequencyNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.5;" onmousemove="onSlideBoostNotch(event)">
+                        <div class="gamepadslider_SliderControl_3o137">
+                            <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
+                            <div class="gamepadslider_SliderHandleContainer_1pQZi">
+                                <div class="gamepadslider_SliderHandle_2yVKj"></div>
+                            </div>
+                        </div>
+                        <div class="gamepadslider_SliderNotchContainer_2N-a5 Panel Focusable">
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="frequencyNotch0" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='setBoostNotch(0)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1" style="margin-left:2em;">1.7GHz</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="frequencyNotch1" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='setBoostNotch(1)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">2.4GHz</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="frequencyNotch2" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setBoostNotch(2)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1" style="margin-right:2em;">2.8GHz</div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                    <div style="font-size:x-small;">
+                    WARNING: This will change the CPU governor.
                     </div>
                 </div>
-                <div class="gamepadslider_SliderNotchContainer_2N-a5 Panel Focusable">
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="frequencyNotch0" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='setBoostNotch(0)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1" style="margin-left:2em;">1.7GHz</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="frequencyNotch1" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='setBoostNotch(1)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">2.4GHz</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="frequencyNotch2" class="gamepadslider_SliderNotchTick_Fv1Ht" onclick='setBoostNotch(2)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1" style="margin-right:2em;">2.8GHz</div>
-                    </div>
-                </div>
             </div>
-            </div>
-            <div style="font-size:x-small;">
-            WARNING: This will change the CPU governor.
-            </div>
-        </div>
-
         </div>
 
         <!-- GPU -->
 
-        <div class="quickaccesscontrols_PanelSection_2C0g0" style="padding:0px 4px;">
+        <div class="quickaccesscontrols_PanelSection_2C0g0" style="">
 
-        <!-- SlowPPT power limit (number 1) -->
-        <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
-            <div class="gamepaddialog_FieldLabelRow_H9WOq">
-                <div class="gamepaddialog_FieldLabel_3b0U-">GPU SlowPPT Power</div>
-            </div>
-            <div class="gamepaddialog_FieldChildren_14_HB">
-            <div id="slowPPTNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.33;">
-                <div class="gamepadslider_SliderControl_3o137">
-                    <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
-                    <div class="gamepadslider_SliderHandleContainer_1pQZi">
-                        <div class="gamepadslider_SliderHandle_2yVKj"></div>
+            <!-- SlowPPT power limit (number 1) -->
+            <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
+                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
+                    <div class="gamepaddialog_FieldLabelRow_H9WOq">
+                        <div class="gamepaddialog_FieldLabel_3b0U-">GPU SlowPPT Power</div>
+                    </div>
+                    <div class="gamepaddialog_FieldChildren_14_HB">
+                    <div id="slowPPTNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.33;" onmousemove="onSlideSlowPPTNotch(event)">
+                        <div class="gamepadslider_SliderControl_3o137">
+                            <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
+                            <div class="gamepadslider_SliderHandleContainer_1pQZi">
+                                <div class="gamepadslider_SliderHandle_2yVKj"></div>
+                            </div>
+                        </div>
+                        <div class="gamepadslider_SliderNotchContainer_2N-a5 Panel Focusable">
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="slowPPTNotch0" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetSlowPPTNotch(0)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">0</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="slowPPTNotch1" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetSlowPPTNotch(1)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1" id="slowPPTAutoDefault">Auto</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="slowPPTNotch2" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetSlowPPTNotch(2)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">Max</div>
+                            </div>
+                        </div>
+                    </div>
                     </div>
                 </div>
-                <div class="gamepadslider_SliderNotchContainer_2N-a5 Panel Focusable">
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="slowPPTNotch0" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetSlowPPTNotch(0)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">0</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="slowPPTNotch1" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetSlowPPTNotch(1)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1" id="slowPPTAutoDefault">Auto</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="slowPPTNotch2" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetSlowPPTNotch(2)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">Max</div>
-                    </div>
-                </div>
             </div>
-            </div>
-        </div>
 
-        <!-- FastPPT power limit (number 2) -->
-        <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
-            <div class="gamepaddialog_FieldLabelRow_H9WOq">
-                <div class="gamepaddialog_FieldLabel_3b0U-">GPU FastPPT Power</div>
-            </div>
-            <div class="gamepaddialog_FieldChildren_14_HB">
-            <div id="fastPPTNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.33;">
-                <div class="gamepadslider_SliderControl_3o137">
-                    <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
-                    <div class="gamepadslider_SliderHandleContainer_1pQZi">
-                        <div class="gamepadslider_SliderHandle_2yVKj"></div>
+            <!-- FastPPT power limit (number 2) -->
+            <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
+                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
+                    <div class="gamepaddialog_FieldLabelRow_H9WOq">
+                        <div class="gamepaddialog_FieldLabel_3b0U-">GPU FastPPT Power</div>
+                    </div>
+                    <div class="gamepaddialog_FieldChildren_14_HB">
+                    <div id="fastPPTNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.33;" onmousemove="onSlideFastPPTNotch(event)">
+                        <div class="gamepadslider_SliderControl_3o137">
+                            <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
+                            <div class="gamepadslider_SliderHandleContainer_1pQZi">
+                                <div class="gamepadslider_SliderHandle_2yVKj"></div>
+                            </div>
+                        </div>
+                        <div class="gamepadslider_SliderNotchContainer_2N-a5 Panel Focusable">
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="fastPPTNotch0" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFastPPTNotch(0)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">0</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="fastPPTNotch1" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFastPPTNotch(1)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1" id="fastPPTAutoDefault">Auto</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="fastPPTNotch2" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFastPPTNotch(2)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">Max</div>
+                            </div>
+                        </div>
+                    </div>
                     </div>
                 </div>
-                <div class="gamepadslider_SliderNotchContainer_2N-a5 Panel Focusable">
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="fastPPTNotch0" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFastPPTNotch(0)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">0</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="fastPPTNotch1" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFastPPTNotch(1)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1" id="fastPPTAutoDefault">Auto</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="fastPPTNotch2" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFastPPTNotch(2)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">Max</div>
-                    </div>
-                </div>
             </div>
-            </div>
-        </div>
-
         </div>
 
         <!-- Fan RPM selector -->
-        <!-- TODO: Make this non-notched slider when PluginLoader PR#41 is merged -->
-        <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" id="fanRoot">
-            <div class="gamepaddialog_FieldLabelRow_H9WOq">
-                <div class="gamepaddialog_FieldLabel_3b0U-">Fan RPM</div>
-            </div>
-            <div class="gamepaddialog_FieldChildren_14_HB">
-            <div id="fanNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.33;">
-                <div class="gamepadslider_SliderControl_3o137">
-                    <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
-                    <div class="gamepadslider_SliderHandleContainer_1pQZi">
-                        <div class="gamepadslider_SliderHandle_2yVKj"></div>
+        <div class="quickaccesscontrols_PanelSection_2C0g0" style="" id="fanRoot">
+            <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
+                <!-- TODO: Make this non-notched slider when PluginLoader PR#41 is merged -->
+                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_WithChildrenBelow_1u5FT gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_ChildrenWidthFixed_1ugIU gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable">
+                    <div class="gamepaddialog_FieldLabelRow_H9WOq">
+                        <div class="gamepaddialog_FieldLabel_3b0U-">Fan RPM</div>
+                    </div>
+                    <div class="gamepaddialog_FieldDescription_2OJfk" style="display:none;">Requires disabling updated fan control</div>
+                    <div class="gamepaddialog_FieldChildren_14_HB">
+                    <div id="fanNotch" class="gamepadslider_SliderControlAndNotches_1Cccx Focusable" tabindex="0" style="--normalized-slider-value:0.33;" onmousemove="onSlideFanNotch(event)">
+                        <div class="gamepadslider_SliderControl_3o137">
+                            <div class="gamepadslider_SliderTrack_Mq25N gamepadslider_SliderHasNotches_2XiAy "></div>
+                            <div class="gamepadslider_SliderHandleContainer_1pQZi">
+                                <div class="gamepadslider_SliderHandle_2yVKj"></div>
+                            </div>
+                        </div>
+                        <div class="gamepadslider_SliderNotchContainer_2N-a5 Panel Focusable">
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="fanNotch0" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(0)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">0</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="fanNotch1" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(1)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">1K</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="fanNotch2" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(2)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">2K</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="fanNotch3" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(3)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">3K</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="fanNotch4" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(4)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">4K</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="fanNotch5" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(5)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">5K</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="fanNotch6" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(6)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">6K</div>
+                            </div>
+                            <div class="gamepadslider_SliderNotch_3x6ve">
+                                <div id="fanNotch7" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(7)'></div>
+                                <div class="gamepadslider_SliderNotchLabel_u_sH1">Auto</div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                    <div style="font-size:x-small;">
+                    WARNING: This can cause component overheating.
                     </div>
                 </div>
-                <div class="gamepadslider_SliderNotchContainer_2N-a5 Panel Focusable">
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="fanNotch0" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(0)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">0</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="fanNotch1" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(1)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">1K</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="fanNotch2" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(2)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">2K</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="fanNotch3" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(3)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">3K</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="fanNotch4" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(4)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">4K</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="fanNotch5" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(5)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">5K</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="fanNotch6" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(6)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">6K</div>
-                    </div>
-                    <div class="gamepadslider_SliderNotch_3x6ve">
-                        <div id="fanNotch7" class="gamepadslider_SliderNotchTick_Fv1Ht gamepadslider_TickActive_j418S" onclick='onSetFanNotch(7)'></div>
-                        <div class="gamepadslider_SliderNotchLabel_u_sH1">Auto</div>
-                    </div>
-                </div>
-            </div>
-            </div>
-            <div style="font-size:x-small;">
-            WARNING: This can cause component overheating.
             </div>
         </div>
 
         <!-- Battery Info -->
-        <div class="quickaccesscontrols_PanelSection_2C0g0" style="padding:0px 4px;" onclick="updateBatteryStats()" style="margin-bottom:0px;">
+        <div class="quickaccesscontrols_PanelSection_2C0g0" style="" onclick="updateBatteryStats()" style="margin-bottom:0px;">
             <div class="quickaccesscontrols_PanelSectionTitle_2iFf9">
                 <div class="quickaccesscontrols_Text_1hJkB">Battery</div>
             </div>
             <div class="Panel Focusable" tabindex="0">
                 <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
-                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
                         <div class="gamepaddialog_FieldLabelRow_H9WOq">
                             <div class="gamepaddialog_FieldLabel_3b0U-">Now (Charge)</div>
                             <div class="gamepaddialog_FieldChildren_14_HB">
@@ -540,7 +677,7 @@
                     </div>
                 </div>
                 <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
-                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
                         <div class="gamepaddialog_FieldLabelRow_H9WOq">
                             <div class="gamepaddialog_FieldLabel_3b0U-">Max (Design)</div>
                             <div class="gamepaddialog_FieldChildren_14_HB">
@@ -551,26 +688,50 @@
                 </div>
             </div>
         </div>
-        <div class="quickaccesscontrols_PanelSection_2C0g0" style="padding:0px 4px;">
+        <div class="quickaccesscontrols_PanelSection_2C0g0" style="">
             <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
-                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_WithDescription_3bMIS gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_WithDescription_3bMIS gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;" onclick="togglePersist()">
                     <div class="gamepaddialog_FieldLabelRow_H9WOq">
                         <div class="gamepaddialog_FieldLabel_3b0U-">
                             Persistent
                         </div>
                         <div class="gamepaddialog_FieldChildren_14_HB">
-                            <div id="persistToggle" tabindex="0" class="gamepaddialog_Toggle_24G4g Focusable" onclick="togglePersist()">
+                            <div id="persistToggle" tabindex="0" class="gamepaddialog_Toggle_24G4g Focusable">
                                 <div class="gamepaddialog_ToggleRail_2JtC3"></div>
                                 <div class="gamepaddialog_ToggleSwitch_3__OD"></div>
                             </div>
                         </div>
                     </div>
-                    <div class="gamepaddialog_FieldDescription_2OJfk">Restores settings after a reboot</div>
+                    <div class="gamepaddialog_FieldDescription_2OJfk">Restores settings after an app or OS restart</div>
                 </div>
             </div>
-        <div class="quickaccesscontrols_PanelSection_2C0g0" style="padding:0px 4px;">
+            <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
+                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_WithDescription_3bMIS gamepaddialog_ExtraPaddingOnChildrenBelow_5UO-_ gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;" onclick="toggleGameProfile()">
+                    <div class="gamepaddialog_FieldLabelRow_H9WOq">
+                        <div class="gamepaddialog_FieldLabel_3b0U-">
+                            Use per-game profile
+                        </div>
+                        <div class="gamepaddialog_FieldChildren_14_HB">
+                            <div id="gameProfileToggle" tabindex="0" class="gamepaddialog_Toggle_24G4g Focusable">
+                                <div class="gamepaddialog_ToggleRail_2JtC3"></div>
+                                <div class="gamepaddialog_ToggleSwitch_3__OD"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="quickaccesscontrols_PanelSectionRow_2VQ88">
+                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                    <div class="gamepaddialog_FieldLabelRow_H9WOq">
+                        <div class="gamepaddialog_FieldLabel_3b0U-">Now Playing</div>
+                        <div class="gamepaddialog_FieldChildren_14_HB">
+                            <div class="gamepaddialog_LabelFieldValue_5Mylh" id="gameNow"> the bongos </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="quickaccesscontrols_PanelSectionRow_2VQ88" onclick="updateVersion()">
-                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparator_1lUZx gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
+                <div class="gamepaddialog_Field_S-_La gamepaddialog_WithFirstRow_qFXi6 gamepaddialog_VerticalAlignCenter_3XNvA gamepaddialog_InlineWrapShiftsChildrenBelow_pHUb6 gamepaddialog_WithBottomSeparatorStandard_3s1Rk gamepaddialog_StandardPadding_XRBFu gamepaddialog_HighlightOnFocus_wE4V6 Panel Focusable" style="--indent-level:0;">
                     <div class="gamepaddialog_FieldLabelRow_H9WOq">
                         <div class="gamepaddialog_FieldLabel_3b0U-">PowerTools</div>
                         <div class="gamepaddialog_FieldChildren_14_HB">
@@ -579,7 +740,6 @@
                     </div>
                 </div>
             </div>
-        </div>
         </div>
         </div>
     </body>

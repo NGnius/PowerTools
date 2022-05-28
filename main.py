@@ -2,11 +2,14 @@ import time
 import os
 import json
 import asyncio
+import pathlib
+import subprocess
 
-VERSION = "0.5.0"
-SETTINGS_LOCATION = "~/.config/powertools.json"
+VERSION = "0.6.0"
+HOME_DIR = str(pathlib.Path(os.getcwd()).parent.parent.resolve())
+DEFAULT_SETTINGS_LOCATION = HOME_DIR + "/.config/powertools/default_settings.json"
 LOG_LOCATION = "/tmp/powertools.log"
-FANTASTIC_INSTALL_DIR = "~/homebrew/plugins/Fantastic"
+FANTASTIC_INSTALL_DIR = HOME_DIR + "/homebrew/plugins/Fantastic"
 
 import logging
 
@@ -17,8 +20,15 @@ logging.basicConfig(
     force = True)
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 logging.info(f"PowerTools v{VERSION} https://github.com/NGnius/PowerTools")
+logging.debug(f"CWD: {os.getcwd()} HOME:{HOME_DIR}")
+
+import sys
+#import pathlib
+sys.path.append(str(pathlib.Path(__file__).parent.resolve()))
+import server as pt_server
+
 startup_time = time.time()
 
 class CPU:
@@ -120,6 +130,7 @@ class Plugin:
     auto_fan = True
     persistent = True
     modified_settings = False
+    current_gameid = None
     
     async def get_version(self) -> str:
         return VERSION
@@ -198,16 +209,16 @@ class Plugin:
         self.modified_settings = True
         if tick >= len(self.FAN_SPEEDS):
             # automatic mode
+            self.enable_jupiter_fan_control(self)
             self.auto_fan = True
             write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 0)
             write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", 4099) # 4099 is default
-            #subprocess.Popen("systemctl start jupiter-fan-control.service", stdout=subprocess.PIPE, shell=True).wait()
         else:
             # manual voltage
+            self.disable_jupiter_fan_control(self)
             self.auto_fan = False
             write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 1)
             write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", self.FAN_SPEEDS[tick])
-            #subprocess.Popen("systemctl stop jupiter-fan-control.service", stdout=subprocess.PIPE, shell=True).wait()
 
     async def get_fan_tick(self) -> int:
         fan_target = read_fan_target()
@@ -231,6 +242,27 @@ class Plugin:
     async def fantastic_installed(self) -> bool:
         return os.path.exists(FANTASTIC_INSTALL_DIR)
 
+    def disable_jupiter_fan_control(self):
+        active = subprocess.Popen(["systemctl", "is-active", "jupiter-fan-control.service"]).wait() == 0
+        if active:
+            logging.info("Stopping jupiter-fan-control.service so it doesn't interfere")
+            # only disable if currently active
+            self.jupiter_fan_control_was_disabled = True
+            stop_p = subprocess.Popen(["systemctl", "stop", "jupiter-fan-control.service"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stop_p.wait()
+            logging.debug("systemctl stop jupiter-fan-control.service stdout:\n" + stop_p.stdout.read().decode())
+            logging.debug("systemctl stop jupiter-fan-control.service stderr:\n" + stop_p.stderr.read().decode())
+
+    def enable_jupiter_fan_control(self):
+        if self.jupiter_fan_control_was_disabled:
+            logging.info("Starting jupiter-fan-control.service so it doesn't interfere")
+            # only re-enable if I disabled it
+            self.jupiter_fan_control_was_disabled = False
+            start_p = subprocess.Popen(["systemctl", "start", "jupiter-fan-control.service"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            start_p.wait()
+            logging.debug("systemctl start jupiter-fan-control.service stdout:\n" + start_p.stdout.read().decode())
+            logging.debug("systemctl start jupiter-fan-control.service stderr:\n" + start_p.stderr.read().decode())
+
     # Battery stuff
 
     async def get_charge_now(self) -> int:
@@ -245,55 +277,56 @@ class Plugin:
     # Asyncio-compatible long-running code, executed in a task when the plugin is loaded
     async def _main(self):
         # startup: load & apply settings
-        if os.path.exists(SETTINGS_LOCATION):
-            settings = read_json(SETTINGS_LOCATION)
-            logging.debug(f"Loaded settings from {SETTINGS_LOCATION}: {settings}")
+        self.jupiter_fan_control_was_disabled = False
+        if os.path.exists(DEFAULT_SETTINGS_LOCATION):
+            settings = read_json(DEFAULT_SETTINGS_LOCATION)
+            logging.debug(f"Loaded settings from {DEFAULT_SETTINGS_LOCATION}: {settings}")
         else:
             settings = None
-            logging.debug(f"Settings {SETTINGS_LOCATION} does not exist, skipped")
+            logging.debug(f"Settings {DEFAULT_SETTINGS_LOCATION} does not exist, skipped")
         if settings is None or settings["persistent"] == False:
             logging.debug("Ignoring settings from file")
             self.persistent = False
-            self.cpus = []
-
-            for cpu_number in range(0, Plugin.CPU_COUNT):
-                self.cpus.append(CPU(cpu_number))
-
-            # If any core has two threads, smt is True
-            self.smt = self.cpus[1].status()
-            if(not self.smt):
-                for cpu_number in range(2, len(self.cpus), 2):
-                    if(self.cpus[cpu_number].status()):
-                        self.smt = True
-                        break
-            logging.info(f"SMT state is guessed to be {self.smt}")
-
+            self.guess_settings(self)
+            self.modified_settings = True
         else:
             # apply settings
             logging.debug("Restoring settings from file")
             self.persistent = True
-            # CPU
-            self.cpus = []
-
-            for cpu_number in range(0, Plugin.CPU_COUNT):
-                self.cpus.append(CPU(cpu_number, settings=settings["cpu"]["threads"][cpu_number]))
-            self.smt = settings["cpu"]["smt"]
-            write_cpu_boost(settings["cpu"]["boost"])
-            # GPU
-            write_gpu_ppt(1, settings["gpu"]["slowppt"])
-            write_gpu_ppt(2, settings["gpu"]["fastppt"])
-            # Fan
-            if not (os.path.exists(FANTASTIC_INSTALL_DIR) or settings["fan"]["auto"]):
-                write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 1)
-                write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", settings["fan"]["target"])
-            self.dirty = False
+            self.apply_settings(self, settings)
+            # self.modified_settings = False
         logging.info("Handled saved settings, back-end startup complete")
+        # server setup
+        await pt_server.start(VERSION)
         # work loop
         while True:
+            # persistence
             if self.modified_settings and self.persistent:
                 self.save_settings(self)
                 self.modified_settings = False
+            if self.persistent:
+                # per-game profiles
+                current_game = pt_server.http_server.game()
+                old_gameid = self.current_gameid
+                if current_game is not None and current_game.has_settings():
+                    self.current_gameid = current_game.gameid
+                    if old_gameid != self.current_gameid:
+                        logging.info(f"Applying custom settings for {current_game.name()} {current_game.appid()}")
+                        # new game; apply settings
+                        settings = current_game.load_settings()
+                        if settings is not None:
+                            self.apply_settings(self, settings)
+                else:
+                    self.current_gameid = None
+                    if old_gameid != self.current_gameid:
+                        logging.info("Reapplying default settings; game without custom settings found")
+                        # game without custom settings; apply defaults
+                        settings = read_json(DEFAULT_SETTINGS_LOCATION)
+                        self.apply_settings(self, settings)
+                logging.debug(f"gameid update: {old_gameid} -> {self.current_gameid}")
+
             await asyncio.sleep(1)
+        await pt_server.shutdown()
 
     # called from main_view::onViewReady
     async def on_ready(self):
@@ -342,8 +375,71 @@ class Plugin:
 
     def save_settings(self):
         settings = self.current_settings(self)
-        logging.info(f"Saving settings to file: {settings}")
-        write_json(SETTINGS_LOCATION, settings)
+        logging.debug(f"Saving settings to file: {settings}")
+        current_game = pt_server.http_server.game()
+        if current_game is not None and self.current_gameid is not None:
+            save_location = current_game.settings_path()
+        else:
+            save_location = DEFAULT_SETTINGS_LOCATION
+        write_json(save_location, settings)
+        logging.info(f"Saved settings to {save_location}")
+
+    def apply_settings(self, settings: dict):
+        # CPU
+        self.cpus = []
+
+        for cpu_number in range(0, Plugin.CPU_COUNT):
+            self.cpus.append(CPU(cpu_number, settings=settings["cpu"]["threads"][cpu_number]))
+        self.smt = settings["cpu"]["smt"]
+        write_cpu_boost(settings["cpu"]["boost"])
+        # GPU
+        write_gpu_ppt(1, settings["gpu"]["slowppt"])
+        write_gpu_ppt(2, settings["gpu"]["fastppt"])
+        # Fan
+        if not (os.path.exists(FANTASTIC_INSTALL_DIR) or settings["fan"]["auto"]):
+            self.disable_jupiter_fan_control(self)
+            write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 1)
+            write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", settings["fan"]["target"])
+        elif settings["fan"]["auto"] and not os.path.exists(FANTASTIC_INSTALL_DIR):
+            self.enable_jupiter_fan_control(self)
+
+
+    def guess_settings(self):
+        self.cpus = []
+        for cpu_number in range(0, Plugin.CPU_COUNT):
+            self.cpus.append(CPU(cpu_number))
+
+        # If any core has two threads, smt is True
+        self.smt = self.cpus[1].status()
+        if(not self.smt):
+            for cpu_number in range(2, len(self.cpus), 2):
+                if(self.cpus[cpu_number].status()):
+                    self.smt = True
+                    break
+        logging.info(f"SMT state is guessed to be {self.smt}")
+
+    # per-game profiles
+
+    async def get_current_game(self) -> str:
+        current_game = pt_server.http_server.game()
+        if current_game is None:
+            return "Menu (default)"
+        else:
+            return f"{current_game.name()} ({current_game.appid()})"
+
+    async def set_per_game_profile(self, enabled: bool):
+        current_game = pt_server.http_server.game()
+        if enabled and self.persistent and current_game is not None:
+            self.current_gameid = current_game.gameid
+            self.modified_settings = True
+        else:
+            if not enabled and current_game is not None and current_game.has_settings():
+                # delete settings; disable settings loading
+                os.remove(current_game.settings_path())
+            self.current_gameid = None
+
+    async def get_per_game_profile(self) -> bool:
+        return self.current_gameid is not None
 
 
 
