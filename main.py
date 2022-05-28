@@ -3,6 +3,7 @@ import os
 import json
 import asyncio
 import pathlib
+import subprocess
 
 VERSION = "0.6.0"
 HOME_DIR = str(pathlib.Path(os.getcwd()).parent.parent.resolve())
@@ -208,16 +209,16 @@ class Plugin:
         self.modified_settings = True
         if tick >= len(self.FAN_SPEEDS):
             # automatic mode
+            self.enable_jupiter_fan_control(self)
             self.auto_fan = True
             write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 0)
             write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", 4099) # 4099 is default
-            #subprocess.Popen("systemctl start jupiter-fan-control.service", stdout=subprocess.PIPE, shell=True).wait()
         else:
             # manual voltage
+            self.disable_jupiter_fan_control(self)
             self.auto_fan = False
             write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 1)
             write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", self.FAN_SPEEDS[tick])
-            #subprocess.Popen("systemctl stop jupiter-fan-control.service", stdout=subprocess.PIPE, shell=True).wait()
 
     async def get_fan_tick(self) -> int:
         fan_target = read_fan_target()
@@ -241,6 +242,27 @@ class Plugin:
     async def fantastic_installed(self) -> bool:
         return os.path.exists(FANTASTIC_INSTALL_DIR)
 
+    def disable_jupiter_fan_control(self):
+        active = subprocess.Popen(["systemctl", "is-active", "jupiter-fan-control.service"]).wait() == 0
+        if active:
+            logging.info("Stopping jupiter-fan-control.service so it doesn't interfere")
+            # only disable if currently active
+            self.jupiter_fan_control_was_disabled = True
+            stop_p = subprocess.Popen(["systemctl", "stop", "jupiter-fan-control.service"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stop_p.wait()
+            logging.debug("systemctl stop jupiter-fan-control.service stdout:\n" + stop_p.stdout.read().decode())
+            logging.debug("systemctl stop jupiter-fan-control.service stderr:\n" + stop_p.stderr.read().decode())
+
+    def enable_jupiter_fan_control(self):
+        if self.jupiter_fan_control_was_disabled:
+            logging.info("Starting jupiter-fan-control.service so it doesn't interfere")
+            # only re-enable if I disabled it
+            self.jupiter_fan_control_was_disabled = False
+            start_p = subprocess.Popen(["systemctl", "start", "jupiter-fan-control.service"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            start_p.wait()
+            logging.debug("systemctl start jupiter-fan-control.service stdout:\n" + start_p.stdout.read().decode())
+            logging.debug("systemctl start jupiter-fan-control.service stderr:\n" + start_p.stderr.read().decode())
+
     # Battery stuff
 
     async def get_charge_now(self) -> int:
@@ -255,6 +277,7 @@ class Plugin:
     # Asyncio-compatible long-running code, executed in a task when the plugin is loaded
     async def _main(self):
         # startup: load & apply settings
+        self.jupiter_fan_control_was_disabled = False
         if os.path.exists(DEFAULT_SETTINGS_LOCATION):
             settings = read_json(DEFAULT_SETTINGS_LOCATION)
             logging.debug(f"Loaded settings from {DEFAULT_SETTINGS_LOCATION}: {settings}")
@@ -374,8 +397,12 @@ class Plugin:
         write_gpu_ppt(2, settings["gpu"]["fastppt"])
         # Fan
         if not (os.path.exists(FANTASTIC_INSTALL_DIR) or settings["fan"]["auto"]):
+            self.disable_jupiter_fan_control(self)
             write_to_sys("/sys/class/hwmon/hwmon5/recalculate", 1)
             write_to_sys("/sys/class/hwmon/hwmon5/fan1_target", settings["fan"]["target"])
+        elif settings["fan"]["auto"] and not os.path.exists(FANTASTIC_INSTALL_DIR):
+            self.enable_jupiter_fan_control(self)
+
 
     def guess_settings(self):
         self.cpus = []
