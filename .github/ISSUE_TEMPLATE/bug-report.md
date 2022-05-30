@@ -20,5 +20,7 @@ Steps to reproduce the behavior:
 3. Scroll down to '....'
 4. See error
 
-**Screenshots**
+**Screenshots, etc.**
 If applicable, add screenshots to help explain your problem.
+Please include the log (located at `/tmp/powertools.log`) if possible.
+Note: the log is deleted when the device is restarted.
