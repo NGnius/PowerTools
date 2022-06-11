@@ -7,7 +7,7 @@ import pathlib
 from aiohttp import web
 import aiohttp
 
-HOME_DIR = str(pathlib.Path(os.getcwd()).parent.parent.resolve())
+HOME_DIR = "/home/deck"
 SETTINGS_DIR = HOME_DIR + "/.config/powertools"
 
 if not os.path.exists(SETTINGS_DIR):
@@ -60,6 +60,15 @@ class Server(web.Application):
     def game(self) -> GameInfo:
         return self.current_game
 
+    def set_game(self, game_id, data):
+        self.current_game = GameInfo(game_id, data)
+
+    def unset_game(self, game_id):
+        if self.current_game is None:
+            return
+        if game_id is None or self.current_game.gameid == game_id:
+            self.current_game = None
+
     async def index(self, request):
         logging.debug("Debug index page accessed")
         current_game = None if self.current_game is None else self.current_game.gameid
@@ -97,16 +106,13 @@ class Server(web.Application):
         except ValueError:
             return web.Response(text="WTF", status=400)
         if self.current_game.gameid == game_id:
-            pass
-            #self.current_game = None
-            # TODO change settings to default
+            self.current_game = None
         return web.Response(status=204, headers={"Access-Control-Allow-Origin": "*"})
 
     async def on_game_exit_null(self, request):
         # ignored for now
         logging.info(f"on_game_exit_null")
-        #self.current_game = None
-        # TODO change settings to default
+        self.current_game = None
         return web.Response(status=204, headers={"Access-Control-Allow-Origin": "*"})
 
     async def self_destruct(self, request):

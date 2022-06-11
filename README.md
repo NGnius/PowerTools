@@ -1,6 +1,6 @@
 # PowerTools
 
-![plugin_demo](./extras/ui.png)
+![plugin_demo](./assets/ui.png)
 
 Steam Deck power tweaks for power users.
 
