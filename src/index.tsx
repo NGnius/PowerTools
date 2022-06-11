@@ -17,7 +17,7 @@ import {
   joinClassNames,
 } from "decky-frontend-lib";
 import { VFC, useState } from "react";
-import { FaShip } from "react-icons/fa";
+import { GiDrill } from "react-icons/gi";
 
 import * as python from "./python";
 
@@ -356,7 +356,7 @@ export default definePlugin((serverApi: ServerAPI) => {
   return {
     title: <div className={staticClasses.Title}>PowerTools</div>,
     content: <Content serverAPI={serverApi} />,
-    icon: <FaShip />,
+    icon: <GiDrill />,
     onDismount() {
       console.log("PowerTools shutting down");
       clearInterval(periodicHook!);

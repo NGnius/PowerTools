@@ -40,6 +40,6 @@
   },
   "dependencies": {
     "decky-frontend-lib": "*",
-    "react-icons": "^4.3.1"
+    "react-icons": "^4.4.0"
   }
 }
