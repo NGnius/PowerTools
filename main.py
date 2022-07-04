@@ -5,7 +5,7 @@ import asyncio
 import pathlib
 import subprocess
 
-VERSION = "0.7.0-alpha-react"
+VERSION = "0.7.0-indev"
 HOME_DIR = "/home/deck"
 DEFAULT_SETTINGS_LOCATION = HOME_DIR + "/.config/powertools/default_settings.json"
 LOG_LOCATION = "/tmp/powertools.log"

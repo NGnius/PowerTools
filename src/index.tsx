@@ -10,8 +10,8 @@ import {
   ServerAPI,
   //showContextMenu,
   staticClasses,
-  Slider,
-  Toggle,
+  SliderField,
+  ToggleField,
   //NotchLabel
   gamepadDialogClasses,
   joinClassNames,
@@ -139,7 +139,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
         CPU
       </div>
       <PanelSectionRow>
-        <Toggle
+        <ToggleField
           checked={smtGlobal}
           label="SMT"
           description="Enables odd-numbered CPUs"
@@ -152,7 +152,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
         />
       </PanelSectionRow>
       <PanelSectionRow>
-        <Slider
+        <SliderField
           label="Threads"
           value={cpusGlobal}
           step={1}
@@ -169,7 +169,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
         />
       </PanelSectionRow>
       <PanelSectionRow>
-        <Toggle
+        <ToggleField
           checked={boostGlobal}
           label="Boost"
           description="Allows the CPU to go above max frequency"
@@ -181,7 +181,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
         />
       </PanelSectionRow>
       <PanelSectionRow>
-        <Slider
+        <SliderField
           label="Max Frequency"
           value={freqGlobal}
           max={2}
@@ -208,7 +208,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
       </div>
       <PanelSectionRow>
         {/* index: 1 */}
-        <Slider
+        <SliderField
           label="SlowPPT Power"
           value={slowPPTGlobal}
           max={2}
@@ -231,7 +231,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
       </PanelSectionRow>
       <PanelSectionRow>
         {/* index: 2 */}
-        <Slider
+        <SliderField
           label="FastPPT Power"
           value={fastPPTGlobal}
           max={2}
@@ -282,7 +282,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
       </PanelSectionRow>
       {/* Persistence */}
       <PanelSectionRow>
-        <Toggle
+        <ToggleField
           checked={persistGlobal}
           label="Persistent"
           description="Restores settings after an app or OS restart"
@@ -294,7 +294,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
         />
       </PanelSectionRow>
       <PanelSectionRow>
-        <Toggle
+        <ToggleField
           checked={perGameProfileGlobal}
           label="Use per-game profile"
           onChange={(p: boolean) => {
