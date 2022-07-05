@@ -133,8 +133,8 @@ async def start(version):
     http_server = Server(version)
     http_runner = web.AppRunner(http_server)
     await http_runner.setup()
-    site = web.TCPSite(http_runner, '127.0.0.1', 5030)
-    await site.start()
+    http_site = web.TCPSite(http_runner, '127.0.0.1', 5030)
+    await http_site.start()
 
 async def shutdown(): # never really called
     global http_runner, http_server, http_site

@@ -125,7 +125,8 @@ export function getCurrentGame(): Promise<any> {
 }
 
 export function onGameStart(gameId: number, data: any): Promise<any> {
-    return server!.callPluginMethod("on_game_start", {"game_id": gameId, "data":data});
+    const data2 = {appid: data.appid, display_name: data.display_name, gameid: gameId}; // Issue #17
+    return server!.callPluginMethod("on_game_start", {"game_id": gameId, "data":data2});
 }
 
 export function onGameStop(gameId: number | null): Promise<any> {
