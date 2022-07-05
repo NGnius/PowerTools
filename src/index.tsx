@@ -70,7 +70,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
 
   const [persistGlobal, setPersist] = useState<boolean>(false);
   const [perGameProfileGlobal, setPerGameProfile] = useState<boolean>(false);
-  const [gameGlobal, setGame] = useState<string>("with your mom");
+  const [gameGlobal, setGame] = useState<string>(lastGame);
 
   reload = function () {
       python.execute(python.onViewReady());
@@ -85,7 +85,21 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
 
       python.resolve(python.getPersistent(), setPersist);
       python.resolve(python.getPerGameProfile(), setPerGameProfile);
-    };
+  };
+
+  if (periodicHook == null) {
+    periodicHook = setInterval(function() {
+        python.resolve(python.getCurrentGame(), (game: string) => {
+          python.resolve(python.getChargeNow(), setChargeNow);
+          if (lastGame != game) {
+            setGame(game);
+            lastGame = game;
+            reload();
+          }
+          python.resolve(python.getChargeFull(), setChargeFull);
+        });
+    }, 1000);
+  }
 
 
   if (firstTime) {
@@ -99,35 +113,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
 
     python.resolve(python.getCurrentGame(), setGame);
 
-    periodicHook = setInterval(function() {
-        python.resolve(python.getChargeNow(), setChargeNow);
-        python.resolve(python.getChargeFull(), setChargeFull);
-        python.resolve(python.getCurrentGame(), (game: string) => {
-          if (lastGame != game) {
-            setGame(game);
-            lastGame = game;
-            reload();
-          }
-        });
-    }, 1000);
-
     python.resolve(python.getVersion(), (v: string) => {versionGlobal = v;});
-
-    //@ts-ignore
-    lifetimeHook = SteamClient.GameSessions.RegisterForAppLifetimeNotifications((update) => {
-        if (update.bRunning) {
-            console.log("AppID " + update.unAppID.toString() + " is now running");
-        } else {
-            console.log("AppID " + update.unAppID.toString() + " is no longer running");
-            python.execute(python.onGameStop(null));
-        }
-    });
-    //@ts-ignore
-    SteamClient.Apps.RegisterForGameActionStart((actionType, id) => {
-        //@ts-ignore
-        let gameInfo: any = appStore.GetAppOverviewByGameID(id);
-        python.execute(python.onGameStart(id, gameInfo));
-    });
   }
 
   const FieldWithSeparator = joinClassNames(gamepadDialogClasses.Field, gamepadDialogClasses.WithBottomSeparatorStandard);
@@ -353,6 +339,24 @@ export default definePlugin((serverApi: ServerAPI) => {
     exact: true,
   });
 
+  //@ts-ignore
+  lifetimeHook = SteamClient.GameSessions.RegisterForAppLifetimeNotifications((update) => {
+      if (update.bRunning) {
+          console.log("AppID " + update.unAppID.toString() + " is now running");
+      } else {
+          console.log("AppID " + update.unAppID.toString() + " is no longer running");
+          python.execute(python.onGameStop(null));
+      }
+  });
+  //@ts-ignore
+  startHook = SteamClient.Apps.RegisterForGameActionStart((actionType, id) => {
+      //@ts-ignore
+      let gameInfo: any = appStore.GetAppOverviewByGameID(id);
+      python.execute(python.onGameStart(id, gameInfo));
+  });
+
+  console.log("Registered PowerTools callbacks, hello!");
+
   return {
     title: <div className={staticClasses.Title}>PowerTools</div>,
     content: <Content serverAPI={serverApi} />,
@@ -360,9 +364,12 @@ export default definePlugin((serverApi: ServerAPI) => {
     onDismount() {
       console.log("PowerTools shutting down");
       clearInterval(periodicHook!);
-      lifetimeHook.unregister();
-      startHook.unregister();
+      lifetimeHook!.unregister();
+      startHook!.unregister();
       serverApi.routerHook.removeRoute("/decky-plugin-test");
+      firstTime = true;
+      lastGame = "";
+      console.log("Unregistered PowerTools callbacks, goodbye.");
     },
   };
 });

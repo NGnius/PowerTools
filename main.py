@@ -5,7 +5,7 @@ import asyncio
 import pathlib
 import subprocess
 
-VERSION = "0.7.0-indev"
+VERSION = "0.7.0-indev2"
 HOME_DIR = "/home/deck"
 DEFAULT_SETTINGS_LOCATION = HOME_DIR + "/.config/powertools/default_settings.json"
 LOG_LOCATION = "/tmp/powertools.log"
@@ -466,7 +466,8 @@ class Plugin:
             self.current_gameid = None
 
     async def get_per_game_profile(self) -> bool:
-        return self.current_gameid is not None and current_game.has_settings()
+        current_game = pt_server.http_server.game()
+        return current_game is not None and current_game.has_settings()
 
     async def on_game_start(self, game_id: int, data) -> bool:
         pt_server.http_server.set_game(game_id, data)
