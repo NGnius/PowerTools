@@ -133,6 +133,7 @@ class Plugin:
     persistent = True
     modified_settings = False
     current_gameid = None
+    old_gameid = None
     ready = False
     
     async def get_version(self) -> str:
@@ -328,26 +329,7 @@ class Plugin:
             if self.modified_settings and self.persistent:
                 self.save_settings(self)
                 self.modified_settings = False
-            if self.persistent:
-                # per-game profiles
-                current_game = pt_server.http_server.game()
-                old_gameid = self.current_gameid
-                if current_game is not None and current_game.has_settings():
-                    self.current_gameid = current_game.gameid
-                    if old_gameid != self.current_gameid:
-                        logging.info(f"Applying custom settings for {current_game.name()} {current_game.appid()}")
-                        # new game; apply settings
-                        settings = current_game.load_settings()
-                        if settings is not None:
-                            self.apply_settings(self, settings)
-                else:
-                    self.current_gameid = None
-                    if old_gameid != self.current_gameid:
-                        logging.info("Reapplying default settings; game without custom settings found")
-                        # game without custom settings; apply defaults
-                        settings = read_json(DEFAULT_SETTINGS_LOCATION)
-                        self.apply_settings(self, settings)
-                logging.debug(f"gameid update: {old_gameid} -> {self.current_gameid}")
+            #self.reload_current_settings(self)
 
             await asyncio.sleep(1)
         await pt_server.shutdown()
@@ -399,6 +381,29 @@ class Plugin:
         settings["target"] = read_fan_target()
         settings["auto"] = self.auto_fan
         return settings
+
+    def reload_current_settings(self):
+        logging.debug(f"gameid update: {self.old_gameid} -> {self.current_gameid}")
+        if self.persistent:
+            # per-game profiles
+            current_game = pt_server.http_server.game()
+            self.old_gameid = self.current_gameid
+            if current_game is not None and current_game.has_settings():
+                self.current_gameid = current_game.gameid
+                if self.old_gameid != self.current_gameid:
+                    logging.info(f"Applying custom settings for {current_game.name()} {current_game.appid()}")
+                    # new game; apply settings
+                    settings = current_game.load_settings()
+                    if settings is not None:
+                        self.apply_settings(self, settings)
+            else:
+                self.current_gameid = None
+                if self.old_gameid != None:
+                    logging.info("Reapplying default settings; game without custom settings found")
+                    self.old_gameid = None
+                    # game without custom settings; apply defaults
+                    settings = read_json(DEFAULT_SETTINGS_LOCATION)
+                    self.apply_settings(self, settings)
 
     def save_settings(self):
         settings = self.current_settings(self)
@@ -471,10 +476,12 @@ class Plugin:
 
     async def on_game_start(self, game_id: int, data) -> bool:
         pt_server.http_server.set_game(game_id, data)
+        self.reload_current_settings(self)
         return True
 
     async def on_game_stop(self, game_id: int) -> bool:
         pt_server.http_server.unset_game(game_id)
+        self.reload_current_settings(self)
         return True
 
 
