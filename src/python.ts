@@ -7,11 +7,11 @@ var server: ServerAPI | undefined = undefined;
 export function resolve(promise: Promise<any>, setter: any) {
     (async function () {
         let data = await promise;
-        console.debug("Got resolved", data);
         if (data.success) {
+            console.debug("Got resolved", data, "promise", promise);
             setter(data.result);
         } else {
-            console.warn("Resolve failed:", data);
+            console.warn("Resolve failed:", data, "promise", promise);
         }
     })();
 }
@@ -19,7 +19,12 @@ export function resolve(promise: Promise<any>, setter: any) {
 export function execute(promise: Promise<any>) {
     (async function () {
         let data = await promise;
-        console.debug("Got executed", data);
+        if (data.success) {
+            console.debug("Got executed", data, "promise", promise);
+        } else {
+            console.warn("Execute failed:", data, "promise", promise);
+        }
+
     })();
 }
 
