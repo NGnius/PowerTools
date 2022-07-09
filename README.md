@@ -12,7 +12,6 @@ You will need that installed for this plugin to work.
 - Enable & disable CPU threads & SMT
 - Set CPU max frequency and toggle boost
 - Set some GPU power parameters (fastPPT & slowPPT)
-- Set the fan RPM (unsupported on SteamOS beta)
 - Display supplementary battery info
 - Keep settings between restarts (stored in `~/.config/powertools/<appid>.json`)
 
@@ -51,6 +50,8 @@ Set Fast Powerplay Table (PPT): `echo {microwatts} > /sys/class/hwmon/hwmon4/pow
 Get the entry limits for those two commands with `cat /sys/class/hwmon/hwmon4/power{number}_cap_max` where `{number}` is `1` (slowPPT) or `2` (fastPPT).
 
 ### Set Fan speed
+
+NOTE: PowerTools no longer supports this, since [Fantastic](https://github.com/NGnius/Fantastic) does it much better.
 
 Enable automatic control: `echo 0 > /sys/class/hwmon/hwmon5/recalculate` enables automatic fan control.
 
