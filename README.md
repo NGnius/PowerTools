@@ -4,7 +4,7 @@
 
 Steam Deck power tweaks for power users.
 
-This is generated from the template plugin for the [SteamOS Plugin Loader](https://github.com/SteamDeckHomebrew/PluginLoader).
+This is generated from the template plugin for the [Decky Plugin Loader](https://github.com/SteamDeckHomebrew/decky-loader).
 You will need that installed for this plugin to work.
 
 ## What does it do?
@@ -74,6 +74,8 @@ Get the design battery capacity: `cat /sys/class/hwmon/hwmon2/device/charge_full
 
 Get whether the deck is plugged in: `cat /sys/class/hwmon/hwmon5/curr1_input` gives the charger current in mA.
 
+NOTE: 7.7 is the voltage of the battery -- it's not just a magic number.
+
 ### Steam Deck kernel patches
 
 This is how I figured out how the fan stuff works.
@@ -82,21 +84,25 @@ https://lkml.org/lkml/2022/2/5/391
 
 ### Game launch detection
 
-The biggest limitation right now is it can't detect a game closing -- only opening -- and only after PowerTools is looked at at least once (per SteamOS restart).
-
-From a plugin, this can be accomplished by running some front-end Javascript.
-
-```javascript
-await execute_in_tab("SP", false,
-    `SteamClient.Apps.RegisterForGameActionStart((actionType, data) => {
-        console.log("start game", appStore.GetAppOverviewByGameID(data));
-    });`
-);
+```typescript
+//@ts-ignore
+let lifetimeHook = SteamClient.GameSessions.RegisterForAppLifetimeNotifications((update) => {
+    if (update.bRunning) {
+        console.log("AppID " + update.unAppID.toString() + " is now running");
+    } else {
+        console.log("AppID " + update.unAppID.toString() + " is no longer running");
+        // game exit code here
+        // NOTE: custom games always have 0 as AppID, so AppID is bad to use as ID
+    }
+});
+//@ts-ignore
+let startHook = SteamClient.Apps.RegisterForGameActionStart((actionType, id) => {
+    //@ts-ignore
+    let gameInfo: any = appStore.GetAppOverviewByGameID(id);
+    // game start code here
+    // NOTE: GameID (variable: id) is always unique, even for custom games, so it's better to use than AppID
+});
 ```
-
-In PowerTools, the callback (the part surrounded by `{` and `}`, containing `console.log(...)`) sends a message to a local HTTP server to notify the PowerTools back-end that a game has been launched.
-
-If you go to `http://127.0.0.1:5030` on your Steam Deck with PowerTools >=0.6.0, you can see some info about the last game you launched.
 
 ## License
 
