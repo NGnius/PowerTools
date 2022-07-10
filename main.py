@@ -5,7 +5,7 @@ import asyncio
 import pathlib
 import subprocess
 
-VERSION = "0.7.0-rc1"
+VERSION = "0.7.0"
 HOME_DIR = "/home/deck"
 DEFAULT_SETTINGS_LOCATION = HOME_DIR + "/.config/powertools/default_settings.json"
 LOG_LOCATION = "/tmp/powertools.log"

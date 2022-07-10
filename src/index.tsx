@@ -29,11 +29,23 @@ import * as python from "./python";
 // }
 
 var firstTime: boolean = true;
-var versionGlobal: string = "0.0.0-jank";
+var versionGlobalHolder: string = "0.0.0-jank";
 var periodicHook: NodeJS.Timer | null = null;
 var lastGame: string = "";
 var lifetimeHook: any = null;
 var startHook: any = null;
+
+var smt_backup: boolean = true;
+var cpus_backup: number = 8;
+var boost_backup: boolean = true;
+var freq_backup: number = 8;
+var slowPPT_backup: number = 1;
+var fastPPT_backup: number = 1;
+var chargeNow_backup: number = 5200000;
+var chargeFull_backup: number = 5200000;
+var chargeDesign_backup: number = 5200000;
+var persistent_backup: boolean = false;
+var perGameProfile_backup: boolean = false;
 
 var reload = function(){};
 
@@ -55,22 +67,83 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
 
   python.setServer(serverAPI);
 
-  const [smtGlobal, setSMT] = useState<boolean>(true);
-  const [cpusGlobal, setCPUs] = useState<number>(8);
-  const [boostGlobal, setBoost] = useState<boolean>(true);
+  const [smtGlobal, setSMT_internal] = useState<boolean>(smt_backup);
+  const setSMT = (value: boolean) => {
+    smt_backup = value;
+    setSMT_internal(value);
+  };
 
-  const [freqGlobal, setFreq] = useState<number>(8);
+  const [cpusGlobal, setCPUs_internal] = useState<number>(cpus_backup);
+  const setCPUs = (value: number) => {
+    cpus_backup = value;
+    setCPUs_internal(value);
+  };
 
-  const [slowPPTGlobal, setSlowPPT] = useState<number>(1);
-  const [fastPPTGlobal, setFastPPT] = useState<number>(1);
+  const [boostGlobal, setBoost_internal] = useState<boolean>(boost_backup);
+  const setBoost = (value: boolean) => {
+    boost_backup = value;
+    setBoost_internal(value);
+  };
 
-  const [chargeNowGlobal, setChargeNow] = useState<number>(40);
-  const [chargeFullGlobal, setChargeFull] = useState<number>(40);
-  const [chargeDesignGlobal, setChargeDesign] = useState<number>(40);
+  const [freqGlobal, setFreq_internal] = useState<number>(freq_backup);
+  const setFreq = (value: number) => {
+    freq_backup = value;
+    setFreq_internal(value);
+  };
 
-  const [persistGlobal, setPersist] = useState<boolean>(false);
-  const [perGameProfileGlobal, setPerGameProfile] = useState<boolean>(false);
-  const [gameGlobal, setGame] = useState<string>(lastGame);
+  const [slowPPTGlobal, setSlowPPT_internal] = useState<number>(slowPPT_backup);
+  const setSlowPPT = (value: number) => {
+    slowPPT_backup = value;
+    setSlowPPT_internal(value);
+  };
+
+  const [fastPPTGlobal, setFastPPT_internal] = useState<number>(fastPPT_backup);
+  const setFastPPT = (value: number) => {
+    fastPPT_backup = value;
+    setFastPPT_internal(value);
+  };
+
+  const [chargeNowGlobal, setChargeNow_internal] = useState<number>(chargeNow_backup);
+  const setChargeNow = (value: number) => {
+    chargeNow_backup = value;
+    setChargeNow_internal(value);
+  };
+
+  const [chargeFullGlobal, setChargeFull_internal] = useState<number>(chargeFull_backup);
+  const setChargeFull = (value: number) => {
+    chargeFull_backup = value;
+    setChargeFull_internal(value);
+  };
+
+  const [chargeDesignGlobal, setChargeDesign_internal] = useState<number>(chargeDesign_backup);
+  const setChargeDesign = (value: number) => {
+    chargeDesign_backup = value;
+    setChargeDesign_internal(value);
+  };
+
+  const [persistGlobal, setPersist_internal] = useState<boolean>(persistent_backup);
+  const setPersist = (value: boolean) => {
+    persistent_backup = value;
+    setPersist_internal(value);
+  };
+
+  const [perGameProfileGlobal, setPerGameProfile_internal] = useState<boolean>(perGameProfile_backup);
+  const setPerGameProfile = (value: boolean) => {
+    perGameProfile_backup = value;
+    setPerGameProfile_internal(value);
+  };
+
+  const [gameGlobal, setGame_internal] = useState<string>(lastGame);
+  const setGame = (value: string) => {
+    lastGame = value;
+    setGame_internal(value);
+  };
+
+  const [versionGlobal, setVersion_internal] = useState<string>(versionGlobalHolder);
+  const setVersion = (value: string) => {
+    versionGlobalHolder = value;
+    setVersion_internal(value);
+  };
 
   reload = function () {
       python.execute(python.onViewReady());
@@ -87,20 +160,6 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
       python.resolve(python.getPerGameProfile(), setPerGameProfile);
   };
 
-  if (periodicHook == null) {
-    periodicHook = setInterval(function() {
-        python.resolve(python.getCurrentGame(), (game: string) => {
-          python.resolve(python.getChargeNow(), setChargeNow);
-          if (lastGame != game) {
-            setGame(game);
-            lastGame = game;
-            reload();
-          }
-          python.resolve(python.getChargeFull(), setChargeFull);
-        });
-    }, 1000);
-  }
-
 
   if (firstTime) {
     firstTime = false;
@@ -113,8 +172,25 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
 
     python.resolve(python.getCurrentGame(), setGame);
 
-    python.resolve(python.getVersion(), (v: string) => {versionGlobal = v;});
+    python.resolve(python.getVersion(), setVersion);
   }
+
+  if (periodicHook != null) {
+    clearInterval(periodicHook);
+    periodicHook = null;
+  }
+
+  periodicHook = setInterval(function() {
+      python.resolve(python.getChargeFull(), setChargeFull);
+      python.resolve(python.getChargeNow(), setChargeNow);
+      python.resolve(python.getCurrentGame(), (game: string) => {
+        if (lastGame != game) {
+          setGame(game);
+          lastGame = game;
+          reload();
+        }
+      });
+  }, 1000);
 
   const FieldWithSeparator = joinClassNames(gamepadDialogClasses.Field, gamepadDialogClasses.WithBottomSeparatorStandard);
 
@@ -364,6 +440,7 @@ export default definePlugin((serverApi: ServerAPI) => {
     onDismount() {
       console.log("PowerTools shutting down");
       clearInterval(periodicHook!);
+      periodicHook = null;
       lifetimeHook!.unregister();
       startHook!.unregister();
       serverApi.routerHook.removeRoute("/decky-plugin-test");
