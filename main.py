@@ -5,8 +5,8 @@ import asyncio
 import pathlib
 import subprocess
 
-VERSION = "0.6.0"
-HOME_DIR = str(pathlib.Path(os.getcwd()).parent.parent.resolve())
+VERSION = "0.7.0"
+HOME_DIR = "/home/deck"
 DEFAULT_SETTINGS_LOCATION = HOME_DIR + "/.config/powertools/default_settings.json"
 LOG_LOCATION = "/tmp/powertools.log"
 FANTASTIC_INSTALL_DIR = HOME_DIR + "/homebrew/plugins/Fantastic"
@@ -127,10 +127,14 @@ class Plugin:
     CPU_COUNT = 8
     FAN_SPEEDS = [0, 1000, 2000, 3000, 4000, 5000, 6000]
 
+    gpu_power_values = [[-1, -1, -1], [1000000, 15000000, 29000000], [0, 15000000, 30000000]]
+
     auto_fan = True
     persistent = True
     modified_settings = False
     current_gameid = None
+    old_gameid = None
+    ready = False
     
     async def get_version(self) -> str:
         return VERSION
@@ -139,6 +143,7 @@ class Plugin:
     
     # call from main_view.html with setCPUs(count, smt)
     async def set_cpus(self, count, smt=True):
+        logging.info(f"set_cpus({count}, {smt})")
         self.modified_settings = True
         cpu_count = len(self.cpus)
         self.smt = smt
@@ -165,9 +170,11 @@ class Plugin:
         for cpu in self.cpus:
             if(cpu.status()):
                 online_count += 1
+        logging.info(f"get_cpus() -> {online_count}")
         return online_count
 
     async def get_smt(self) -> bool:
+        logging.info(f"get_smt() -> {self.smt}")
         return self.smt
     
     async def set_boost(self, enabled: bool) -> bool:
@@ -202,6 +209,24 @@ class Plugin:
 
     async def get_gpu_power(self, power_number: int) -> int:
         return read_gpu_ppt(power_number)
+
+    async def set_gpu_power_index(self, index: int, power_number: int) -> bool:
+        if index < 3 and index >= 0:
+            self.modified_settings = True
+            old_value = read_gpu_ppt(power_number)
+            if old_value not in self.gpu_power_values[power_number]:
+                self.gpu_power_values[power_number][1] = old_value
+            write_gpu_ppt(power_number, self.gpu_power_values[power_number][index])
+            return True
+        return False
+
+    async def get_gpu_power_index(self, power_number: int) -> int:
+        value = read_gpu_ppt(power_number)
+        if value not in self.gpu_power_values[power_number]:
+            #self.gpu_power_values[power_number][1] = value
+            return 1
+        else:
+            return self.gpu_power_values[power_number].index(value)
 
     # Fan stuff
 
@@ -304,26 +329,7 @@ class Plugin:
             if self.modified_settings and self.persistent:
                 self.save_settings(self)
                 self.modified_settings = False
-            if self.persistent:
-                # per-game profiles
-                current_game = pt_server.http_server.game()
-                old_gameid = self.current_gameid
-                if current_game is not None and current_game.has_settings():
-                    self.current_gameid = current_game.gameid
-                    if old_gameid != self.current_gameid:
-                        logging.info(f"Applying custom settings for {current_game.name()} {current_game.appid()}")
-                        # new game; apply settings
-                        settings = current_game.load_settings()
-                        if settings is not None:
-                            self.apply_settings(self, settings)
-                else:
-                    self.current_gameid = None
-                    if old_gameid != self.current_gameid:
-                        logging.info("Reapplying default settings; game without custom settings found")
-                        # game without custom settings; apply defaults
-                        settings = read_json(DEFAULT_SETTINGS_LOCATION)
-                        self.apply_settings(self, settings)
-                logging.debug(f"gameid update: {old_gameid} -> {self.current_gameid}")
+            #self.reload_current_settings(self)
 
             await asyncio.sleep(1)
         await pt_server.shutdown()
@@ -331,6 +337,9 @@ class Plugin:
     # called from main_view::onViewReady
     async def on_ready(self):
         delta = time.time() - startup_time
+        if self.ready:
+            logging.info(f"Front-end init called again {delta}s after startup")
+            return
         logging.info(f"Front-end initialised {delta}s after startup")
 
     # persistence
@@ -372,6 +381,29 @@ class Plugin:
         settings["target"] = read_fan_target()
         settings["auto"] = self.auto_fan
         return settings
+
+    def reload_current_settings(self):
+        logging.debug(f"gameid update: {self.old_gameid} -> {self.current_gameid}")
+        if self.persistent:
+            # per-game profiles
+            current_game = pt_server.http_server.game()
+            self.old_gameid = self.current_gameid
+            if current_game is not None and current_game.has_settings():
+                self.current_gameid = current_game.gameid
+                if self.old_gameid != self.current_gameid:
+                    logging.info(f"Applying custom settings for {current_game.name()} {current_game.appid()}")
+                    # new game; apply settings
+                    settings = current_game.load_settings()
+                    if settings is not None:
+                        self.apply_settings(self, settings)
+            else:
+                self.current_gameid = None
+                if self.old_gameid != None:
+                    logging.info("Reapplying default settings; game without custom settings found")
+                    self.old_gameid = None
+                    # game without custom settings; apply defaults
+                    settings = read_json(DEFAULT_SETTINGS_LOCATION)
+                    self.apply_settings(self, settings)
 
     def save_settings(self):
         settings = self.current_settings(self)
@@ -439,7 +471,18 @@ class Plugin:
             self.current_gameid = None
 
     async def get_per_game_profile(self) -> bool:
-        return self.current_gameid is not None
+        current_game = pt_server.http_server.game()
+        return current_game is not None and current_game.has_settings()
+
+    async def on_game_start(self, game_id: int, data) -> bool:
+        pt_server.http_server.set_game(game_id, data)
+        self.reload_current_settings(self)
+        return True
+
+    async def on_game_stop(self, game_id: int) -> bool:
+        pt_server.http_server.unset_game(game_id)
+        self.reload_current_settings(self)
+        return True
 
 
 

@@ -1,0 +1,45 @@
+{
+  "name": "PowerTools",
+  "version": "0.7.0",
+  "description": "Power tweaks for power users",
+  "scripts": {
+    "build": "shx rm -rf dist && rollup -c",
+    "watch": "rollup -c -w",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NGnius/PowerTools.git"
+  },
+  "keywords": [
+    "plugin",
+    "utility",
+    "power-management",
+    "steam-deck",
+    "deck"
+  ],
+  "author": "NGnius (Graham) <ngniusness@gmail.com>",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/NGnius/PowerTools/issues"
+  },
+  "homepage": "https://github.com/NGnius/PowerTools#readme",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^21.1.0",
+    "@rollup/plugin-json": "^4.1.0",
+    "@rollup/plugin-node-resolve": "^13.2.1",
+    "@rollup/plugin-replace": "^4.0.0",
+    "@rollup/plugin-typescript": "^8.3.2",
+    "@types/react": "16.14.0",
+    "@types/webpack": "^5.28.0",
+    "rollup": "^2.70.2",
+    "rollup-plugin-import-assets": "^1.1.1",
+    "shx": "^0.3.4",
+    "tslib": "^2.4.0",
+    "typescript": "^4.6.4"
+  },
+  "dependencies": {
+    "decky-frontend-lib": "*",
+    "react-icons": "^4.4.0"
+  }
+}
