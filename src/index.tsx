@@ -415,6 +415,8 @@ export default definePlugin((serverApi: ServerAPI) => {
     exact: true,
   });
 
+  python.setServer(serverApi);
+
   //@ts-ignore
   lifetimeHook = SteamClient.GameSessions.RegisterForAppLifetimeNotifications((update) => {
       if (update.bRunning) {
