@@ -39,3 +39,6 @@ __pycache__/
 
 /.yalc
 yalc.lock
+
+# rust
+/powertools-rs/target
