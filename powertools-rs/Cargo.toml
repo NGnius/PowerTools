@@ -1,15 +1,21 @@
 [package]
 name = "powertools-rs"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-usdpl-back = { version = "0.5.3", features = ["blocking"]}
+usdpl-back = { version = "0.6.0", features = ["blocking"]}
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # logging
 log = "0.4"
 simplelog = "0.12"
+
+[features]
+default = []
+decky = ["usdpl-back/decky"]
+crankshaft = ["usdpl-back/crankshaft"]
+encrypt = ["usdpl-back/encrypt"]

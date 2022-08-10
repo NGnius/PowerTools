@@ -1,25 +1,29 @@
 use std::default::Default;
-use std::fmt::Display;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use super::{CpuJson, GpuJson};
+use super::JsonError;
+use super::{BatteryJson, CpuJson, GpuJson};
 
 #[derive(Serialize, Deserialize)]
 pub struct SettingsJson {
     pub version: u64,
+    pub name: String,
     pub persistent: bool,
     pub cpus: Vec<CpuJson>,
     pub gpu: GpuJson,
+    pub battery: BatteryJson,
 }
 
 impl Default for SettingsJson {
     fn default() -> Self {
         Self {
             version: 0,
+            name: "default".to_owned(),
             persistent: false,
             cpus: Vec::with_capacity(8),
             gpu: GpuJson::default(),
+            battery: BatteryJson::default(),
         }
     }
 }
@@ -40,17 +44,8 @@ impl SettingsJson {
     }
 }
 
-#[derive(Debug)]
-pub enum JsonError {
-    Serde(serde_json::Error),
-    Io(std::io::Error),
-}
-
-impl Display for JsonError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::Serde(e) => (e as &dyn Display).fmt(f),
-            Self::Io(e) => (e as &dyn Display).fmt(f),
-        }
-    }
+#[derive(Serialize, Deserialize)]
+pub struct MinMaxJson<T> {
+    pub max: T,
+    pub min: T,
 }

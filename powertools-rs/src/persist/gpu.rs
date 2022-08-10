@@ -1,12 +1,15 @@
 use std::default::Default;
 //use std::fmt::Display;
 
-use serde::{Serialize, Deserialize};
+use super::MinMaxJson;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct GpuJson {
     pub fast_ppt: Option<u64>,
     pub slow_ppt: Option<u64>,
+    pub clock_limits: Option<MinMaxJson<u64>>,
+    pub slow_memory: bool,
 }
 
 impl Default for GpuJson {
@@ -14,6 +17,8 @@ impl Default for GpuJson {
         Self {
             fast_ppt: None,
             slow_ppt: None,
+            clock_limits: None,
+            slow_memory: false,
         }
     }
 }

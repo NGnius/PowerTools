@@ -1,6 +1,5 @@
 #!/bin/bash
 
-cargo build --release
-mkdir ../bin
-# TODO replace "backend" \/ with binary name
-cp ./target/release/backend ../bin/backend
+cargo build --release --target x86_64-unknown-linux-musl
+mkdir ../bin &> /dev/null
+cp ./target/release/powertools-rs ../bin/backend

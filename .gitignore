@@ -42,3 +42,4 @@ yalc.lock
 
 # rust
 /powertools-rs/target
+/bin
