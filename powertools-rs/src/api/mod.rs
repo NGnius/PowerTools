@@ -1,5 +1,6 @@
 pub mod battery;
 pub mod cpu;
+pub mod general;
 pub mod gpu;
 mod utility;
 

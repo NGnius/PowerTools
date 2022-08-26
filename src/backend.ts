@@ -105,9 +105,27 @@ export async function unsetGpuClockLimits(): Promise<any[]> {
 }
 
 export async function setGpuSlowMemory(val: boolean): Promise<boolean> {
-    return (await call_backend("GPU_set_slow_memory", [min, max]))[0];
+    return (await call_backend("GPU_set_slow_memory", [val]))[0];
 }
 
 export async function getGpuSlowMemory(): Promise<boolean> {
     return (await call_backend("GPU_get_slow_memory", []))[0];
+}
+
+// general
+
+export async function setGeneralPersistent(val: boolean): Promise<boolean> {
+    return (await call_backend("GENERAL_set_persistent", [val]))[0];
+}
+
+export async function getGeneralPersistent(): Promise<boolean> {
+    return (await call_backend("GENERAL_get_persistent", []))[0];
+}
+
+export async function loadGeneralSettings(path: string, name: string): Promise<boolean> {
+    return (await call_backend("GENERAL_load_settings", [path, name]))[0];
+}
+
+export async function getGeneralPersistent(): Promise<boolean> {
+    return (await call_backend("GENERAL_get_name", []))[0];
 }

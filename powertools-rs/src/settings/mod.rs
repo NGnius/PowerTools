@@ -8,7 +8,7 @@ mod traits;
 
 pub use battery::Battery;
 pub use cpu::Cpu;
-pub use general::{SettingVariant, Settings};
+pub use general::{SettingVariant, Settings, General};
 pub use gpu::Gpu;
 pub use min_max::MinMax;
 

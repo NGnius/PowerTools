@@ -35,6 +35,19 @@ pub struct General {
     pub name: String,
 }
 
+impl OnSet for General {
+    fn on_set(&mut self) -> Result<(), SettingError> {
+        // remove settings file when persistence is turned off, to prevent it from be loaded next time.
+        if !self.persistent && self.path.exists() {
+            std::fs::remove_file(&self.path).map_err(|e| SettingError {
+                msg: e.to_string(),
+                setting: SettingVariant::General,
+            })?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Settings {
     pub general: Arc<Mutex<General>>,
@@ -114,6 +127,38 @@ impl Settings {
             gpu: Arc::new(Mutex::new(Gpu::system_default())),
             battery: Arc::new(Mutex::new(Battery::system_default())),
         }
+    }
+    
+    pub fn load_file(&self, json_path: PathBuf, name: String) -> Result<bool, SettingError> {
+        let mut general_lock = unwrap_lock(self.general.lock(), "general");
+        if json_path.exists() {
+            let settings_json = SettingsJson::open(&json_path).map_err(|e| SettingError {
+                msg: e.to_string(),
+                setting: SettingVariant::General,
+            })?;
+            let new_cpus = Self::convert_cpus(settings_json.cpus, settings_json.version);
+            let new_gpu = Gpu::from_json(settings_json.gpu, settings_json.version);
+            let new_battery = Battery::from_json(settings_json.battery, settings_json.version);
+            {
+                let mut cpu_lock = unwrap_lock(self.cpus.lock(), "cpu");
+                *cpu_lock = new_cpus; // TODO does this overwrite the contents of the lock as expected?
+            }
+            {
+                let mut gpu_lock = unwrap_lock(self.gpu.lock(), "gpu");
+                *gpu_lock = new_gpu;
+            }
+            {
+                let mut battery_lock = unwrap_lock(self.battery.lock(), "battery");
+                *battery_lock = new_battery;
+            }
+            general_lock.persistent = true;
+            general_lock.name = settings_json.name;
+        } else {
+            general_lock.persistent = false;
+            general_lock.name = name;
+        }
+        general_lock.path = json_path;
+        Ok(general_lock.persistent)
     }
 }
 

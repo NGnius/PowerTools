@@ -3,6 +3,8 @@ mod persist;
 mod settings;
 mod state;
 
+mod consts;
+use consts::*;
 mod resume_worker;
 mod save_worker;
 mod utility;
@@ -11,13 +13,6 @@ use simplelog::{LevelFilter, WriteLogger};
 
 use usdpl_back::core::serdes::Primitive;
 use usdpl_back::Instance;
-
-const PORT: u16 = 44443;
-
-const PACKAGE_NAME: &'static str = env!("CARGO_PKG_NAME");
-const PACKAGE_VERSION: &'static str = env!("CARGO_PKG_VERSION");
-
-const DEFAULT_SETTINGS_FILE: &str = "default_settings.json";
 
 fn main() -> Result<(), ()> {
     let log_filepath = format!("/tmp/{}.log", PACKAGE_NAME);
@@ -126,6 +121,23 @@ fn main() -> Result<(), ()> {
         .register(
             "GPU_get_slow_memory",
             api::gpu::get_slow_memory(default_settings.gpu.clone())
+        )
+        // general API functions
+        .register(
+            "GENERAL_set_persistent",
+            api::general::set_persistent(default_settings.general.clone(), save_sender.clone())
+        )
+        .register(
+            "GENERAL_get_persistent",
+            api::general::get_persistent(default_settings.general.clone())
+        )
+        .register(
+            "GENERAL_load_settings",
+            api::general::load_settings(default_settings.clone())
+        )
+        .register(
+            "GENERAL_get_name",
+            api::general::get_name(default_settings.general.clone())
         )
         .run_blocking()
 }
