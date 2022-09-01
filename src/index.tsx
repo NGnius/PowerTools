@@ -372,7 +372,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
               reloadGUI("GPUFreqToggle");
             } else {
               set_value(CLOCK_MIN_GPU, null);
-              set_value(CLOCK_MIN_GPU, null);
+              set_value(CLOCK_MAX_GPU, null);
               backend.resolve(backend.unsetGpuClockLimits(), (_: any[]) => {
                 reloadGUI("GPUUnsetFreq");
               });
