@@ -40,7 +40,7 @@ impl OnSet for General {
         // remove settings file when persistence is turned off, to prevent it from be loaded next time.
         if !self.persistent && self.path.exists() {
             std::fs::remove_file(&self.path).map_err(|e| SettingError {
-                msg: e.to_string(),
+                msg: format!("Failed to delete `{}`: {}", self.path.display(), e),
                 setting: SettingVariant::General,
             })?;
         }
@@ -67,16 +67,7 @@ impl OnSet for Settings {
             }
         }
         unwrap_lock(self.gpu.lock(), "gpu").on_set()?;
-        {
-            // general lock scope
-            let gen_lock = unwrap_lock(self.general.lock(), "general");
-            if !gen_lock.persistent && gen_lock.path.exists() {
-                std::fs::remove_file(&gen_lock.path).map_err(|e| SettingError {
-                    msg: format!("Failed to delete `{}`: {}", gen_lock.path.display(), e),
-                    setting: SettingVariant::General,
-                })?;
-            }
-        }
+        unwrap_lock(self.general.lock(), "general").on_set()?;
         Ok(())
     }
 }
@@ -121,7 +112,7 @@ impl Settings {
             general: Arc::new(Mutex::new(General {
                 persistent: false,
                 path: json_path,
-                name: "".to_owned(),
+                name: crate::consts::DEFAULT_SETTINGS_NAME.to_owned(),
             })),
             cpus: Arc::new(Mutex::new(Cpu::system_default())),
             gpu: Arc::new(Mutex::new(Gpu::system_default())),
@@ -179,17 +170,26 @@ impl OnResume for Settings {
 impl Into<SettingsJson> for Settings {
     #[inline]
     fn into(self) -> SettingsJson {
+        log::debug!("Locking settings to convert into json");
+        let gen_lock = unwrap_lock(self.general.lock(), "general");
+        log::debug!("Got general lock");
+        let cpu_lock = unwrap_lock(self.cpus.lock(), "cpu");
+        log::debug!("Got cpus lock");
+        let gpu_lock = unwrap_lock(self.gpu.lock(), "gpu");
+        log::debug!("Got gpu lock");
+        let batt_lock = unwrap_lock(self.battery.lock(), "battery");
+        log::debug!("Got battery lock");
         SettingsJson {
             version: LATEST_VERSION,
-            name: unwrap_lock(self.general.lock(), "general").name.clone(),
-            persistent: unwrap_lock(self.general.lock(), "general").persistent,
-            cpus: unwrap_lock(self.cpus.lock(), "cpu")
+            name: gen_lock.name.clone(),
+            persistent: gen_lock.persistent,
+            cpus: cpu_lock
                 .clone()
                 .drain(..)
                 .map(|cpu| cpu.into())
                 .collect(),
-            gpu: unwrap_lock(self.gpu.lock(), "gpu").clone().into(),
-            battery: unwrap_lock(self.battery.lock(), "battery").clone().into(),
+            gpu: gpu_lock.clone().into(),
+            battery: batt_lock.clone().into(),
         }
     }
 }

@@ -23,3 +23,9 @@ pub fn unwrap_lock<'a, T: Sized>(
         }
     }
 }
+
+pub fn settings_dir() -> std::path::PathBuf {
+    usdpl_back::api::dirs::home()
+        .unwrap_or_else(|| "/home/deck".into())
+        .join(".config/powertools/")
+}

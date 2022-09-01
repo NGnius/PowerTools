@@ -13,4 +13,4 @@ class Plugin:
         # startup
         self.backend_proc = subprocess.Popen([PARENT_DIR + "/bin/backend"])
         while True:
-            asyncio.sleep(1)
+            await asyncio.sleep(1)

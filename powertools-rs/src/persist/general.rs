@@ -19,7 +19,7 @@ impl Default for SettingsJson {
     fn default() -> Self {
         Self {
             version: 0,
-            name: "default".to_owned(),
+            name: crate::consts::DEFAULT_SETTINGS_NAME.to_owned(),
             persistent: false,
             cpus: Vec::with_capacity(8),
             gpu: GpuJson::default(),

@@ -4,7 +4,7 @@
     "NGnius (Graham) <ngniusness@gmail.com>"
   ],
   "description": "Universal Steam Deck Plugin Library front-end designed for WASM",
-  "version": "0.6.0",
+  "version": "0.6.2",
   "license": "GPL-3.0-only",
   "repository": {
     "type": "git",

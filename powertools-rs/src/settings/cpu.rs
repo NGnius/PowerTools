@@ -101,16 +101,18 @@ impl Cpu {
             })?;
         }
         // set governor
-        let governor_path = cpu_governor_path(self.index);
-        usdpl_back::api::files::write_single(&governor_path, &self.governor).map_err(|e| {
-            SettingError {
-                msg: format!(
-                    "Failed to write `{}` to `{}`: {}",
-                    &self.governor, &governor_path, e
-                ),
-                setting: super::SettingVariant::Cpu,
-            }
-        })?;
+        if self.index == 0 || self.online {
+            let governor_path = cpu_governor_path(self.index);
+            usdpl_back::api::files::write_single(&governor_path, &self.governor).map_err(|e| {
+                SettingError {
+                    msg: format!(
+                        "Failed to write `{}` to `{}`: {}",
+                        &self.governor, &governor_path, e
+                    ),
+                    setting: super::SettingVariant::Cpu,
+                }
+            })?;
+        }
         Ok(())
     }
 
@@ -141,7 +143,7 @@ impl Cpu {
         if let Some(dash_index) = data.find('-') {
             let data = data.split_off(dash_index + 1);
             if let Ok(max_cpu) = data.parse::<usize>() {
-                return Some(max_cpu);
+                return Some(max_cpu + 1);
             }
         }
         log::warn!("Failed to parse CPU info from kernel, is Tux evil?");

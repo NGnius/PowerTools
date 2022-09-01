@@ -18,10 +18,12 @@ pub fn set_persistent(
                 unwrap_lock(saver.lock(), "save channel").send(()),
                 "Failed to send on save channel",
             );
-            super::utility::map_empty_result(
+            let result = super::utility::map_empty_result(
                 settings_lock.on_set(),
                 settings_lock.persistent,
-            )
+            );
+            log::debug!("Persistent is now {}", settings_lock.persistent);
+            result
         } else {
             vec!["set_persistent missing parameter".into()]
         }
@@ -46,15 +48,38 @@ pub fn load_settings(
     move |params_in: super::ApiParameterType| {
         if let Some(Primitive::String(path)) = params_in.get(0) {
             if let Some(Primitive::String(name)) = params_in.get(1) {
-                super::utility::map_result(
-                    settings.load_file(path.into(), name.to_owned())
-                )
+                match settings.load_file(path.into(), name.to_owned()) {
+                    Err(e) => vec![e.msg.into()],
+                    Ok(success) =>
+                        super::utility::map_empty_result(
+                            settings.clone().on_set(),
+                            success
+                        )
+                }
             } else {
                 vec!["load_settings missing name parameter".into()]
             }
             //let mut general_lock = unwrap_lock(settings.general.lock(), "general");
         } else {
             vec!["load_settings missing path parameter".into()]
+        }
+    }
+}
+
+/// Generate load default settings from file web method
+pub fn load_default_settings(
+    settings: Settings,
+) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    move |_: super::ApiParameterType| {
+        match settings.load_file(
+                crate::consts::DEFAULT_SETTINGS_FILE.into(),
+                crate::consts::DEFAULT_SETTINGS_NAME.to_owned()
+            ) {
+            Err(e) => vec![e.msg.into()],
+            Ok(success) => super::utility::map_empty_result(
+                            settings.clone().on_set(),
+                            success
+                        )
         }
     }
 }
@@ -69,5 +94,18 @@ pub fn get_name(
             .name
             .clone()
             .into()]
+    }
+}
+
+/// Generate get current settings name
+pub fn lock_unlock_all(
+    settings: Settings,
+) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    move |_: super::ApiParameterType| {
+        let _lock = unwrap_lock(settings.general.lock(), "general");
+        let _lock = unwrap_lock(settings.cpus.lock(), "cpus");
+        let _lock = unwrap_lock(settings.gpu.lock(), "gpu");
+        let _lock = unwrap_lock(settings.battery.lock(), "battery");
+        vec![true.into()]
     }
 }

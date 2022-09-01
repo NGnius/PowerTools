@@ -1,4 +1,4 @@
-import {init_usdpl, target, init_embedded, call_backend} from "usdpl-front";
+import {init_usdpl, target_usdpl, init_embedded, call_backend} from "usdpl-front";
 
 const USDPL_PORT: number = 44443;
 
@@ -20,11 +20,15 @@ export async function initBackend() {
     // init usdpl
     await init_embedded();
     init_usdpl(USDPL_PORT);
-    console.log("USDPL started for framework: " + target());
+    console.log("USDPL started for framework: " + target_usdpl());
     //setReady(true);
 }
 
 // API
+
+export async function getInfo(): Promise<string> {
+    return (await call_backend("V_INFO", []))[0];
+}
 
 // Battery
 
@@ -126,6 +130,14 @@ export async function loadGeneralSettings(path: string, name: string): Promise<b
     return (await call_backend("GENERAL_load_settings", [path, name]))[0];
 }
 
-export async function getGeneralPersistent(): Promise<boolean> {
+export async function loadGeneralDefaultSettings(): Promise<boolean> {
+    return (await call_backend("GENERAL_load_default_settings", []))[0];
+}
+
+export async function getGeneralSettingsName(): Promise<boolean> {
     return (await call_backend("GENERAL_get_name", []))[0];
+}
+
+export async function waitForComplete(): Promise<boolean> {
+    return (await call_backend("GENERAL_wait_for_unlocks", []))[0];
 }

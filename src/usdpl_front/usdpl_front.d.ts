@@ -9,7 +9,25 @@ export function init_usdpl(port: number): void;
 * Get the targeted plugin framework, or "any" if unknown
 * @returns {string}
 */
-export function target(): string;
+export function target_usdpl(): string;
+/**
+* Get the UDSPL front-end version
+* @returns {string}
+*/
+export function version_usdpl(): string;
+/**
+* Get the targeted plugin framework, or "any" if unknown
+* @param {string} key
+* @param {any} value
+* @returns {any}
+*/
+export function set_value(key: string, value: any): any;
+/**
+* Get the targeted plugin framework, or "any" if unknown
+* @param {string} key
+* @returns {any}
+*/
+export function get_value(key: string): any;
 /**
 * Call a function on the back-end.
 * Returns null (None) if this fails for any reason.
@@ -24,7 +42,10 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly init_usdpl: (a: number) => void;
-  readonly target: (a: number) => void;
+  readonly target_usdpl: (a: number) => void;
+  readonly version_usdpl: (a: number) => void;
+  readonly set_value: (a: number, b: number, c: number) => number;
+  readonly get_value: (a: number, b: number) => number;
   readonly call_backend: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_export_0: (a: number) => number;
   readonly __wbindgen_export_1: (a: number, b: number, c: number) => number;
