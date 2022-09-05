@@ -37,6 +37,9 @@ const BACKEND_INFO = "VINFO";
 
 const CURRENT_BATT = "BATTERY_current_now";
 const CHARGE_RATE_BATT = "BATTERY_charge_rate";
+const CHARGE_NOW_BATT = "BATTERY_charge_now";
+const CHARGE_FULL_BATT = "BATTERY_charge_full";
+const CHARGE_DESIGN_BATT = "BATTERY_charge_design"
 
 const TOTAL_CPUS = "CPUs_total";
 const ONLINE_CPUS = "CPUs_online";
@@ -58,6 +61,9 @@ const reload = function() {
 
   backend.resolve(backend.getBatteryCurrent(), (rate: number) => { set_value(CURRENT_BATT, rate) });
   backend.resolve(backend.getBatteryChargeRate(), (rate: number) => { set_value(CHARGE_RATE_BATT, rate) });
+  backend.resolve(backend.getBatteryChargeNow(), (rate: number) => { set_value(CHARGE_NOW_BATT, rate) });
+  backend.resolve(backend.getBatteryChargeFull(), (rate: number) => { set_value(CHARGE_FULL_BATT, rate) });
+  backend.resolve(backend.getBatteryChargeDesign(), (rate: number) => { set_value(CHARGE_DESIGN_BATT, rate) });
 
   backend.resolve(backend.getCpuCount(), (count: number) => { set_value(TOTAL_CPUS, count)});
   backend.resolve(backend.getCpusOnline(), (statii: boolean[]) => {
@@ -130,6 +136,8 @@ const reload = function() {
 
 const periodicals = function() {
   backend.resolve(backend.getBatteryCurrent(), (rate: number) => { set_value(CURRENT_BATT, rate) });
+  backend.resolve(backend.getBatteryChargeNow(), (rate: number) => { set_value(CHARGE_NOW_BATT, rate) });
+  backend.resolve(backend.getBatteryChargeFull(), (rate: number) => { set_value(CHARGE_FULL_BATT, rate) });
 
   backend.resolve(backend.getGeneralPersistent(), (value: boolean) => { set_value(PERSISTENT_GEN, value) });
   backend.resolve(backend.getGeneralSettingsName(), (name: string) => {
@@ -457,30 +465,30 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
       <div className={staticClasses.PanelSectionTitle}>
         Battery
       </div>
-      { false && <PanelSectionRow>
+      <PanelSectionRow>
         <div className={FieldWithSeparator}>
           <div className={gamepadDialogClasses.FieldLabelRow}>
             <div className={gamepadDialogClasses.FieldLabel}>
             Now (Charge)
             </div>
             <div className={gamepadDialogClasses.FieldChildren}>
-            {/* TODO: (7.7 * chargeNowGlobal / 1000000).toFixed(1).toString() + " Wh (" + (100 * chargeNowGlobal / chargeFullGlobal).toFixed(1).toString() + "%)"*/}
+            {get_value(CHARGE_NOW_BATT).toFixed(1)} Wh ({(100 * get_value(CHARGE_NOW_BATT) / get_value(CHARGE_FULL_BATT)).toFixed(1)}%)
             </div>
           </div>
         </div>
-      </PanelSectionRow>}
-      { false && <PanelSectionRow>
+      </PanelSectionRow>
+      <PanelSectionRow>
         <div className={FieldWithSeparator}>
           <div className={gamepadDialogClasses.FieldLabelRow}>
             <div className={gamepadDialogClasses.FieldLabel}>
             Max (Design)
             </div>
             <div className={gamepadDialogClasses.FieldChildren}>
-            {/* TODO: (7.7 * chargeFullGlobal / 1000000).toFixed(1).toString() + " Wh (" + (100 * chargeFullGlobal / chargeDesignGlobal).toFixed(1).toString() + "%)"*/}
+            {get_value(CHARGE_FULL_BATT).toFixed(1)} Wh ({(100 * get_value(CHARGE_FULL_BATT) / get_value(CHARGE_DESIGN_BATT)).toFixed(1)}%)
             </div>
           </div>
         </div>
-      </PanelSectionRow>}
+      </PanelSectionRow>
       <PanelSectionRow>
         <ToggleField
           checked={get_value(CHARGE_RATE_BATT) != null}
@@ -553,7 +561,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
         <div className={FieldWithSeparator}>
           <div className={gamepadDialogClasses.FieldLabelRow}>
             <div className={gamepadDialogClasses.FieldLabel}>
-            Now Playing
+            Profile
             </div>
             <div className={gamepadDialogClasses.FieldChildren}>
             {get_value(NAME_GEN)}

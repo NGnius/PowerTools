@@ -9,8 +9,13 @@ pub struct Battery {
     state: crate::state::Battery,
 }
 
+const BATTERY_VOLTAGE: f64 = 7.7;
+
 const BATTERY_CHARGE_RATE_PATH: &str = "/sys/class/hwmon/hwmon5/maximum_battery_charge_rate"; // write-only
 const BATTERY_CURRENT_NOW_PATH: &str = "/sys/class/power_supply/BAT1/current_now"; // read-only
+const BATTERY_CHARGE_NOW_PATH: &str = "/sys/class/hwmon/hwmon2/device/charge_now"; // read-only
+const BATTERY_CHARGE_FULL_PATH: &str = "/sys/class/hwmon/hwmon2/device/charge_full"; // read-only
+const BATTERY_CHARGE_DESIGN_PATH: &str = "/sys/class/hwmon/hwmon2/device/charge_full_design"; // read-only
 
 impl Battery {
     #[inline]
@@ -57,7 +62,7 @@ impl Battery {
         }
     }
 
-    pub fn current_now() -> Result<u64, SettingError> {
+    pub fn read_current_now() -> Result<u64, SettingError> {
         match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CURRENT_NOW_PATH) {
             Err((Some(e), None)) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", BATTERY_CURRENT_NOW_PATH, e),
@@ -74,6 +79,63 @@ impl Battery {
             // this value is in uA, while it's set in mA
             // so convert this to mA for consistency
             Ok(val) => Ok(val / 1000),
+        }
+    }
+
+    pub fn read_charge_now() -> Result<f64, SettingError> {
+        match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_NOW_PATH) {
+            Err((Some(e), None)) => Err(SettingError {
+                msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_NOW_PATH, e),
+                setting: super::SettingVariant::Battery,
+            }),
+            Err((None, Some(e))) => Err(SettingError {
+                msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_NOW_PATH, e),
+                setting: super::SettingVariant::Battery,
+            }),
+            Err(_) => panic!(
+                "Invalid error while reading from `{}`",
+                BATTERY_CHARGE_NOW_PATH
+            ),
+            // convert to Wh
+            Ok(val) => Ok((val as f64) / 1000000.0 * BATTERY_VOLTAGE),
+        }
+    }
+
+    pub fn read_charge_full() -> Result<f64, SettingError> {
+        match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_FULL_PATH) {
+            Err((Some(e), None)) => Err(SettingError {
+                msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_FULL_PATH, e),
+                setting: super::SettingVariant::Battery,
+            }),
+            Err((None, Some(e))) => Err(SettingError {
+                msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_FULL_PATH, e),
+                setting: super::SettingVariant::Battery,
+            }),
+            Err(_) => panic!(
+                "Invalid error while reading from `{}`",
+                BATTERY_CHARGE_NOW_PATH
+            ),
+            // convert to Wh
+            Ok(val) => Ok((val as f64) / 1000000.0 * BATTERY_VOLTAGE),
+        }
+    }
+
+    pub fn read_charge_design() -> Result<f64, SettingError> {
+        match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_DESIGN_PATH) {
+            Err((Some(e), None)) => Err(SettingError {
+                msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_DESIGN_PATH, e),
+                setting: super::SettingVariant::Battery,
+            }),
+            Err((None, Some(e))) => Err(SettingError {
+                msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_DESIGN_PATH, e),
+                setting: super::SettingVariant::Battery,
+            }),
+            Err(_) => panic!(
+                "Invalid error while reading from `{}`",
+                BATTERY_CHARGE_NOW_PATH
+            ),
+            // convert to Wh
+            Ok(val) => Ok((val as f64) / 1000000.0 * BATTERY_VOLTAGE),
         }
     }
 

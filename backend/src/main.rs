@@ -17,11 +17,14 @@ use usdpl_back::core::serdes::Primitive;
 use usdpl_back::Instance;
 
 fn main() -> Result<(), ()> {
+    #[cfg(debug_assertions)]
     let log_filepath = format!("/home/deck/{}.log", PACKAGE_NAME);
+    #[cfg(not(debug_assertions))]
+    let log_filepath = format!("/tmp/{}.log", PACKAGE_NAME);
     #[cfg(debug_assertions)]
     {
         if std::path::Path::new(&log_filepath).exists() {
-            std::fs::copy(&log_filepath, "/home/deck/powertools.log.old").unwrap();
+            std::fs::copy(&log_filepath, format!("/home/deck/{}.log.old", PACKAGE_NAME)).unwrap();
         }
     }
     WriteLogger::init(
@@ -59,6 +62,9 @@ fn main() -> Result<(), ()> {
         })
         // battery API functions
         .register("BATTERY_current_now", api::battery::current_now)
+        .register("BATTERY_charge_now", api::battery::charge_now)
+        .register("BATTERY_charge_full", api::battery::charge_full)
+        .register("BATTERY_charge_design", api::battery::charge_design)
         .register(
             "BATTERY_set_charge_rate",
             api::battery::set_charge_rate(loaded_settings.battery.clone(), save_sender.clone()),

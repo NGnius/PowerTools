@@ -36,6 +36,18 @@ export async function getBatteryCurrent(): Promise<number> {
     return (await call_backend("BATTERY_current_now", []))[0];
 }
 
+export async function getBatteryChargeNow(): Promise<number> {
+    return (await call_backend("BATTERY_charge_now", []))[0];
+}
+
+export async function getBatteryChargeFull(): Promise<number> {
+    return (await call_backend("BATTERY_charge_full", []))[0];
+}
+
+export async function getBatteryChargeDesign(): Promise<number> {
+    return (await call_backend("BATTERY_charge_design", []))[0];
+}
+
 export async function getBatteryChargeRate(): Promise<number> {
     return (await call_backend("BATTERY_get_charge_rate", []))[0];
 }

@@ -1,5 +1,5 @@
 {
-  "name": "PowerTools",
+    "name": "PowerTools",
     "author": "NGnius",
     "flags": ["root", "debug"],
     "publish": {
