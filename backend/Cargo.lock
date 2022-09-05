@@ -567,7 +567,7 @@ dependencies = [
 
 [[package]]
 name = "powertools-rs"
-version = "1.0.0"
+version = "1.0.0-beta4"
 dependencies = [
  "log",
  "serde",
@@ -1054,6 +1054,8 @@ dependencies = [
 [[package]]
 name = "usdpl-back"
 version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cbbc0781e83ba990f8239142e33173a2d2548701775f3db66702d1af4fd0319a"
 dependencies = [
  "bytes",
  "hex",
@@ -1066,6 +1068,8 @@ dependencies = [
 [[package]]
 name = "usdpl-core"
 version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "862153581fac266458521f49e5906a71c1eee1665cb4c7d71e9586bd34b45394"
 dependencies = [
  "aes-gcm-siv",
  "base64",

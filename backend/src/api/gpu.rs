@@ -124,7 +124,7 @@ pub fn unset_clock_limits(
             unwrap_lock(saver.lock(), "save channel").send(()),
             "Failed to send on save channel",
         );
-        vec![]
+        super::utility::map_empty_result(settings_lock.on_set(), true)
     }
 }
 

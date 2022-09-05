@@ -173,16 +173,21 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           onChange={(smt: boolean) => {
             console.debug("SMT is now " + smt.toString());
             const cpus = get_value(ONLINE_CPUS);
-            set_value(ONLINE_CPUS, 0);
             smtGlobal = smt && smtAllowed;
             for (let i = 0; i < total_cpus; i++) {
               const online = (smtGlobal? i < cpus : (i % 2 == 0) && (i < cpus * 2))
                 || (!smtGlobal && cpus == 4);
-              backend.resolve(backend.setCpuOnline(i, online), (value: boolean) => {
-                if (value) {set_value(ONLINE_CPUS, get_value(ONLINE_CPUS) + 1)}
-              })
+              backend.resolve(backend.setCpuOnline(i, online), (_value: boolean) => {});
             }
-            backend.resolve(backend.waitForComplete(), (_: boolean[]) => {
+            backend.resolve(backend.getCpusOnline(), (statii: boolean[]) => {
+              // TODO: allow for per-core control of online status
+              let count = 0;
+              for (let i = 0; i < statii.length; i++) {
+                if (statii[i]) {
+                  count += 1;
+                }
+              }
+              set_value(ONLINE_CPUS, count);
               reloadGUI("SMT");
             });
           }}
@@ -200,14 +205,21 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             console.debug("CPU slider is now " + cpus.toString());
             const onlines = get_value(ONLINE_CPUS);
             if (cpus != onlines) {
-              set_value(ONLINE_CPUS, 0);
               for (let i = 0; i < total_cpus; i++) {
                 const online = smtGlobal? i < cpus : (i % 2 == 0) && (i < cpus * 2);
                 backend.resolve(backend.setCpuOnline(i, online), (value: boolean) => {
                   if (value) {set_value(ONLINE_CPUS, get_value(ONLINE_CPUS) + 1)}
                 })
               }
-              backend.resolve(backend.waitForComplete(), (_: boolean[]) => {
+              backend.resolve(backend.getCpusOnline(), (statii: boolean[]) => {
+                // TODO: allow for per-core control of online status
+                let count = 0;
+                for (let i = 0; i < statii.length; i++) {
+                  if (statii[i]) {
+                    count += 1;
+                  }
+                }
+                set_value(ONLINE_CPUS, count);
                 reloadGUI("CPUs");
               });
             }
@@ -218,6 +230,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
         <ToggleField
           checked={get_value(CLOCK_MIN_CPU) != null && get_value(CLOCK_MAX_CPU) != null}
           label="Frequency Limits"
+          description="Set bounds on clock speed"
           onChange={(value: boolean) => {
             if (value) {
               set_value(CLOCK_MIN_CPU, 1400);
@@ -365,6 +378,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
         <ToggleField
           checked={get_value(CLOCK_MIN_GPU) != null && get_value(CLOCK_MAX_GPU) != null}
           label="Frequency Limits"
+          description="Override bounds on gpu clock"
           onChange={(value: boolean) => {
             if (value) {
               set_value(CLOCK_MIN_GPU, 200);

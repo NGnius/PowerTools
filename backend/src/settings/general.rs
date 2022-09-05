@@ -120,7 +120,8 @@ impl Settings {
         }
     }
     
-    pub fn load_file(&self, json_path: PathBuf, name: String) -> Result<bool, SettingError> {
+    pub fn load_file(&self, filename: PathBuf, name: String) -> Result<bool, SettingError> {
+        let json_path = crate::utility::settings_dir().join(filename);
         let mut general_lock = unwrap_lock(self.general.lock(), "general");
         if json_path.exists() {
             let settings_json = SettingsJson::open(&json_path).map_err(|e| SettingError {

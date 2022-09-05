@@ -97,7 +97,7 @@ pub fn get_name(
     }
 }
 
-/// Generate get current settings name
+/// Generate wait for all locks to be available web method
 pub fn lock_unlock_all(
     settings: Settings,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {

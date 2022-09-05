@@ -13,6 +13,7 @@ pub struct Gpu {
     pub slow_ppt: Option<u64>,
     pub clock_limits: Option<MinMax<u64>>,
     pub slow_memory: bool,
+    state: crate::state::Gpu,
 }
 
 // same as CPU
@@ -29,17 +30,19 @@ impl Gpu {
                 slow_ppt: other.slow_ppt,
                 clock_limits: other.clock_limits.map(|x| MinMax::from_json(x, version)),
                 slow_memory: other.slow_memory,
+                state: crate::state::Gpu::default(),
             },
             _ => Self {
                 fast_ppt: other.fast_ppt,
                 slow_ppt: other.slow_ppt,
                 clock_limits: other.clock_limits.map(|x| MinMax::from_json(x, version)),
                 slow_memory: other.slow_memory,
+                state: crate::state::Gpu::default(),
             },
         }
     }
 
-    fn set_all(&self) -> Result<(), SettingError> {
+    fn set_all(&mut self) -> Result<(), SettingError> {
         // set fast PPT
         if let Some(fast_ppt) = &self.fast_ppt {
             let fast_ppt_path = gpu_power_path(FAST_PPT);
@@ -67,7 +70,8 @@ impl Gpu {
             })?;
         }
         // settings using force_performance_level
-        if self.clock_limits.is_some() || self.slow_memory {
+        let mode: String = usdpl_back::api::files::read_single(GPU_FORCE_LIMITS_PATH.to_owned()).unwrap();
+        if mode != "manual" {
             // set manual control
             usdpl_back::api::files::write_single(GPU_FORCE_LIMITS_PATH, "manual").map_err(|e| {
                 SettingError {
@@ -78,58 +82,73 @@ impl Gpu {
                     setting: super::SettingVariant::Gpu,
                 }
             })?;
-            // set clock limits
-            if let Some(clock_limits) = &self.clock_limits {
-                // max clock
-                let payload_max = format!("s 1 {}", clock_limits.max);
-                usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_max).map_err(
-                    |e| SettingError {
-                        msg: format!(
-                            "Failed to write `{}` to `{}`: {}",
-                            &payload_max, GPU_CLOCK_LIMITS_PATH, e
-                        ),
-                        setting: super::SettingVariant::Gpu,
-                    },
-                )?;
-                // min clock
-                let payload_min = format!("s 0 {}", clock_limits.min);
-                usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
-                    |e| SettingError {
-                        msg: format!(
-                            "Failed to write `{}` to `{}`: {}",
-                            &payload_min, GPU_CLOCK_LIMITS_PATH, e
-                        ),
-                        setting: super::SettingVariant::Gpu,
-                    },
-                )?;
-            }
-            // force downclock of GPU memory (to 400Mhz?)
-            usdpl_back::api::files::write_single(GPU_MEMORY_DOWNCLOCK_PATH, self.slow_memory as u8)
-                .map_err(|e| SettingError {
-                    msg: format!("Failed to write to `{}`: {}", GPU_MEMORY_DOWNCLOCK_PATH, e),
-                    setting: super::SettingVariant::Gpu,
-                })?;
-            // commit changes
-            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c").map_err(|e| {
-                SettingError {
-                    msg: format!("Failed to write `c` to `{}`: {}", GPU_CLOCK_LIMITS_PATH, e),
-                    setting: super::SettingVariant::Gpu,
-                }
+        }
+        // enable/disable downclock of GPU memory (to 400Mhz?)
+        usdpl_back::api::files::write_single(GPU_MEMORY_DOWNCLOCK_PATH, self.slow_memory as u8)
+            .map_err(|e| SettingError {
+                msg: format!("Failed to write to `{}`: {}", GPU_MEMORY_DOWNCLOCK_PATH, e),
+                setting: super::SettingVariant::Gpu,
             })?;
-        } else {
-            // disable manual clock limits
-            usdpl_back::api::files::write_single(GPU_FORCE_LIMITS_PATH, "auto").map_err(|e| {
-                SettingError {
+        if let Some(clock_limits) = &self.clock_limits {
+            // set clock limits
+            self.state.clock_limits_set = true;
+            // max clock
+            let payload_max = format!("s 1 {}\n", clock_limits.max);
+            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_max).map_err(
+                |e| SettingError {
                     msg: format!(
-                        "Failed to write `auto` to `{}`: {}",
-                        GPU_FORCE_LIMITS_PATH, e
+                        "Failed to write `{}` to `{}`: {}",
+                        &payload_max, GPU_CLOCK_LIMITS_PATH, e
                     ),
                     setting: super::SettingVariant::Gpu,
-                }
-            })?;
+                },
+            )?;
+            // min clock
+            let payload_min = format!("s 0 {}\n", clock_limits.min);
+            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
+                |e| SettingError {
+                    msg: format!(
+                        "Failed to write `{}` to `{}`: {}",
+                        &payload_min, GPU_CLOCK_LIMITS_PATH, e
+                    ),
+                    setting: super::SettingVariant::Gpu,
+                },
+            )?;
+        } else if self.state.clock_limits_set {
+            self.state.clock_limits_set = false;
+            // disable manual clock limits
+            // max clock
+            let payload_max = format!("s 1 {}\n", Self::max().clock_limits.unwrap().max);
+            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_max).map_err(
+                |e| SettingError {
+                    msg: format!(
+                        "Failed to write `{}` to `{}`: {}",
+                        &payload_max, GPU_CLOCK_LIMITS_PATH, e
+                    ),
+                    setting: super::SettingVariant::Gpu,
+                },
+            )?;
+            // min clock
+            let payload_min = format!("s 0 {}\n", Self::min().clock_limits.unwrap().min);
+            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
+                |e| SettingError {
+                    msg: format!(
+                        "Failed to write `{}` to `{}`: {}",
+                        &payload_min, GPU_CLOCK_LIMITS_PATH, e
+                    ),
+                    setting: super::SettingVariant::Gpu,
+                },
+            )?;
         }
+        // commit changes
+        usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
+            SettingError {
+                msg: format!("Failed to write `c` to `{}`: {}", GPU_CLOCK_LIMITS_PATH, e),
+                setting: super::SettingVariant::Gpu,
+            }
+        })?;
 
-        Ok(()) // TODO
+        Ok(())
     }
 
     fn clamp_all(&mut self) {
@@ -161,6 +180,7 @@ impl Gpu {
             slow_ppt: None,
             clock_limits: None,
             slow_memory: false,
+            state: crate::state::Gpu::default(),
         }
     }
 }
@@ -186,7 +206,7 @@ impl OnSet for Gpu {
 
 impl OnResume for Gpu {
     fn on_resume(&self) -> Result<(), SettingError> {
-        self.set_all()
+        self.clone().set_all()
     }
 }
 
@@ -201,6 +221,7 @@ impl SettingsRange for Gpu {
                 max: 1600,
             }),
             slow_memory: false,
+            state: crate::state::Gpu::default(),
         }
     }
 
@@ -211,6 +232,7 @@ impl SettingsRange for Gpu {
             slow_ppt: Some(1000000),
             clock_limits: Some(MinMax { min: 200, max: 200 }),
             slow_memory: true,
+            state: crate::state::Gpu::default(),
         }
     }
 }

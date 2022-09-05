@@ -139,7 +139,7 @@ pub fn unset_clock_limits(
                     unwrap_lock(saver.lock(), "save channel").send(()),
                     "Failed to send on save channel",
                 );
-                vec![]
+                super::utility::map_empty_result(cpu.on_set(), true)
             } else {
                 vec!["get_clock_limits cpu index out of bounds".into()]
             }

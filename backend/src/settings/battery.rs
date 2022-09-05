@@ -6,6 +6,7 @@ use crate::persist::BatteryJson;
 #[derive(Debug, Clone)]
 pub struct Battery {
     pub charge_rate: Option<u64>,
+    state: crate::state::Battery,
 }
 
 const BATTERY_CHARGE_RATE_PATH: &str = "/sys/class/hwmon/hwmon5/maximum_battery_charge_rate"; // write-only
@@ -17,16 +18,27 @@ impl Battery {
         match version {
             0 => Self {
                 charge_rate: other.charge_rate,
+                state: crate::state::Battery::default(),
             },
             _ => Self {
                 charge_rate: other.charge_rate,
+                state: crate::state::Battery::default(),
             },
         }
     }
 
-    fn set_all(&self) -> Result<(), SettingError> {
+    fn set_all(&mut self) -> Result<(), SettingError> {
         if let Some(charge_rate) = self.charge_rate {
+            self.state.charge_rate_set = true;
             usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, charge_rate).map_err(
+                |e| SettingError {
+                    msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
+                    setting: super::SettingVariant::Battery,
+                },
+            )
+        } else if self.state.charge_rate_set {
+            self.state.charge_rate_set = false;
+            usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, Self::max().charge_rate.unwrap()).map_err(
                 |e| SettingError {
                     msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
                     setting: super::SettingVariant::Battery,
@@ -66,7 +78,10 @@ impl Battery {
     }
 
     pub fn system_default() -> Self {
-        Self { charge_rate: None }
+        Self {
+            charge_rate: None,
+            state: crate::state::Battery::default(),
+        }
     }
 }
 
@@ -88,7 +103,7 @@ impl OnSet for Battery {
 
 impl OnResume for Battery {
     fn on_resume(&self) -> Result<(), SettingError> {
-        self.set_all()
+        self.clone().set_all()
     }
 }
 
@@ -97,6 +112,7 @@ impl SettingsRange for Battery {
     fn max() -> Self {
         Self {
             charge_rate: Some(2500),
+            state: crate::state::Battery::default(),
         }
     }
 
@@ -104,6 +120,7 @@ impl SettingsRange for Battery {
     fn min() -> Self {
         Self {
             charge_rate: Some(250),
+            state: crate::state::Battery::default(),
         }
     }
 }

@@ -41,5 +41,6 @@ __pycache__/
 yalc.lock
 
 # rust
-/powertools-rs/target
+/backend/target
 /bin
+/backend/out

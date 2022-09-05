@@ -10,6 +10,7 @@ pub struct Cpu {
     pub clock_limits: Option<MinMax<u64>>,
     pub governor: String,
     index: usize,
+    state: crate::state::Cpu,
 }
 
 const CPU_CLOCK_LIMITS_PATH: &str = "/sys/class/drm/card0/device/pp_od_clk_voltage";
@@ -26,17 +27,19 @@ impl Cpu {
                 clock_limits: other.clock_limits.map(|x| MinMax::from_json(x, version)),
                 governor: other.governor,
                 index: i,
+                state: crate::state::Cpu::default(),
             },
             _ => Self {
                 online: other.online,
                 clock_limits: other.clock_limits.map(|x| MinMax::from_json(x, version)),
                 governor: other.governor,
                 index: i,
+                state: crate::state::Cpu::default(),
             },
         }
     }
 
-    fn set_all(&self) -> Result<(), SettingError> {
+    fn set_all(&mut self) -> Result<(), SettingError> {
         // set cpu online/offline
         if self.index != 0 { // cpu0 cannot be disabled
             let online_path = cpu_online_path(self.index);
@@ -48,7 +51,9 @@ impl Cpu {
             })?;
         }
         // set clock limits
-        if let Some(clock_limits) = &self.clock_limits {
+        log::debug!("Setting {} to manual", CPU_FORCE_LIMITS_PATH);
+        let mode: String = usdpl_back::api::files::read_single(CPU_FORCE_LIMITS_PATH.to_owned()).unwrap();
+        if mode != "manual" {
             // set manual control
             usdpl_back::api::files::write_single(CPU_FORCE_LIMITS_PATH, "manual").map_err(|e| {
                 SettingError {
@@ -59,8 +64,12 @@ impl Cpu {
                     setting: super::SettingVariant::Cpu,
                 }
             })?;
+        }
+        if let Some(clock_limits) = &self.clock_limits {
+            log::debug!("Setting CPU {} (min, max) clockspeed to ({}, {})", self.index, clock_limits.min, clock_limits.max);
+            self.state.clock_limits_set = true;
             // max clock
-            let payload_max = format!("p {} 1 {}", self.index / 2, clock_limits.max);
+            let payload_max = format!("p {} 1 {}\n", self.index / 2, clock_limits.max);
             usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_max).map_err(
                 |e| SettingError {
                     msg: format!(
@@ -71,7 +80,7 @@ impl Cpu {
                 },
             )?;
             // min clock
-            let payload_min = format!("p {} 0 {}", self.index / 2, clock_limits.min);
+            let payload_min = format!("p {} 0 {}\n", self.index / 2, clock_limits.min);
             usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
                 |e| SettingError {
                     msg: format!(
@@ -81,25 +90,41 @@ impl Cpu {
                     setting: super::SettingVariant::Cpu,
                 },
             )?;
-            // commit changes
-            usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c").map_err(|e| {
-                SettingError {
-                    msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
-                    setting: super::SettingVariant::Cpu,
-                }
-            })?;
-        } else {
+        } else if self.state.clock_limits_set {
+            self.state.clock_limits_set = false;
             // disable manual clock limits
-            usdpl_back::api::files::write_single(CPU_FORCE_LIMITS_PATH, "auto").map_err(|e| {
-                SettingError {
+            log::debug!("Setting CPU {} to default clockspeed", self.index);
+            // max clock
+            let payload_max = format!("p {} 1 {}\n", self.index / 2, Self::max().clock_limits.unwrap().max);
+            usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_max).map_err(
+                |e| SettingError {
                     msg: format!(
-                        "Failed to write `auto` to `{}`: {}",
-                        CPU_FORCE_LIMITS_PATH, e
+                        "Failed to write `{}` to `{}`: {}",
+                        &payload_max, CPU_CLOCK_LIMITS_PATH, e
                     ),
                     setting: super::SettingVariant::Cpu,
-                }
-            })?;
+                },
+            )?;
+            // min clock
+            let payload_min = format!("p {} 0 {}\n", self.index / 2, Self::min().clock_limits.unwrap().min);
+            usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
+                |e| SettingError {
+                    msg: format!(
+                        "Failed to write `{}` to `{}`: {}",
+                        &payload_min, CPU_CLOCK_LIMITS_PATH, e
+                    ),
+                    setting: super::SettingVariant::Cpu,
+                },
+            )?;
         }
+        // commit changes
+        usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
+            SettingError {
+                msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
+                setting: super::SettingVariant::Cpu,
+            }
+        })?;
+
         // set governor
         if self.index == 0 || self.online {
             let governor_path = cpu_governor_path(self.index);
@@ -134,6 +159,7 @@ impl Cpu {
             governor: usdpl_back::api::files::read_single(cpu_governor_path(index))
                 .unwrap_or("schedutil".to_owned()),
             index: index,
+            state: crate::state::Cpu::default(),
         }
     }
 
@@ -152,8 +178,8 @@ impl Cpu {
 
     pub fn system_default() -> Vec<Self> {
         if let Some(max_cpu) = Self::cpu_count() {
-            let mut cpus = Vec::with_capacity(max_cpu + 1);
-            for i in 0..=max_cpu {
+            let mut cpus = Vec::with_capacity(max_cpu);
+            for i in 0..max_cpu {
                 cpus.push(Self::from_sys(i));
             }
             cpus
@@ -183,7 +209,7 @@ impl OnSet for Cpu {
 
 impl OnResume for Cpu {
     fn on_resume(&self) -> Result<(), SettingError> {
-        self.set_all()
+        self.clone().set_all()
     }
 }
 
@@ -198,6 +224,7 @@ impl SettingsRange for Cpu {
             }),
             governor: "schedutil".to_owned(),
             index: usize::MAX,
+            state: crate::state::Cpu::default(),
         }
     }
 
@@ -207,7 +234,8 @@ impl SettingsRange for Cpu {
             online: false,
             clock_limits: Some(MinMax { max: 500, min: 1400 }),
             governor: "schedutil".to_owned(),
-            index: 0,
+            index: usize::MIN,
+            state: crate::state::Cpu::default(),
         }
     }
 }
