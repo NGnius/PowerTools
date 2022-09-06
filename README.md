@@ -16,6 +16,13 @@ You will need that installed for this plugin to work.
 - Display supplementary battery info
 - Keep settings between restarts (stored in `~/.config/powertools/<appid>.json`)
 
+## Build
+
+0. Requirements: a functioning Rust toolchain for x86_64-unknown-linux-musl, npm, and some tech literacy
+1. In a terminal, navigate to the backend directory of this project and run `./build.sh`
+2. In the root of this project, run `npm run build`
+3. Transfer the project (especially dist/ and bin/) to a folder in your Steam Deck's homebrew plugins directory
+
 ## License
 
 This is licensed under GNU GPLv3.
