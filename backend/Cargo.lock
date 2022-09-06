@@ -567,7 +567,7 @@ dependencies = [
 
 [[package]]
 name = "powertools-rs"
-version = "1.0.0-rc2"
+version = "1.0.0"
 dependencies = [
  "log",
  "serde",

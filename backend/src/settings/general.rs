@@ -101,8 +101,23 @@ impl Settings {
 
     fn convert_cpus(mut cpus: Vec<CpuJson>, version: u64) -> Vec<Cpu> {
         let mut result = Vec::with_capacity(cpus.len());
+        let max_cpus = Cpu::cpu_count();
         for (i, cpu) in cpus.drain(..).enumerate() {
+            // prevent having more CPUs than available
+            if let Some(max_cpus) = max_cpus {
+                if i == max_cpus {
+                    break;
+                }
+            }
             result.push(Cpu::from_json(cpu, version, i));
+        }
+        if let Some(max_cpus) = max_cpus {
+            if result.len() != max_cpus {
+                let mut sys_cpus = Cpu::system_default();
+                for i in result.len()..sys_cpus.len() {
+                    result.push(sys_cpus.remove(i));
+                }
+            }
         }
         result
     }
