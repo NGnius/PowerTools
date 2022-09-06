@@ -187,6 +187,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             console.debug("SMT is now " + smt.toString());
             const cpus = get_value(ONLINE_CPUS);
             smtGlobal = smt && smtAllowed;
+            // TODO: move SMT setting logic back to back-end
             let onlines: boolean[] = [];
             for (let i = 0; i < total_cpus; i++) {
               const online = (smtGlobal? i < cpus : (i % 2 == 0) && (i < cpus * 2))
