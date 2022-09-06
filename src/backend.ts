@@ -70,6 +70,10 @@ export async function setCpuOnline(index: number, online: boolean): Promise<bool
     return (await call_backend("CPU_set_online", [index, online]))[0];
 }
 
+export async function setCpuOnlines(onlines: boolean[]): Promise<boolean[]> {
+    return await call_backend("CPU_set_onlines", onlines);
+}
+
 export async function getCpusOnline(): Promise<boolean[]> {
     return (await call_backend("CPU_get_onlines", [])); // -> online status for all CPUs
 }

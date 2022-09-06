@@ -50,6 +50,35 @@ pub fn set_cpu_online(
     }
 }
 
+pub fn set_cpus_online(
+    settings: Arc<Mutex<Vec<Cpu>>>,
+    saver: Sender<()>,
+) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    let saver = Mutex::new(saver); // Sender is not Sync; this is required for safety
+    move |params_in: super::ApiParameterType| {
+        let mut result = Vec::with_capacity(params_in.len());
+        let mut settings_lock = unwrap_lock(settings.lock(), "cpu");
+        for i in 0..params_in.len() {
+            if let Primitive::Bool(online) = params_in[i] {
+                if let Some(cpu) = settings_lock.get_mut(i) {
+                    cpu.online = online;
+                    match cpu.on_set() {
+                        Ok(_) => result.push(cpu.online.into()),
+                        Err(e) => result.push(e.msg.into())
+                    }
+                }
+            } else {
+                result.push(format!("Invalid parameter {}", i).into())
+            }
+        }
+        unwrap_maybe_fatal(
+            unwrap_lock(saver.lock(), "save channel").send(()),
+            "Failed to send on save channel",
+        );
+        result
+    }
+}
+
 pub fn get_cpus_online(
     settings: Arc<Mutex<Vec<Cpu>>>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
@@ -112,7 +141,7 @@ pub fn get_clock_limits(
             let mut settings_lock = unwrap_lock(settings.lock(), "cpu");
             if let Some(cpu) = settings_lock.get_mut(*index as usize) {
                 if let Some(min_max) = &cpu.clock_limits {
-                    vec![min_max.max.into(), min_max.min.into()]
+                    vec![min_max.min.into(), min_max.max.into()]
                 } else {
                     vec![Primitive::Empty, Primitive::Empty]
                 }

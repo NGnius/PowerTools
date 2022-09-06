@@ -84,6 +84,10 @@ fn main() -> Result<(), ()> {
             api::cpu::set_cpu_online(loaded_settings.cpus.clone(), save_sender.clone())
         )
         .register(
+            "CPU_set_onlines",
+            api::cpu::set_cpus_online(loaded_settings.cpus.clone(), save_sender.clone())
+        )
+        .register(
             "CPU_get_onlines",
             api::cpu::get_cpus_online(loaded_settings.cpus.clone())
         )

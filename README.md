@@ -10,8 +10,9 @@ You will need that installed for this plugin to work.
 ## What does it do?
 
 - Enable & disable CPU threads & SMT
-- Set CPU max frequency and toggle boost
-- Set some GPU power parameters (fastPPT & slowPPT)
+- Set CPU frequencies
+- Set GPU frequencies and power (fastPPT & slowPPT)
+- Cap battery charge rate (when awake)
 - Display supplementary battery info
 - Keep settings between restarts (stored in `~/.config/powertools/<appid>.json`)
 

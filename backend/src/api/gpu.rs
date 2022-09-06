@@ -105,7 +105,7 @@ pub fn get_clock_limits(
     move |_: super::ApiParameterType| {
         let settings_lock = unwrap_lock(settings.lock(), "gpu");
         if let Some(min_max) = &settings_lock.clock_limits {
-            vec![min_max.max.into(), min_max.min.into()]
+            vec![min_max.min.into(), min_max.max.into()]
         } else {
             vec![Primitive::Empty, Primitive::Empty]
         }
