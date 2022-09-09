@@ -16,6 +16,11 @@ You will need that installed for this plugin to work.
 - Display supplementary battery info
 - Keep settings between restarts (stored in `~/.config/powertools/<appid>.json`)
 
+## Install
+
+Please Decky's built-in store to install official releases.
+If you're an advanced user, and/or would like to use an in-development version, feel free to build PowerTools yourself.
+
 ## Build
 
 0. Requirements: a functioning Rust toolchain for x86_64-unknown-linux-musl, npm, and some tech literacy
