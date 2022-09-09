@@ -130,8 +130,9 @@ const reload = function() {
   startHook = SteamClient.Apps.RegisterForGameActionStart((actionType, id) => {
       //@ts-ignore
       let gameInfo: any = appStore.GetAppOverviewByGameID(id);
+      // don't use gameInfo.appid, haha
       backend.resolve(
-        backend.loadGeneralSettings(gameInfo.appid.toString() + ".json", gameInfo.display_name),
+        backend.loadGeneralSettings(id.toString() + ".json", gameInfo.display_name),
         (ok: boolean) => {console.debug("Loading settings ok? " + ok)}
       );
   });
