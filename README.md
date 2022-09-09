@@ -18,7 +18,7 @@ You will need that installed for this plugin to work.
 
 ## Install
 
-Please Decky's built-in store to install official releases.
+Please use Decky's [built-in store](https://beta.deckbrew.xyz/) to install official releases.
 If you're an advanced user, and/or would like to use an in-development version, feel free to build PowerTools yourself.
 
 ## Build
