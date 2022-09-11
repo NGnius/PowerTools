@@ -1,7 +1,7 @@
 {
     "name": "PowerTools",
     "author": "NGnius",
-    "flags": ["root", "_debug"],
+    "flags": ["root"],
     "publish": {
         "discord_id": "106537989684887552",
         "description": "Power tweaks for power users",
