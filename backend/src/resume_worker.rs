@@ -12,17 +12,20 @@ pub fn spawn(settings: Settings) -> JoinHandle<()> {
         let duration = Duration::from_millis(5000);
         let mut start = Instant::now();
         loop {
-            thread::sleep(duration);
             let old_start = start.elapsed();
             start = Instant::now();
             if old_start.as_secs_f64() > duration.as_secs_f64() * (1.0 + ALLOWED_ERROR) {
                 // has just resumed from sleep
+                log::info!("Resume detected");
                 unwrap_maybe_fatal(settings.on_resume(), "On resume failure");
                 log::debug!(
                     "OnResume completed after sleeping for {}s",
                     old_start.as_secs_f32()
                 );
+            } else {
+                log::debug!("OnResume got sleep period of {}s", old_start.as_secs_f32());
             }
+            thread::sleep(duration);
         }
         //log::warn!("resume_worker completed!");
     })

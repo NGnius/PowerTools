@@ -14,7 +14,7 @@ You will need that installed for this plugin to work.
 - Set GPU frequencies and power (fastPPT & slowPPT)
 - Cap battery charge rate (when awake)
 - Display supplementary battery info
-- Keep settings between restarts (stored in `~/.config/powertools/<appid>.json`)
+- Keep settings between restarts (stored in `~/.config/powertools/<gameId>.json`)
 
 ## Install
 

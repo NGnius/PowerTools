@@ -171,14 +171,18 @@ impl Settings {
 
 impl OnResume for Settings {
     fn on_resume(&self) -> Result<(), SettingError> {
+        log::debug!("Locking settings for on_resume");
         unwrap_lock(self.battery.lock(), "battery").on_resume()?;
+        log::debug!("Got battery lock");
         {
-            let mut cpu_lock = unwrap_lock(self.cpus.lock(), "cpu");
-            for cpu in cpu_lock.iter_mut() {
+            let cpu_lock = unwrap_lock(self.cpus.lock(), "cpu");
+            log::debug!("Got cpus lock");
+            for cpu in cpu_lock.iter() {
                 cpu.on_resume()?;
             }
         }
         unwrap_lock(self.gpu.lock(), "gpu").on_resume()?;
+        log::debug!("Got gpu lock");
         Ok(())
     }
 }
