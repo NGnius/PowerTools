@@ -4,12 +4,13 @@ use std::time::{Duration, Instant};
 use crate::settings::{OnResume, Settings};
 use crate::utility::unwrap_maybe_fatal;
 
-const ALLOWED_ERROR: f64 = 0.001;
+const ALLOWED_ERROR: f64 = 100.0; // period of 10ms with 100x means sleep has to be >= 1s to be detected
 
 pub fn spawn(settings: Settings) -> JoinHandle<()> {
     thread::spawn(move || {
         log::info!("resume_worker starting...");
-        let duration = Duration::from_millis(5000);
+        let duration = Duration::from_millis(10); // very low so it detects before Steam client does
+        // this allows PowerTools to set some values at wakeup and Steam to override them before user notices
         let mut start = Instant::now();
         loop {
             let old_start = start.elapsed();

@@ -114,7 +114,7 @@ impl Gpu {
                     setting: super::SettingVariant::Gpu,
                 },
             )?;
-        } else if self.state.clock_limits_set {
+        } else if self.state.clock_limits_set || self.state.is_resuming {
             self.state.clock_limits_set = false;
             // disable manual clock limits
             // max clock
@@ -206,7 +206,9 @@ impl OnSet for Gpu {
 
 impl OnResume for Gpu {
     fn on_resume(&self) -> Result<(), SettingError> {
-        self.clone().set_all()
+        let mut copy = self.clone();
+        copy.state.is_resuming = true;
+        copy.set_all()
     }
 }
 
