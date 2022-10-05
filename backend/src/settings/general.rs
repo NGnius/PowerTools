@@ -37,13 +37,6 @@ pub struct General {
 
 impl OnSet for General {
     fn on_set(&mut self) -> Result<(), SettingError> {
-        // remove settings file when persistence is turned off, to prevent it from be loaded next time.
-        if !self.persistent && self.path.exists() {
-            std::fs::remove_file(&self.path).map_err(|e| SettingError {
-                msg: format!("Failed to delete `{}`: {}", self.path.display(), e),
-                setting: SettingVariant::General,
-            })?;
-        }
         Ok(())
     }
 }
@@ -143,6 +136,12 @@ impl Settings {
                 msg: e.to_string(),
                 setting: SettingVariant::General,
             })?;
+            if !settings_json.persistent {
+                log::warn!("Loaded persistent config `{}` with persistent=false", json_path.display());
+                general_lock.persistent = false;
+                general_lock.name = settings_json.name;
+                return Ok(false);
+            }
             let new_cpus = Self::convert_cpus(settings_json.cpus, settings_json.version);
             let new_gpu = Gpu::from_json(settings_json.gpu, settings_json.version);
             let new_battery = Battery::from_json(settings_json.battery, settings_json.version);

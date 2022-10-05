@@ -1,6 +1,6 @@
 {
   "name": "PowerTools",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Power tweaks for power users",
   "scripts": {
     "build": "shx rm -rf dist && rollup -c",
@@ -39,7 +39,7 @@
     "typescript": "^4.6.4"
   },
   "dependencies": {
-    "decky-frontend-lib": "*",
+    "decky-frontend-lib": "3.*",
     "react-icons": "^4.4.0",
     "usdpl-front": "file:./src/usdpl_front"
   }

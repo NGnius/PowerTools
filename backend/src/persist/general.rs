@@ -31,11 +31,16 @@ impl Default for SettingsJson {
 impl SettingsJson {
     pub fn save<P: AsRef<std::path::Path>>(&self, path: P) -> Result<(), JsonError> {
         let path = path.as_ref();
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(JsonError::Io)?;
+        if !self.persistent && path.exists() {
+            // remove settings file when persistence is turned off, to prevent it from be loaded next time.
+            std::fs::remove_file(path).map_err(JsonError::Io)
+        } else {
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).map_err(JsonError::Io)?;
+            }
+            let mut file = std::fs::File::create(path).map_err(JsonError::Io)?;
+            serde_json::to_writer_pretty(&mut file, &self).map_err(JsonError::Serde)
         }
-        let mut file = std::fs::File::create(path).map_err(JsonError::Io)?;
-        serde_json::to_writer_pretty(&mut file, &self).map_err(JsonError::Serde)
     }
 
     pub fn open<P: AsRef<std::path::Path>>(path: P) -> Result<Self, JsonError> {
