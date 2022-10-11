@@ -48,7 +48,7 @@ pub fn load_settings(
     move |params_in: super::ApiParameterType| {
         if let Some(Primitive::String(path)) = params_in.get(0) {
             if let Some(Primitive::String(name)) = params_in.get(1) {
-                match settings.load_file(path.into(), name.to_owned()) {
+                match settings.load_file(path.into(), name.to_owned(), false) {
                     Err(e) => vec![e.msg.into()],
                     Ok(success) =>
                         super::utility::map_empty_result(
@@ -73,7 +73,8 @@ pub fn load_default_settings(
     move |_: super::ApiParameterType| {
         match settings.load_file(
                 crate::consts::DEFAULT_SETTINGS_FILE.into(),
-                crate::consts::DEFAULT_SETTINGS_NAME.to_owned()
+                crate::consts::DEFAULT_SETTINGS_NAME.to_owned(),
+                true
             ) {
             Err(e) => vec![e.msg.into()],
             Ok(success) => super::utility::map_empty_result(

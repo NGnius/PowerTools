@@ -127,8 +127,23 @@ impl Settings {
             battery: Arc::new(Mutex::new(Battery::system_default())),
         }
     }
+
+    fn load_system_default(&self) {
+        {
+            let mut cpu_lock = unwrap_lock(self.cpus.lock(), "cpu");
+            *cpu_lock = Cpu::system_default();
+        }
+        {
+            let mut gpu_lock = unwrap_lock(self.gpu.lock(), "gpu");
+            *gpu_lock = Gpu::system_default();
+        }
+        {
+            let mut battery_lock = unwrap_lock(self.battery.lock(), "battery");
+            *battery_lock = Battery::system_default();
+        }
+    }
     
-    pub fn load_file(&self, filename: PathBuf, name: String) -> Result<bool, SettingError> {
+    pub fn load_file(&self, filename: PathBuf, name: String, system_defaults: bool) -> Result<bool, SettingError> {
         let json_path = crate::utility::settings_dir().join(filename);
         let mut general_lock = unwrap_lock(self.general.lock(), "general");
         if json_path.exists() {
@@ -137,29 +152,32 @@ impl Settings {
                 setting: SettingVariant::General,
             })?;
             if !settings_json.persistent {
-                log::warn!("Loaded persistent config `{}` with persistent=false", json_path.display());
+                log::warn!("Loaded persistent config `{}` ({}) with persistent=false", &settings_json.name, json_path.display());
                 general_lock.persistent = false;
+                general_lock.name = name;
+            } else {
+                let new_cpus = Self::convert_cpus(settings_json.cpus, settings_json.version);
+                let new_gpu = Gpu::from_json(settings_json.gpu, settings_json.version);
+                let new_battery = Battery::from_json(settings_json.battery, settings_json.version);
+                {
+                    let mut cpu_lock = unwrap_lock(self.cpus.lock(), "cpu");
+                    *cpu_lock = new_cpus;
+                }
+                {
+                    let mut gpu_lock = unwrap_lock(self.gpu.lock(), "gpu");
+                    *gpu_lock = new_gpu;
+                }
+                {
+                    let mut battery_lock = unwrap_lock(self.battery.lock(), "battery");
+                    *battery_lock = new_battery;
+                }
+                general_lock.persistent = true;
                 general_lock.name = settings_json.name;
-                return Ok(false);
             }
-            let new_cpus = Self::convert_cpus(settings_json.cpus, settings_json.version);
-            let new_gpu = Gpu::from_json(settings_json.gpu, settings_json.version);
-            let new_battery = Battery::from_json(settings_json.battery, settings_json.version);
-            {
-                let mut cpu_lock = unwrap_lock(self.cpus.lock(), "cpu");
-                *cpu_lock = new_cpus; // TODO does this overwrite the contents of the lock as expected?
-            }
-            {
-                let mut gpu_lock = unwrap_lock(self.gpu.lock(), "gpu");
-                *gpu_lock = new_gpu;
-            }
-            {
-                let mut battery_lock = unwrap_lock(self.battery.lock(), "battery");
-                *battery_lock = new_battery;
-            }
-            general_lock.persistent = true;
-            general_lock.name = settings_json.name;
         } else {
+            if system_defaults {
+                self.load_system_default();
+            }
             general_lock.persistent = false;
             general_lock.name = name;
         }
