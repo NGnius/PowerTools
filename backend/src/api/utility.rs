@@ -14,7 +14,7 @@ pub fn map_result<T: Into<Primitive>>(result: Result<T, SettingError>) -> super:
     }
 }
 
-#[inline]
+/*#[inline]
 pub fn map_empty_result<T: Into<Primitive>>(
     result: Result<(), SettingError>,
     success: T,
@@ -26,4 +26,4 @@ pub fn map_empty_result<T: Into<Primitive>>(
             vec![e.msg.into()]
         },
     }
-}
+}*/

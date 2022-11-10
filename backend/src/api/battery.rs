@@ -1,8 +1,8 @@
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::mpsc::{Sender, self};
+use std::sync::Mutex;
 use usdpl_back::core::serdes::Primitive;
 
-use crate::settings::{Battery, OnSet};
-use crate::utility::{unwrap_lock, unwrap_maybe_fatal};
+use super::handler::{ApiMessage, BatteryMessage};
 
 /// Current current (ha!) web method
 pub fn current_now(_: super::ApiParameterType) -> super::ApiParameterType {
@@ -26,22 +26,18 @@ pub fn charge_design(_: super::ApiParameterType) -> super::ApiParameterType {
 
 /// Generate set battery charge rate web method
 pub fn set_charge_rate(
-    settings: Arc<Mutex<Battery>>,
-    saver: Sender<()>,
+    sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
-    let saver = Mutex::new(saver); // Sender is not Sync; this is required for safety
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let setter = move |rate: f64|
+        sender.lock()
+            .unwrap()
+            .send(ApiMessage::Battery(BatteryMessage::SetChargeRate(Some(rate as u64))))
+            .expect("set_charge_rate send failed");
     move |params_in: super::ApiParameterType| {
-        if let Some(Primitive::F64(new_val)) = params_in.get(0) {
-            let mut settings_lock = unwrap_lock(settings.lock(), "battery");
-            settings_lock.charge_rate = Some(*new_val as _);
-            unwrap_maybe_fatal(
-                unwrap_lock(saver.lock(), "save channel").send(()),
-                "Failed to send on save channel",
-            );
-            super::utility::map_empty_result(
-                settings_lock.on_set(),
-                settings_lock.charge_rate.unwrap(),
-            )
+        if let Some(&Primitive::F64(new_val)) = params_in.get(0) {
+            setter(new_val);
+            vec![(new_val).into()]
         } else {
             vec!["set_charge_rate missing parameter".into()]
         }
@@ -50,30 +46,28 @@ pub fn set_charge_rate(
 
 /// Generate get battery charge rate web method
 pub fn get_charge_rate(
-    settings: Arc<Mutex<Battery>>,
+    sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let (tx, rx) = mpsc::channel();
+        let callback = move |rate: Option<u64>| tx.send(rate).expect("get_charge_rate callback send failed");
+        sender.lock().unwrap().send(ApiMessage::Battery(BatteryMessage::GetChargeRate(Box::new(callback)))).expect("get_charge_rate send failed");
+        rx.recv().expect("get_charge_rate callback recv failed")
+    };
     move |_: super::ApiParameterType| {
-        let settings_lock = unwrap_lock(settings.lock(), "battery");
-        vec![settings_lock
-            .charge_rate
-            .map(|x| x.into())
-            .unwrap_or(Primitive::Empty)]
+        vec![getter().map(|x| x.into()).unwrap_or(Primitive::Empty)]
     }
 }
 
 /// Generate unset battery charge rate web method
 pub fn unset_charge_rate(
-    settings: Arc<Mutex<Battery>>,
-    saver: Sender<()>,
+    sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
-    let saver = Mutex::new(saver); // Sender is not Sync; this is required for safety
-    move |_: super::ApiParameterType| {
-        let mut settings_lock = unwrap_lock(settings.lock(), "battery");
-        settings_lock.charge_rate = None;
-        unwrap_maybe_fatal(
-            unwrap_lock(saver.lock(), "save channel").send(()),
-            "Failed to send on save channel",
-        );
-        super::utility::map_empty_result(settings_lock.on_set(), true)
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let setter = move || sender.lock().unwrap().send(ApiMessage::Battery(BatteryMessage::SetChargeRate(None))).expect("unset_charge_rate send failed");
+    move |_params_in: super::ApiParameterType| {
+        setter();
+        vec![true.into()]
     }
 }

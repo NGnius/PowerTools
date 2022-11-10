@@ -6,7 +6,8 @@ mod state;
 mod consts;
 use consts::*;
 mod resume_worker;
-mod save_worker;
+//mod save_worker;
+mod api_worker;
 mod utility;
 
 use settings::OnSet;
@@ -49,14 +50,16 @@ fn main() -> Result<(), ()> {
 
     log::debug!("Settings: {:?}", loaded_settings);
 
-    let (_save_handle, save_sender) = save_worker::spawn(loaded_settings.clone());
-    let _resume_handle = resume_worker::spawn(loaded_settings.clone());
+    let (api_handler, api_sender) = crate::api::handler::ApiMessageHandler::new();
+
+    //let (_save_handle, save_sender) = save_worker::spawn(loaded_settings.clone());
+    let _resume_handle = resume_worker::spawn(api_sender.clone());
 
     if let Err(e) = loaded_settings.on_set() {
         log::error!("Startup Settings.on_set() error: {}", e);
     }
 
-    Instance::new(PORT)
+    let instance = Instance::new(PORT)
         .register("V_INFO", |_: Vec<Primitive>| {
             vec![format!("{} v{}", PACKAGE_NAME, PACKAGE_VERSION).into()]
         })
@@ -67,107 +70,119 @@ fn main() -> Result<(), ()> {
         .register("BATTERY_charge_design", api::battery::charge_design)
         .register(
             "BATTERY_set_charge_rate",
-            api::battery::set_charge_rate(loaded_settings.battery.clone(), save_sender.clone()),
+            api::battery::set_charge_rate(api_sender.clone()),
         )
         .register(
             "BATTERY_get_charge_rate",
-            api::battery::get_charge_rate(loaded_settings.battery.clone()),
+            api::battery::get_charge_rate(api_sender.clone()),
         )
         .register(
             "BATTERY_unset_charge_rate",
-            api::battery::unset_charge_rate(loaded_settings.battery.clone(), save_sender.clone()),
+            api::battery::unset_charge_rate(api_sender.clone()),
         )
         // cpu API functions
         .register("CPU_count", api::cpu::max_cpus)
         .register(
             "CPU_set_online",
-            api::cpu::set_cpu_online(loaded_settings.cpus.clone(), save_sender.clone())
+            api::cpu::set_cpu_online(api_sender.clone())
         )
         .register(
             "CPU_set_onlines",
-            api::cpu::set_cpus_online(loaded_settings.cpus.clone(), save_sender.clone())
+            api::cpu::set_cpus_online(api_sender.clone())
         )
-        .register(
+        .register_async(
             "CPU_get_onlines",
-            api::cpu::get_cpus_online(loaded_settings.cpus.clone())
+            api::cpu::get_cpus_online(api_sender.clone())
         )
         .register(
             "CPU_set_clock_limits",
-            api::cpu::set_clock_limits(loaded_settings.cpus.clone(), save_sender.clone())
+            api::cpu::set_clock_limits(api_sender.clone())
         )
         .register(
             "CPU_get_clock_limits",
-            api::cpu::get_clock_limits(loaded_settings.cpus.clone())
+            api::cpu::get_clock_limits(api_sender.clone())
         )
         .register(
             "CPU_unset_clock_limits",
-            api::cpu::unset_clock_limits(loaded_settings.cpus.clone(), save_sender.clone())
+            api::cpu::unset_clock_limits(api_sender.clone())
         )
         .register(
             "CPU_set_governor",
-            api::cpu::set_cpu_governor(loaded_settings.cpus.clone(), save_sender.clone())
+            api::cpu::set_cpu_governor(api_sender.clone())
+        )
+        .register(
+            "CPU_set_governors",
+            api::cpu::set_cpus_governors(api_sender.clone())
         )
         .register(
             "CPU_get_governors",
-            api::cpu::get_cpu_governors(loaded_settings.cpus.clone())
+            api::cpu::get_cpu_governors(api_sender.clone())
         )
         // gpu API functions
         .register(
             "GPU_set_ppt",
-            api::gpu::set_ppt(loaded_settings.gpu.clone(), save_sender.clone())
+            api::gpu::set_ppt(api_sender.clone())
         )
-        .register(
+        .register_async(
             "GPU_get_ppt",
-            api::gpu::get_ppt(loaded_settings.gpu.clone())
+            api::gpu::get_ppt(api_sender.clone())
         )
         .register(
             "GPU_unset_ppt",
-            api::gpu::unset_ppt(loaded_settings.gpu.clone(), save_sender.clone())
+            api::gpu::unset_ppt(api_sender.clone())
         )
         .register(
             "GPU_set_clock_limits",
-            api::gpu::set_clock_limits(loaded_settings.gpu.clone(), save_sender.clone())
+            api::gpu::set_clock_limits(api_sender.clone())
         )
-        .register(
+        .register_async(
             "GPU_get_clock_limits",
-            api::gpu::get_clock_limits(loaded_settings.gpu.clone())
+            api::gpu::get_clock_limits(api_sender.clone())
         )
         .register(
             "GPU_unset_clock_limits",
-            api::gpu::unset_clock_limits(loaded_settings.gpu.clone(), save_sender.clone())
+            api::gpu::unset_clock_limits(api_sender.clone())
         )
         .register(
             "GPU_set_slow_memory",
-            api::gpu::set_slow_memory(loaded_settings.gpu.clone(), save_sender.clone())
+            api::gpu::set_slow_memory(api_sender.clone())
         )
-        .register(
+        .register_async(
             "GPU_get_slow_memory",
-            api::gpu::get_slow_memory(loaded_settings.gpu.clone())
+            api::gpu::get_slow_memory(api_sender.clone())
         )
         // general API functions
         .register(
             "GENERAL_set_persistent",
-            api::general::set_persistent(loaded_settings.general.clone(), save_sender.clone())
+            api::general::set_persistent(api_sender.clone())
         )
         .register(
             "GENERAL_get_persistent",
-            api::general::get_persistent(loaded_settings.general.clone())
+            api::general::get_persistent(api_sender.clone())
         )
         .register(
             "GENERAL_load_settings",
-            api::general::load_settings(loaded_settings.clone())
+            api::general::load_settings(api_sender.clone())
         )
         .register(
             "GENERAL_load_default_settings",
-            api::general::load_default_settings(loaded_settings.clone())
+            api::general::load_default_settings(api_sender.clone())
         )
         .register(
+            "GENERAL_load_system_settings",
+            api::general::load_system_settings(api_sender.clone())
+        )
+        .register_async(
             "GENERAL_get_name",
-            api::general::get_name(loaded_settings.general.clone())
+            api::general::get_name(api_sender.clone())
         )
-        .register(
+        .register_async(
             "GENERAL_wait_for_unlocks",
-            api::general::lock_unlock_all(loaded_settings.clone())
-        )
+            api::general::lock_unlock_all(api_sender.clone())
+        );
+
+    api_worker::spawn(loaded_settings, api_handler);
+
+    instance
         .run_blocking()
 }

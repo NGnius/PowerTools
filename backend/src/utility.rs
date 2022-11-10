@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use std::sync::{LockResult, MutexGuard};
+//use std::sync::{LockResult, MutexGuard};
 
 pub fn unwrap_maybe_fatal<T: Sized, E: Display>(result: Result<T, E>, message: &str) -> T {
     match result {
@@ -11,7 +11,7 @@ pub fn unwrap_maybe_fatal<T: Sized, E: Display>(result: Result<T, E>, message: &
     }
 }
 
-pub fn unwrap_lock<'a, T: Sized>(
+/*pub fn unwrap_lock<'a, T: Sized>(
     result: LockResult<MutexGuard<'a, T>>,
     lock_name: &str,
 ) -> MutexGuard<'a, T> {
@@ -22,7 +22,7 @@ pub fn unwrap_lock<'a, T: Sized>(
             panic!("Failed to acquire {} lock: {}", lock_name, e);
         }
     }
-}
+}*/
 
 pub fn settings_dir() -> std::path::PathBuf {
     usdpl_back::api::dirs::home()
