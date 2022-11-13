@@ -4,6 +4,131 @@ use super::MinMax;
 use super::{OnResume, OnSet, SettingError, SettingsRange};
 use crate::persist::CpuJson;
 
+const CPU_PRESENT_PATH: &str = "/sys/devices/system/cpu/present";
+const CPU_SMT_PATH: &str = "/sys/devices/system/cpu/smt/control";
+
+#[derive(Debug, Clone)]
+pub struct Cpus {
+    pub cpus: Vec<Cpu>,
+    pub smt: bool,
+    pub smt_capable: bool,
+}
+
+impl OnSet for Cpus {
+    fn on_set(&mut self) -> Result<(), SettingError> {
+        if self.smt_capable {
+            // toggle SMT
+            if self.smt {
+                usdpl_back::api::files::write_single(CPU_SMT_PATH, "on").map_err(|e| {
+                    SettingError {
+                        msg: format!(
+                            "Failed to write `on` to `{}`: {}",
+                            CPU_SMT_PATH, e
+                        ),
+                        setting: super::SettingVariant::Cpu,
+                    }
+                })?;
+            } else {
+                usdpl_back::api::files::write_single(CPU_SMT_PATH, "off").map_err(|e| {
+                    SettingError {
+                        msg: format!(
+                            "Failed to write `off` to `{}`: {}",
+                            CPU_SMT_PATH, e
+                        ),
+                        setting: super::SettingVariant::Cpu,
+                    }
+                })?;
+            }
+        }
+        for (i, cpu) in self.cpus.as_mut_slice().iter_mut().enumerate() {
+            cpu.state.do_set_online = self.smt || i % 2 == 0;
+            cpu.on_set()?;
+        }
+        Ok(())
+    }
+}
+
+impl OnResume for Cpus {
+    fn on_resume(&self) -> Result<(), SettingError> {
+        for cpu in &self.cpus {
+            cpu.on_resume()?;
+        }
+        Ok(())
+    }
+}
+
+impl Cpus {
+    pub fn cpu_count() -> Option<usize> {
+        let mut data: String = usdpl_back::api::files::read_single(CPU_PRESENT_PATH)
+            .unwrap_or_else(|_| "0-7".to_string() /* Steam Deck's default */);
+        if let Some(dash_index) = data.find('-') {
+            let data = data.split_off(dash_index + 1);
+            if let Ok(max_cpu) = data.parse::<usize>() {
+                return Some(max_cpu + 1);
+            }
+        }
+        log::warn!("Failed to parse CPU info from kernel, is Tux evil?");
+        None
+    }
+
+    fn system_smt_capabilities() -> (bool, bool) {
+        match usdpl_back::api::files::read_single::<_, String, _>(CPU_SMT_PATH) {
+            Ok(val) => (val.trim().to_lowercase() == "on", true),
+            Err(_) => (false, false)
+        }
+    }
+
+    pub fn system_default() -> Self {
+        if let Some(max_cpu) = Self::cpu_count() {
+            let mut sys_cpus = Vec::with_capacity(max_cpu);
+            for i in 0..max_cpu {
+                sys_cpus.push(Cpu::from_sys(i));
+            }
+            let (smt_status, can_smt) = Self::system_smt_capabilities();
+            Self {
+                cpus: sys_cpus,
+                smt: smt_status,
+                smt_capable: can_smt,
+            }
+        } else {
+            Self {
+                cpus: vec![],
+                smt: false,
+                smt_capable: false,
+            }
+        }
+    }
+
+    #[inline]
+    pub fn from_json(mut other: Vec<CpuJson>, version: u64) -> Self {
+        let (_, can_smt) = Self::system_smt_capabilities();
+        let mut result = Vec::with_capacity(other.len());
+        let max_cpus = Self::cpu_count();
+        for (i, cpu) in other.drain(..).enumerate() {
+            // prevent having more CPUs than available
+            if let Some(max_cpus) = max_cpus {
+                if i == max_cpus {
+                    break;
+                }
+            }
+            result.push(Cpu::from_json(cpu, version, i));
+        }
+        if let Some(max_cpus) = max_cpus {
+            if result.len() != max_cpus {
+                let mut sys_cpus = Cpus::system_default();
+                for i in result.len()..sys_cpus.cpus.len() {
+                    result.push(sys_cpus.cpus.remove(i));
+                }
+            }
+        }
+        Self {
+            cpus: result,
+            smt: true,
+            smt_capable: can_smt,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Cpu {
     pub online: bool,
@@ -15,8 +140,6 @@ pub struct Cpu {
 
 const CPU_CLOCK_LIMITS_PATH: &str = "/sys/class/drm/card0/device/pp_od_clk_voltage";
 const CPU_FORCE_LIMITS_PATH: &str = "/sys/class/drm/card0/device/power_dpm_force_performance_level";
-
-const CPU_PRESENT_PATH: &str = "/sys/devices/system/cpu/present";
 
 impl Cpu {
     #[inline]
@@ -41,7 +164,7 @@ impl Cpu {
 
     fn set_all(&mut self) -> Result<(), SettingError> {
         // set cpu online/offline
-        if self.index != 0 { // cpu0 cannot be disabled
+        if self.index != 0 && self.state.do_set_online { // cpu0 cannot be disabled
             let online_path = cpu_online_path(self.index);
             usdpl_back::api::files::write_single(&online_path, self.online as u8).map_err(|e| {
                 SettingError {
@@ -160,31 +283,6 @@ impl Cpu {
                 .unwrap_or("schedutil".to_owned()),
             index: index,
             state: crate::state::Cpu::default(),
-        }
-    }
-
-    pub fn cpu_count() -> Option<usize> {
-        let mut data: String = usdpl_back::api::files::read_single(CPU_PRESENT_PATH)
-            .unwrap_or_else(|_| "0-7".to_string() /* Steam Deck's default */);
-        if let Some(dash_index) = data.find('-') {
-            let data = data.split_off(dash_index + 1);
-            if let Ok(max_cpu) = data.parse::<usize>() {
-                return Some(max_cpu + 1);
-            }
-        }
-        log::warn!("Failed to parse CPU info from kernel, is Tux evil?");
-        None
-    }
-
-    pub fn system_default() -> Vec<Self> {
-        if let Some(max_cpu) = Self::cpu_count() {
-            let mut cpus = Vec::with_capacity(max_cpu);
-            for i in 0..max_cpu {
-                cpus.push(Self::from_sys(i));
-            }
-            cpus
-        } else {
-            Vec::with_capacity(0)
         }
     }
 }

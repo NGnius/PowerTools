@@ -1,6 +1,6 @@
 use std::sync::mpsc::{self, Receiver, Sender};
 
-use crate::settings::{Settings, Cpu, Gpu, Battery, General, OnSet, OnResume, MinMax};
+use crate::settings::{Settings, Cpus, Gpu, Battery, General, OnSet, OnResume, MinMax};
 use crate::persist::SettingsJson;
 use crate::utility::unwrap_maybe_fatal;
 
@@ -35,6 +35,7 @@ impl BatteryMessage {
 pub enum CpuMessage {
     SetCpuOnline(usize, bool),
     SetCpusOnline(Vec<bool>),
+    SetSmt(bool, Callback<Vec<bool>>),
     GetCpusOnline(Callback<Vec<bool>>),
     SetClockLimits(usize, Option<MinMax<u64>>),
     GetClockLimits(usize, Callback<Option<MinMax<u64>>>),
@@ -44,32 +45,40 @@ pub enum CpuMessage {
 }
 
 impl CpuMessage {
-    fn process(self, settings: &mut Vec<Cpu>) {
+    fn process(self, settings: &mut Cpus) {
         match self {
-            Self::SetCpuOnline(index, status) => {settings.get_mut(index).map(|c| c.online = status);},
+            Self::SetCpuOnline(index, status) => {settings.cpus.get_mut(index).map(|c| c.online = status);},
             Self::SetCpusOnline(cpus) => {
                 for i in 0..cpus.len() {
-                    settings.get_mut(i).map(|c| c.online = cpus[i]);
+                    settings.cpus.get_mut(i).map(|c| c.online = cpus[i]);
                 }
             },
+            Self::SetSmt(status, cb) => {
+                let mut result = Vec::with_capacity(settings.cpus.len());
+                for i in 0..settings.cpus.len() {
+                    settings.cpus[i].online = settings.cpus[i].online && (status || i % 2 == 0);
+                    result.push(settings.cpus[i].online);
+                }
+                cb(result);
+            }
             Self::GetCpusOnline(cb) => {
-                let mut result = Vec::with_capacity(settings.len());
-                for cpu in settings {
+                let mut result = Vec::with_capacity(settings.cpus.len());
+                for cpu in &settings.cpus {
                     result.push(cpu.online);
                 }
                 cb(result);
             },
-            Self::SetClockLimits(index, clocks) => {settings.get_mut(index).map(|c| c.clock_limits = clocks);},
-            Self::GetClockLimits(index, cb) => {settings.get(index).map(|c| cb(c.clock_limits.clone()));},
-            Self::SetCpuGovernor(index, gov) => {settings.get_mut(index).map(|c| c.governor = gov);},
+            Self::SetClockLimits(index, clocks) => {settings.cpus.get_mut(index).map(|c| c.clock_limits = clocks);},
+            Self::GetClockLimits(index, cb) => {settings.cpus.get(index).map(|c| cb(c.clock_limits.clone()));},
+            Self::SetCpuGovernor(index, gov) => {settings.cpus.get_mut(index).map(|c| c.governor = gov);},
             Self::SetCpusGovernor(govs) => {
                 for i in 0..govs.len() {
-                    settings.get_mut(i).map(|c| c.governor = govs[i].clone());
+                    settings.cpus.get_mut(i).map(|c| c.governor = govs[i].clone());
                 }
             },
             Self::GetCpusGovernor(cb) => {
-                let mut result = Vec::with_capacity(settings.len());
-                for cpu in settings {
+                let mut result = Vec::with_capacity(settings.cpus.len());
+                for cpu in &settings.cpus {
                     result.push(cpu.governor.clone());
                 }
                 cb(result);

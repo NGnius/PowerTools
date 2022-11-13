@@ -2,9 +2,9 @@ use std::convert::Into;
 use std::path::PathBuf;
 //use std::sync::{Arc, Mutex};
 
-use super::{Battery, Cpu, Gpu};
+use super::{Battery, Cpus, Gpu};
 use super::{OnResume, OnSet, SettingError};
-use crate::persist::{CpuJson, SettingsJson};
+use crate::persist::SettingsJson;
 //use crate::utility::unwrap_lock;
 
 const LATEST_VERSION: u64 = 0;
@@ -44,7 +44,7 @@ impl OnSet for General {
 #[derive(Debug, Clone)]
 pub struct Settings {
     pub general: General,
-    pub cpus: Vec<Cpu>,
+    pub cpus: Cpus,
     pub gpu: Gpu,
     pub battery: Battery,
 }
@@ -52,9 +52,7 @@ pub struct Settings {
 impl OnSet for Settings {
     fn on_set(&mut self) -> Result<(), SettingError> {
         self.battery.on_set()?;
-        for cpu in self.cpus.iter_mut() {
-            cpu.on_set()?;
-        }
+        self.cpus.on_set()?;
         self.gpu.on_set()?;
         self.general.on_set()?;
         Ok(())
@@ -71,7 +69,7 @@ impl Settings {
                     path: json_path,
                     name: other.name,
                 },
-                cpus: Self::convert_cpus(other.cpus, other.version),
+                cpus: Cpus::from_json(other.cpus, other.version),
                 gpu: Gpu::from_json(other.gpu, other.version),
                 battery: Battery::from_json(other.battery, other.version),
             },
@@ -81,34 +79,11 @@ impl Settings {
                     path: json_path,
                     name: other.name,
                 },
-                cpus: Self::convert_cpus(other.cpus, other.version),
+                cpus: Cpus::from_json(other.cpus, other.version),
                 gpu: Gpu::from_json(other.gpu, other.version),
                 battery: Battery::from_json(other.battery, other.version),
             },
         }
-    }
-
-    fn convert_cpus(mut cpus: Vec<CpuJson>, version: u64) -> Vec<Cpu> {
-        let mut result = Vec::with_capacity(cpus.len());
-        let max_cpus = Cpu::cpu_count();
-        for (i, cpu) in cpus.drain(..).enumerate() {
-            // prevent having more CPUs than available
-            if let Some(max_cpus) = max_cpus {
-                if i == max_cpus {
-                    break;
-                }
-            }
-            result.push(Cpu::from_json(cpu, version, i));
-        }
-        if let Some(max_cpus) = max_cpus {
-            if result.len() != max_cpus {
-                let mut sys_cpus = Cpu::system_default();
-                for i in result.len()..sys_cpus.len() {
-                    result.push(sys_cpus.remove(i));
-                }
-            }
-        }
-        result
     }
 
     pub fn system_default(json_path: PathBuf) -> Self {
@@ -118,14 +93,14 @@ impl Settings {
                 path: json_path,
                 name: crate::consts::DEFAULT_SETTINGS_NAME.to_owned(),
             },
-            cpus: Cpu::system_default(),
+            cpus: Cpus::system_default(),
             gpu: Gpu::system_default(),
             battery: Battery::system_default(),
         }
     }
 
     pub fn load_system_default(&mut self) {
-        self.cpus = Cpu::system_default();
+        self.cpus = Cpus::system_default();
         self.gpu = Gpu::system_default();
         self.battery = Battery::system_default();
     }
@@ -143,7 +118,7 @@ impl Settings {
                 self.general.persistent = false;
                 self.general.name = name;
             } else {
-                self.cpus = Self::convert_cpus(settings_json.cpus, settings_json.version);
+                self.cpus = Cpus::from_json(settings_json.cpus, settings_json.version);
                 self.gpu = Gpu::from_json(settings_json.gpu, settings_json.version);
                 self.battery = Battery::from_json(settings_json.battery, settings_json.version);
                 self.general.persistent = true;
@@ -166,9 +141,7 @@ impl OnResume for Settings {
         log::debug!("Applying settings for on_resume");
         self.battery.on_resume()?;
         log::debug!("Resumed battery");
-        for cpu in self.cpus.iter() {
-            cpu.on_resume()?;
-        }
+        self.cpus.on_resume()?;
         log::debug!("Resumed CPUs");
         self.gpu.on_resume()?;
         log::debug!("Resumed GPU");
@@ -184,7 +157,7 @@ impl Into<SettingsJson> for Settings {
             version: LATEST_VERSION,
             name: self.general.name.clone(),
             persistent: self.general.persistent,
-            cpus: self.cpus
+            cpus: self.cpus.cpus
                 .clone()
                 .drain(..)
                 .map(|cpu| cpu.into())

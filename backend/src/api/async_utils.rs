@@ -1,33 +1,38 @@
 //use usdpl_back::core::serdes::Primitive;
 use usdpl_back::AsyncCallable;
 
-/*pub struct AsyncIsh<T: Send,
-    TS: (Fn(super::ApiParameterType) -> Result<T, String>) + Send + Sync,
-    SG: (Fn(T) -> T) + Send + Sync + 'static,
-    TG: (Fn(T) -> super::ApiParameterType) + Send + Sync> {
+pub struct AsyncIsh<In: Send + 'static,
+    Out: Send + 'static,
+    TS: (Fn(super::ApiParameterType) -> Result<In, String>) + Send + Sync,
+    Gen: (Fn() -> SG) + Send + Sync,
+    SG: (Fn(In) -> Out) + Send + Sync + 'static,
+    TG: (Fn(Out) -> super::ApiParameterType) + Send + Sync> {
     pub trans_setter: TS, // assumed to be pretty fast
-    pub set_get: SG, // probably has locks (i.e. slow)
+    pub set_get: Gen, // probably has locks (i.e. slow)
     pub trans_getter: TG, // assumed to be pretty fast
 }
 
 #[async_trait::async_trait]
-impl <T: Send,
-    TS: (Fn(super::ApiParameterType) -> Result<T, String>) + Send + Sync,
-    SG: (Fn(T) -> T) + Send + Sync + 'static,
-    TG: (Fn(T) -> super::ApiParameterType) + Send + Sync>
-    AsyncCallable for AsyncIsh<T, TS, SG, TG> {
+impl <In: Send + 'static,
+    Out: Send + 'static,
+    TS: (Fn(super::ApiParameterType) -> Result<In, String>) + Send + Sync,
+    Gen: (Fn() -> SG) + Send + Sync,
+    SG: (Fn(In) -> Out) + Send + Sync + 'static,
+    TG: (Fn(Out) -> super::ApiParameterType) + Send + Sync>
+    AsyncCallable for AsyncIsh<In, Out, TS, Gen, SG, TG> {
     async fn call(&self, params: super::ApiParameterType) -> super::ApiParameterType {
         let t_to_set = match (self.trans_setter)(params) {
             Ok(t) => t,
             Err(e) => return vec![e.into()]
         };
-        let t_got = match tokio::task::spawn_blocking(|| (self.set_get)(t_to_set)).await {
+        let setter = (self.set_get)();
+        let t_got = match tokio::task::spawn_blocking(move || setter(t_to_set)).await {
             Ok(t) => t,
             Err(e) => return vec![e.to_string().into()],
         };
         (self.trans_getter)(t_got)
     }
-}*/
+}
 
 pub struct AsyncIshGetter<T: Send + 'static,
     Gen: (Fn() -> G) + Send + Sync,

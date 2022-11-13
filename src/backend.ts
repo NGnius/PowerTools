@@ -62,6 +62,10 @@ export async function unsetBatteryChargeRate(): Promise<any[]> {
 
 // CPU
 
+export async function setCpuSmt(status: boolean): Promise<number> {
+    return (await call_backend("CPU_set_smt", [status]))[0];
+}
+
 export async function getCpuCount(): Promise<number> {
     return (await call_backend("CPU_count", []))[0];
 }
@@ -148,6 +152,10 @@ export async function loadGeneralSettings(path: string, name: string): Promise<b
 
 export async function loadGeneralDefaultSettings(): Promise<boolean> {
     return (await call_backend("GENERAL_load_default_settings", []))[0];
+}
+
+export async function loadGeneralSystemSettings(): Promise<boolean> {
+    return (await call_backend("GENERAL_load_system_settings", []))[0];
 }
 
 export async function getGeneralSettingsName(): Promise<boolean> {

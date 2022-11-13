@@ -3,14 +3,14 @@ use std::sync::{Arc, Mutex};
 use usdpl_back::core::serdes::Primitive;
 use usdpl_back::AsyncCallable;
 
-use crate::settings::{Cpu, SettingError, SettingVariant, MinMax};
+use crate::settings::{Cpus, SettingError, SettingVariant, MinMax};
 //use crate::utility::{unwrap_lock, unwrap_maybe_fatal};
 use super::handler::{ApiMessage, CpuMessage};
 
 /// Available CPUs web method
 pub fn max_cpus(_: super::ApiParameterType) -> super::ApiParameterType {
     super::utility::map_result(
-        Cpu::cpu_count()
+        Cpus::cpu_count()
             .map(|x| x as u64)
             .ok_or_else(
                 || SettingError {
@@ -89,6 +89,38 @@ pub fn set_cpus_online(
         output
     }
 }*/
+
+pub fn set_smt(
+    sender: Sender<ApiMessage>,
+) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move |smt: bool| {
+            let (tx, rx) = mpsc::channel();
+            let callback = move |values: Vec<bool>| tx.send(values).expect("set_smt callback send failed");
+            sender2.lock().unwrap().send(ApiMessage::Cpu(CpuMessage::SetSmt(smt, Box::new(callback)))).expect("set_smt send failed");
+            rx.recv().expect("set_smt callback recv failed")
+        }
+    };
+    super::async_utils::AsyncIsh {
+        trans_setter: |params| {
+            if let Some(&Primitive::Bool(smt_value)) = params.get(0) {
+                Ok(smt_value)
+            } else {
+                Err("set_smt missing/invalid parameter 0".to_owned())
+            }
+        },
+        set_get: getter,
+        trans_getter: |result| {
+            let mut output = Vec::with_capacity(result.len());
+            for &status in result.as_slice() {
+                output.push(status.into());
+            }
+            output
+        }
+    }
+}
 
 pub fn get_cpus_online(
     sender: Sender<ApiMessage>,
