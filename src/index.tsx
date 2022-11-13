@@ -29,7 +29,6 @@ var startHook: any = null;
 var usdplReady = false;
 
 var smtAllowed = true;
-var smtGlobal = smtAllowed;
 
 // usdpl persistent store keys
 
@@ -43,6 +42,7 @@ const CHARGE_DESIGN_BATT = "BATTERY_charge_design"
 
 const TOTAL_CPUS = "CPUs_total";
 const ONLINE_CPUS = "CPUs_online";
+const SMT_CPU = "CPUs_SMT";
 const CLOCK_MIN_CPU = "CPUs_min_clock";
 const CLOCK_MAX_CPU = "CPUs_max_clock";
 const GOVERNOR_CPU = "CPUs_governor";
@@ -80,7 +80,7 @@ const reload = function() {
     // TODO: allow for per-core control of online status
     const count = countCpus(statii);
     set_value(ONLINE_CPUS, count);
-    smtGlobal = statii.length > 3 && statii[0] == statii[1] && statii[2] == statii[3] && smtAllowed;
+    set_value(SMT_CPU, statii.length > 3 && statii[0] == statii[1] && statii[2] == statii[3] && smtAllowed);
   });
   // TODO: allow for per-core control of clock limits
   backend.resolve(backend.getCpuClockLimits(0), (limits: number[]) => {
@@ -181,18 +181,21 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
       </div>
       {smtAllowed && <PanelSectionRow>
         <ToggleField
-          checked={smtGlobal}
+          checked={get_value(SMT_CPU)}
           label="SMT"
           description="Enables odd-numbered CPUs"
           onChange={(smt: boolean) => {
             console.debug("SMT is now " + smt.toString());
             const cpus = get_value(ONLINE_CPUS);
-            smtGlobal = smt && smtAllowed;
+            const smtNow = smt && smtAllowed
             // TODO: move SMT setting logic back to back-end
+            backend.resolve(backend.setCpuSmt(smtNow), (newVal: boolean) => {
+              set_value(SMT_CPU, newVal);
+            });
             let onlines: boolean[] = [];
             for (let i = 0; i < total_cpus; i++) {
-              const online = (smtGlobal? i < cpus : (i % 2 == 0) && (i < cpus * 2))
-                || (!smtGlobal && cpus == 4);
+              const online = (smtNow? i < cpus : (i % 2 == 0) && (i < cpus * 2))
+                || (!smtNow && cpus == 4);
               onlines.push(online);
             }
             backend.resolve(backend.setCpuOnlines(onlines), (statii: boolean[]) => {
@@ -209,7 +212,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           label="Threads"
           value={get_value(ONLINE_CPUS)}
           step={1}
-          max={smtGlobal? total_cpus : total_cpus/2}
+          max={get_value(SMT_CPU)? total_cpus : total_cpus/2}
           min={1}
           showValue={true}
           onChange={(cpus: number) => {
@@ -217,9 +220,10 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             const onlines = get_value(ONLINE_CPUS);
             if (cpus != onlines) {
               set_value(ONLINE_CPUS, cpus);
+              const smtNow = get_value(SMT_CPU);
               let onlines: boolean[] = [];
               for (let i = 0; i < total_cpus; i++) {
-                const online = smtGlobal? i < cpus : (i % 2 == 0) && (i < cpus * 2);
+                const online = smtNow? i < cpus : (i % 2 == 0) && (i < cpus * 2);
                 onlines.push(online);
               }
               backend.resolve(backend.setCpuOnlines(onlines), (statii: boolean[]) => {
@@ -249,7 +253,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
               for (let i = 0; i < total_cpus; i++) {
                 backend.resolve(backend.unsetCpuClockLimits(i), (_idc: any[]) => {});
               }
-              backend.resolve(backend.waitForComplete(), (_: boolean[]) => {
+              backend.resolve(backend.waitForComplete(), (_: boolean) => {
                 reloadGUI("CPUUnsetFreq");
               });
             }
@@ -277,7 +281,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
                   set_value(CLOCK_MAX_CPU, limits[1]);
                 });
               }
-              backend.resolve(backend.waitForComplete(), (_: boolean[]) => {
+              backend.resolve(backend.waitForComplete(), (_: boolean) => {
                 reloadGUI("CPUMinFreq");
               });
               reloadGUI("CPUMinFreqImmediate");
@@ -306,7 +310,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
                   set_value(CLOCK_MAX_CPU, limits[1]);
                 });
               }
-              backend.resolve(backend.waitForComplete(), (_: boolean[]) => {
+              backend.resolve(backend.waitForComplete(), (_: boolean) => {
                 reloadGUI("CPUMaxFreq");
               });
               reloadGUI("CPUMaxFreqImmediate");
@@ -621,9 +625,9 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
               backend.setGeneralPersistent(false),
               (val: boolean) => {
                 set_value(PERSISTENT_GEN, val);
-                backend.resolve(backend.loadGeneralDefaultSettings(), (_: any[]) => {
+                backend.resolve(backend.loadGeneralSystemSettings(), (_) => {
                   reload();
-                  backend.resolve(backend.waitForComplete(), (_: any[]) => {reloadGUI("LoadDefaults")});
+                  backend.resolve(backend.waitForComplete(), (_) => {reloadGUI("LoadSystemDefaults")});
                 });
               }
             );

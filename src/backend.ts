@@ -4,7 +4,7 @@ const USDPL_PORT: number = 44443;
 
 // Utility
 
-export function resolve(promise: Promise<any>, setter: any) {
+export function resolve<T>(promise: Promise<T>, setter: (t: T) => void) {
     (async function () {
         let data = await promise;
         if (data != null) {
@@ -62,7 +62,7 @@ export async function unsetBatteryChargeRate(): Promise<any[]> {
 
 // CPU
 
-export async function setCpuSmt(status: boolean): Promise<number> {
+export async function setCpuSmt(status: boolean): Promise<boolean> {
     return (await call_backend("CPU_set_smt", [status]))[0];
 }
 
@@ -158,7 +158,7 @@ export async function loadGeneralSystemSettings(): Promise<boolean> {
     return (await call_backend("GENERAL_load_system_settings", []))[0];
 }
 
-export async function getGeneralSettingsName(): Promise<boolean> {
+export async function getGeneralSettingsName(): Promise<string> {
     return (await call_backend("GENERAL_get_name", []))[0];
 }
 
