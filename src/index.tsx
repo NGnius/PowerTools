@@ -550,7 +550,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
         <ToggleField
           checked={get_value(PERSISTENT_GEN)}
           label="Persistent"
-          description="Restores settings after an app or OS restart"
+          description="Save profile and load it next time"
           onChange={(persist: boolean) => {
             console.debug("Persist is now " + persist.toString());
             backend.resolve(
