@@ -12,6 +12,10 @@ import {
   staticClasses,
   SliderField,
   ToggleField,
+  Dropdown,
+  Field,
+  //DropdownOption,
+  SingleDropdownOption,
   //NotchLabel
   gamepadDialogClasses,
   joinClassNames,
@@ -29,6 +33,40 @@ var startHook: any = null;
 var usdplReady = false;
 
 var smtAllowed = true;
+var advancedMode = false;
+var advancedCpu = 1;
+
+type MinMax = {
+  min: number | null;
+  max: number | null;
+}
+
+const governorOptions: SingleDropdownOption[] = [
+  {
+    data: "conservative",
+    label: <span>conservative</span>,
+  },
+  {
+    data: "ondemand",
+    label: <span>ondemand</span>,
+  },
+  {
+    data: "userspace",
+    label: <span>userspace</span>,
+  },
+  {
+    data: "powersave",
+    label: <span>powersave</span>,
+  },
+  {
+    data: "performance",
+    label: <span>performance</span>,
+  },
+  {
+    data: "schedutil",
+    label: <span>schedutil</span>,
+  },
+];
 
 // usdpl persistent store keys
 
@@ -42,9 +80,11 @@ const CHARGE_DESIGN_BATT = "BATTERY_charge_design"
 
 const TOTAL_CPUS = "CPUs_total";
 const ONLINE_CPUS = "CPUs_online";
+const ONLINE_STATUS_CPUS = "CPUs_status_online";
 const SMT_CPU = "CPUs_SMT";
 const CLOCK_MIN_CPU = "CPUs_min_clock";
 const CLOCK_MAX_CPU = "CPUs_max_clock";
+const CLOCK_MIN_MAX_CPU = "CPUs_minmax_clocks";
 const GOVERNOR_CPU = "CPUs_governor";
 
 const FAST_PPT_GPU = "GPU_fastPPT";
@@ -66,6 +106,20 @@ function countCpus(statii: boolean[]): number {
   return count;
 }
 
+function syncPlebClockToAdvanced() {
+  const cpuCount = get_value(TOTAL_CPUS);
+  const minClock = get_value(CLOCK_MIN_CPU);
+  const maxClock = get_value(CLOCK_MAX_CPU);
+  let clockArr = [];
+  for (let i = 0; i < cpuCount; i++) {
+    clockArr.push({
+      min: minClock,
+      max: maxClock,
+    } as MinMax);
+  }
+  set_value(CLOCK_MIN_MAX_CPU, clockArr);
+}
+
 const reload = function() {
   if (!usdplReady) {return;}
 
@@ -77,18 +131,21 @@ const reload = function() {
 
   backend.resolve(backend.getCpuCount(), (count: number) => { set_value(TOTAL_CPUS, count)});
   backend.resolve(backend.getCpusOnline(), (statii: boolean[]) => {
-    // TODO: allow for per-core control of online status
+    set_value(ONLINE_STATUS_CPUS, statii);
     const count = countCpus(statii);
     set_value(ONLINE_CPUS, count);
     set_value(SMT_CPU, statii.length > 3 && statii[0] == statii[1] && statii[2] == statii[3] && smtAllowed);
   });
-  // TODO: allow for per-core control of clock limits
   backend.resolve(backend.getCpuClockLimits(0), (limits: number[]) => {
     set_value(CLOCK_MIN_CPU, limits[0]);
     set_value(CLOCK_MAX_CPU, limits[1]);
+    syncPlebClockToAdvanced();
   });
-  // TODO: allow for control of governor
-  backend.resolve(backend.getCpusGovernor(), (governors: string[]) => { set_value(GOVERNOR_CPU, governors[0]) });
+  backend.resolve(backend.getCpusGovernor(), (governors: string[]) => {
+    set_value(GOVERNOR_CPU, governors);
+    console.log("POWERTOOLS: Governors from backend", governors);
+    console.log("POWERTOOLS: Governors in dropdown", governorOptions);
+  });
 
   backend.resolve(backend.getGpuPpt(), (ppts: number[]) => {
     set_value(FAST_PPT_GPU, ppts[0]);
@@ -172,14 +229,26 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
   const FieldWithSeparator = joinClassNames(gamepadDialogClasses.Field, gamepadDialogClasses.WithBottomSeparatorStandard);
 
   const total_cpus = get_value(TOTAL_CPUS);
+  const advancedCpuIndex = advancedCpu - 1;
 
   return (
     <PanelSection>
-      {/* CPU */ /* TODO: set per-core stuff*/}
+      {/* CPU */}
       <div className={staticClasses.PanelSectionTitle}>
         CPU
       </div>
-      {smtAllowed && <PanelSectionRow>
+      <PanelSectionRow>
+        <ToggleField
+          checked={advancedMode}
+          label="Advanced"
+          description="Enables per-thread configuration"
+          onChange={(advanced: boolean) => {
+            advancedMode = advanced;
+          }}
+        />
+      </PanelSectionRow>
+      {/* CPU plebeian mode */}
+      {!advancedMode && smtAllowed && <PanelSectionRow>
         <ToggleField
           checked={get_value(SMT_CPU)}
           label="SMT"
@@ -187,8 +256,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           onChange={(smt: boolean) => {
             console.debug("SMT is now " + smt.toString());
             const cpus = get_value(ONLINE_CPUS);
-            const smtNow = smt && smtAllowed
-            // TODO: move SMT setting logic back to back-end
+            const smtNow = smt && smtAllowed;
             backend.resolve(backend.setCpuSmt(smtNow), (newVal: boolean) => {
               set_value(SMT_CPU, newVal);
             });
@@ -199,7 +267,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
               onlines.push(online);
             }
             backend.resolve(backend.setCpuOnlines(onlines), (statii: boolean[]) => {
-              // TODO: allow for per-core control of online status
+              set_value(ONLINE_STATUS_CPUS, statii);
               const count = countCpus(statii);
               set_value(ONLINE_CPUS, count);
               reloadGUI("SMT");
@@ -207,7 +275,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           }}
         />
       </PanelSectionRow>}
-      <PanelSectionRow>
+      {!advancedMode && <PanelSectionRow>
         <SliderField
           label="Threads"
           value={get_value(ONLINE_CPUS)}
@@ -227,7 +295,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
                 onlines.push(online);
               }
               backend.resolve(backend.setCpuOnlines(onlines), (statii: boolean[]) => {
-                // TODO: allow for per-core control of online status
+                set_value(ONLINE_STATUS_CPUS, statii);
                 const count = countCpus(statii);
                 set_value(ONLINE_CPUS, count);
                 reloadGUI("CPUs");
@@ -236,8 +304,8 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             }
           }}
         />
-      </PanelSectionRow>
-      <PanelSectionRow>
+      </PanelSectionRow>}
+      {!advancedMode && <PanelSectionRow>
         <ToggleField
           checked={get_value(CLOCK_MIN_CPU) != null && get_value(CLOCK_MAX_CPU) != null}
           label="Frequency Limits"
@@ -246,6 +314,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             if (value) {
               set_value(CLOCK_MIN_CPU, 1400);
               set_value(CLOCK_MAX_CPU, 3500);
+              syncPlebClockToAdvanced();
               reloadGUI("CPUFreqToggle");
             } else {
               set_value(CLOCK_MIN_CPU, null);
@@ -256,11 +325,12 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
               backend.resolve(backend.waitForComplete(), (_: boolean) => {
                 reloadGUI("CPUUnsetFreq");
               });
+              syncPlebClockToAdvanced();
             }
           }}
         />
-      </PanelSectionRow>
-      <PanelSectionRow>
+      </PanelSectionRow>}
+      {!advancedMode && <PanelSectionRow>
         {get_value(CLOCK_MIN_CPU) != null && <SliderField
           label="Minimum (MHz)"
           value={get_value(CLOCK_MIN_CPU)}
@@ -279,6 +349,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
                                 (limits: number[]) => {
                   set_value(CLOCK_MIN_CPU, limits[0]);
                   set_value(CLOCK_MAX_CPU, limits[1]);
+                  syncPlebClockToAdvanced();
                 });
               }
               backend.resolve(backend.waitForComplete(), (_: boolean) => {
@@ -288,8 +359,8 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             }
           }}
         />}
-      </PanelSectionRow>
-      <PanelSectionRow>
+      </PanelSectionRow>}
+      {!advancedMode && <PanelSectionRow>
         {get_value(CLOCK_MAX_CPU) != null && <SliderField
           label="Maximum (MHz)"
           value={get_value(CLOCK_MAX_CPU)}
@@ -308,6 +379,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
                                 (limits: number[]) => {
                   set_value(CLOCK_MIN_CPU, limits[0]);
                   set_value(CLOCK_MAX_CPU, limits[1]);
+                  syncPlebClockToAdvanced();
                 });
               }
               backend.resolve(backend.waitForComplete(), (_: boolean) => {
@@ -317,8 +389,140 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             }
           }}
         />}
-      </PanelSectionRow>
-      {/* TODO: CPU governor */}
+      </PanelSectionRow>}
+      {/* CPU advanced mode */}
+      {advancedMode && <PanelSectionRow>
+        <SliderField
+          label="CPU to modify"
+          value={advancedCpu}
+          step={1}
+          max={8}
+          min={1}
+          showValue={true}
+          onChange={(cpuNum: number) => {
+            advancedCpu = cpuNum;
+          }}
+        />
+      </PanelSectionRow>}
+      {advancedMode && <PanelSectionRow>
+        <ToggleField
+          checked={get_value(ONLINE_CPUS)[advancedCpuIndex]}
+          label="Online"
+          description="Allow the CPU thread to do processing"
+          onChange={(status: boolean) => {
+            console.debug("CPU " + advancedCpu.toString() + " is now " + status.toString());
+            if (get_value(SMT_CPU)) {
+              backend.resolve(backend.setCpuSmt(false), (newVal: boolean) => {
+                set_value(SMT_CPU, newVal);
+              });
+            }
+            backend.resolve(backend.setCpuOnline(advancedCpuIndex, status), (newVal: boolean) => {
+              const onlines = get_value(ONLINE_STATUS_CPUS);
+              onlines[advancedCpuIndex] = newVal;
+              set_value(ONLINE_STATUS_CPUS, onlines);
+            });
+          }}
+        />
+      </PanelSectionRow>}
+      {advancedMode && <PanelSectionRow>
+        <ToggleField
+          checked={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].min != null && get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].max}
+          label="Frequency Limits"
+          description="Set bounds on clock speed"
+          onChange={(value: boolean) => {
+            if (value) {
+              const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
+              clocks[advancedCpuIndex].min = 1400;
+              clocks[advancedCpuIndex].max = 3500;
+              set_value(CLOCK_MIN_MAX_CPU, clocks);
+              reloadGUI("CPUFreqToggle");
+            } else {
+              const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
+              clocks[advancedCpuIndex].min = null;
+              clocks[advancedCpuIndex].max = null;
+              set_value(CLOCK_MIN_MAX_CPU, clocks);
+              backend.resolve(backend.unsetCpuClockLimits(advancedCpuIndex), (_idc: any[]) => {
+                reloadGUI("CPUUnsetFreq");
+              });
+            }
+          }}
+        />
+      </PanelSectionRow>}
+      {advancedMode && <PanelSectionRow>
+        {get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].min != null && <SliderField
+          label="Minimum (MHz)"
+          value={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].min}
+          max={3500}
+          min={1400}
+          step={100}
+          showValue={true}
+          disabled={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].min == null}
+          onChange={(freq: number) => {
+            console.debug("Min freq slider for " + advancedCpu.toString() + " is now " + freq.toString());
+            const freqNow = get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex] as MinMax;
+            if (freq != freqNow.min) {
+              backend.resolve(backend.setCpuClockLimits(advancedCpuIndex, freq, freqNow.max!),
+                                (limits: number[]) => {
+                const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
+                clocks[advancedCpuIndex].min = limits[0];
+                clocks[advancedCpuIndex].max = limits[1];
+                set_value(CLOCK_MIN_MAX_CPU, clocks);
+                reloadGUI("CPUMinFreq");
+              });
+            }
+          }}
+        />}
+      </PanelSectionRow>}
+      {advancedMode && <PanelSectionRow>
+        {get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].max != null && <SliderField
+          label="Maximum (MHz)"
+          value={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].max}
+          max={3500}
+          min={500}
+          step={100}
+          showValue={true}
+          disabled={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].max == null}
+          onChange={(freq: number) => {
+            console.debug("Max freq slider for " + advancedCpu.toString() + " is now " + freq.toString());
+            const freqNow = get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex] as MinMax;
+            if (freq != freqNow.max) {
+              backend.resolve(backend.setCpuClockLimits(advancedCpuIndex, freqNow.min!, freq),
+                              (limits: number[]) => {
+                const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
+                clocks[advancedCpuIndex].min = limits[0];
+                clocks[advancedCpuIndex].max = limits[1];
+                set_value(CLOCK_MIN_MAX_CPU, clocks);
+                reloadGUI("CPUMaxFreq");
+              });
+            }
+          }}
+        />}
+      </PanelSectionRow>}
+      {advancedMode && <PanelSectionRow>
+        <Field
+          label="Governor"
+        >
+          <Dropdown
+            menuLabel="Governor"
+            rgOptions={governorOptions}
+            selectedOption={governorOptions.find((val: SingleDropdownOption, _index, _arr) => {
+              console.debug("POWERTOOLS: array item", val);
+              console.debug("POWERTOOLS: looking for data", get_value(GOVERNOR_CPU)[advancedCpuIndex]);
+              return val.data == get_value(GOVERNOR_CPU)[advancedCpuIndex];
+            })}
+            strDefaultLabel={get_value(GOVERNOR_CPU)[advancedCpuIndex]}
+            onChange={(elem: SingleDropdownOption) => {
+              console.debug("Governor dropdown selected", elem);
+              backend.resolve(backend.setCpuGovernor(advancedCpuIndex, elem.data as string), (gov: string) => {
+                const governors = get_value(GOVERNOR_CPU);
+                governors[advancedCpuIndex] = gov;
+                set_value(GOVERNOR_CPU, governors);
+                reloadGUI("CPUGovernor");
+              });
+            }}
+          />
+        </Field>
+      </PanelSectionRow>}
       {/* GPU */}
       <div className={staticClasses.PanelSectionTitle}>
         GPU
