@@ -24,6 +24,50 @@ export async function initBackend() {
     //setReady(true);
 }
 
+// API limit types
+
+export type RangeLimit = {
+    min: number;
+    max: number;
+};
+
+export type SettingsLimits = {
+    battery: BatteryLimits;
+    cpu: CpusLimits;
+    gpu: GpuLimits;
+    general: GeneralLimits;
+};
+
+export type BatteryLimits = {
+    charge_rate: RangeLimit | null;
+    charge_step: number;
+};
+
+export type CpuLimits = {
+    clock_min_limits: RangeLimit | null;
+    clock_max_limits: RangeLimit | null;
+    clock_step: number;
+    governors: string[];
+};
+
+export type CpusLimits = {
+    cpus: CpuLimits[];
+    count: number;
+    smt_capable: boolean;
+};
+
+export type GeneralLimits = {};
+
+export type GpuLimits = {
+    fast_ppt_limits: RangeLimit | null;
+    slow_ppt_limits: RangeLimit | null;
+    ppt_step: number;
+    clock_min_limits: RangeLimit | null;
+    clock_max_limits: RangeLimit | null;
+    clock_step: number;
+    memory_control_capable: boolean;
+};
+
 // API
 
 export async function getInfo(): Promise<string> {
@@ -66,9 +110,9 @@ export async function setCpuSmt(status: boolean): Promise<boolean> {
     return (await call_backend("CPU_set_smt", [status]))[0];
 }
 
-export async function getCpuCount(): Promise<number> {
+/*export async function getCpuCount(): Promise<number> {
     return (await call_backend("CPU_count", []))[0];
-}
+}*/
 
 export async function setCpuOnline(index: number, online: boolean): Promise<boolean> {
     return (await call_backend("CPU_set_online", [index, online]))[0];
@@ -164,4 +208,8 @@ export async function getGeneralSettingsName(): Promise<string> {
 
 export async function waitForComplete(): Promise<boolean> {
     return (await call_backend("GENERAL_wait_for_unlocks", []))[0];
+}
+
+export async function getLimits(): Promise<SettingsLimits> {
+    return (await call_backend("GENERAL_get_limits", []))[0];
 }

@@ -3,14 +3,14 @@ use std::sync::{Arc, Mutex};
 use usdpl_back::core::serdes::Primitive;
 use usdpl_back::AsyncCallable;
 
-use crate::settings::{Cpus, SettingError, SettingVariant, MinMax};
+use crate::settings::{SettingError, SettingVariant, MinMax};
 //use crate::utility::{unwrap_lock, unwrap_maybe_fatal};
 use super::handler::{ApiMessage, CpuMessage};
 
 /// Available CPUs web method
 pub fn max_cpus(_: super::ApiParameterType) -> super::ApiParameterType {
     super::utility::map_result(
-        Cpus::cpu_count()
+        crate::settings::steam_deck::Cpus::cpu_count()
             .map(|x| x as u64)
             .ok_or_else(
                 || SettingError {

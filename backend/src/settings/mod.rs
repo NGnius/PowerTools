@@ -1,19 +1,19 @@
-mod battery;
-mod cpu;
+pub mod driver;
 mod error;
 mod general;
-mod gpu;
 mod min_max;
 mod traits;
 
-pub use battery::Battery;
-pub use cpu::{Cpu, Cpus};
+pub mod steam_deck;
+pub mod steam_deck_adv;
+pub mod unknown;
+
+pub use driver::Driver;
 pub use general::{SettingVariant, Settings, General};
-pub use gpu::Gpu;
 pub use min_max::MinMax;
 
 pub use error::SettingError;
-pub use traits::{OnResume, OnSet, SettingsRange};
+pub use traits::{OnResume, OnSet, SettingsRange, TGeneral, TGpu, TCpus, TBattery, TCpu};
 
 #[cfg(test)]
 mod tests {

@@ -161,3 +161,19 @@ pub fn lock_unlock_all(
         }
     }
 }
+
+/// Generate get limits web method
+pub fn get_limits(
+    sender: Sender<ApiMessage>,
+) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let (tx, rx) = mpsc::channel();
+        let callback = move |value: super::SettingsLimits| tx.send(value).expect("get_limits callback send failed");
+        sender.lock().unwrap().send(ApiMessage::GetLimits(Box::new(callback))).expect("get_limits send failed");
+        rx.recv().expect("get_limits callback recv failed")
+    };
+    move |_: super::ApiParameterType| {
+        vec![Primitive::Json(serde_json::to_string(&getter()).unwrap())]
+    }
+}

@@ -1,6 +1,6 @@
 use std::sync::mpsc::{self, Receiver, Sender};
 
-use crate::settings::{Settings, Cpus, Gpu, Battery, General, OnSet, OnResume, MinMax};
+use crate::settings::{Settings, TCpus, TGpu, TBattery, TGeneral, OnSet, OnResume, MinMax};
 use crate::persist::SettingsJson;
 use crate::utility::unwrap_maybe_fatal;
 
@@ -16,6 +16,7 @@ pub enum ApiMessage {
     LoadSettings(String, String), // (path, name)
     LoadMainSettings,
     LoadSystemSettings,
+    GetLimits(Callback<super::SettingsLimits>),
 }
 
 pub enum BatteryMessage {
@@ -24,10 +25,10 @@ pub enum BatteryMessage {
 }
 
 impl BatteryMessage {
-    fn process(self, settings: &mut Battery) {
+    fn process(self, settings: &mut dyn TBattery) {
         match self {
-            Self::SetChargeRate(rate) => settings.charge_rate = rate,
-            Self::GetChargeRate(cb) => cb(settings.charge_rate),
+            Self::SetChargeRate(rate) => settings.charge_rate(rate),
+            Self::GetChargeRate(cb) => cb(settings.get_charge_rate()),
         }
     }
 }
@@ -45,41 +46,41 @@ pub enum CpuMessage {
 }
 
 impl CpuMessage {
-    fn process(self, settings: &mut Cpus) {
+    fn process(self, settings: &mut dyn TCpus) {
         match self {
-            Self::SetCpuOnline(index, status) => {settings.cpus.get_mut(index).map(|c| c.online = status);},
+            Self::SetCpuOnline(index, status) => {settings.cpus().get_mut(index).map(|c| *c.online() = status);},
             Self::SetCpusOnline(cpus) => {
                 for i in 0..cpus.len() {
-                    settings.cpus.get_mut(i).map(|c| c.online = cpus[i]);
+                    settings.cpus().get_mut(i).map(|c| *c.online() = cpus[i]);
                 }
             },
             Self::SetSmt(status, cb) => {
-                let mut result = Vec::with_capacity(settings.cpus.len());
-                for i in 0..settings.cpus.len() {
-                    settings.cpus[i].online = settings.cpus[i].online && (status || i % 2 == 0);
-                    result.push(settings.cpus[i].online);
+                let mut result = Vec::with_capacity(settings.len());
+                for i in 0..settings.len() {
+                    *settings.cpus()[i].online() = *settings.cpus()[i].online() && (status || i % 2 == 0);
+                    result.push(*settings.cpus()[i].online());
                 }
                 cb(result);
             }
             Self::GetCpusOnline(cb) => {
-                let mut result = Vec::with_capacity(settings.cpus.len());
-                for cpu in &settings.cpus {
-                    result.push(cpu.online);
+                let mut result = Vec::with_capacity(settings.len());
+                for cpu in settings.cpus() {
+                    result.push(*cpu.online());
                 }
                 cb(result);
             },
-            Self::SetClockLimits(index, clocks) => {settings.cpus.get_mut(index).map(|c| c.clock_limits = clocks);},
-            Self::GetClockLimits(index, cb) => {settings.cpus.get(index).map(|c| cb(c.clock_limits.clone()));},
-            Self::SetCpuGovernor(index, gov) => {settings.cpus.get_mut(index).map(|c| c.governor = gov);},
+            Self::SetClockLimits(index, clocks) => {settings.cpus().get_mut(index).map(|c| c.clock_limits(clocks));},
+            Self::GetClockLimits(index, cb) => {settings.cpus().get(index).map(|c| cb(c.get_clock_limits().map(|x| x.to_owned())));},
+            Self::SetCpuGovernor(index, gov) => {settings.cpus().get_mut(index).map(|c| c.governor(gov));},
             Self::SetCpusGovernor(govs) => {
                 for i in 0..govs.len() {
-                    settings.cpus.get_mut(i).map(|c| c.governor = govs[i].clone());
+                    settings.cpus().get_mut(i).map(|c| c.governor(govs[i].clone()));
                 }
             },
             Self::GetCpusGovernor(cb) => {
-                let mut result = Vec::with_capacity(settings.cpus.len());
-                for cpu in &settings.cpus {
-                    result.push(cpu.governor.clone());
+                let mut result = Vec::with_capacity(settings.len());
+                for cpu in settings.cpus() {
+                    result.push(cpu.get_governor().to_owned());
                 }
                 cb(result);
             }
@@ -97,17 +98,14 @@ pub enum GpuMessage {
 }
 
 impl GpuMessage {
-    fn process(self, settings: &mut Gpu) {
+    fn process(self, settings: &mut dyn TGpu) {
         match self {
-            Self::SetPpt(fast, slow) => {
-                settings.fast_ppt = fast;
-                settings.slow_ppt = slow;
-            },
-            Self::GetPpt(cb) => cb((settings.fast_ppt, settings.slow_ppt)),
-            Self::SetClockLimits(clocks) => settings.clock_limits = clocks,
-            Self::GetClockLimits(cb) => cb(settings.clock_limits.clone()),
-            Self::SetSlowMemory(val) => settings.slow_memory = val,
-            Self::GetSlowMemory(cb) => cb(settings.slow_memory),
+            Self::SetPpt(fast, slow) => settings.ppt(fast, slow),
+            Self::GetPpt(cb) => cb(settings.get_ppt()),
+            Self::SetClockLimits(clocks) => settings.clock_limits(clocks),
+            Self::GetClockLimits(cb) => cb(settings.get_clock_limits().map(|x| x.to_owned())),
+            Self::SetSlowMemory(val) => *settings.slow_memory() = val,
+            Self::GetSlowMemory(cb) => cb(*settings.slow_memory()),
         }
     }
 }
@@ -119,11 +117,11 @@ pub enum GeneralMessage {
 }
 
 impl GeneralMessage {
-    fn process(self, settings: &mut General) {
+    fn process(self, settings: &mut dyn TGeneral) {
         match self {
-            Self::SetPersistent(val) => settings.persistent = val,
-            Self::GetPersistent(cb) => cb(settings.persistent),
-            Self::GetCurrentProfileName(cb) => cb(settings.name.clone()),
+            Self::SetPersistent(val) => *settings.persistent() = val,
+            Self::GetPersistent(cb) => cb(*settings.persistent()),
+            Self::GetCurrentProfileName(cb) => cb(settings.get_name().to_owned()),
         }
     }
 }
@@ -150,11 +148,11 @@ impl ApiMessageHandler {
             }
             // save
             log::debug!("api_worker is saving...");
-            let is_persistent = settings.general.persistent;
+            let is_persistent = *settings.general.persistent();
             if is_persistent {
                 let save_path = crate::utility::settings_dir()
-                    .join(settings.general.path.clone());
-                let settings_clone = settings.clone();
+                    .join(settings.general.get_path().clone());
+                let settings_clone = settings.json();
                 let save_json: SettingsJson = settings_clone.into();
                 unwrap_maybe_fatal(save_json.save(&save_path), "Failed to save settings");
                 log::debug!("Saved settings to {}", save_path.display());
@@ -166,10 +164,10 @@ impl ApiMessageHandler {
 
     pub fn process(&mut self, settings: &mut Settings, message: ApiMessage) {
         match message {
-            ApiMessage::Battery(x) => x.process(&mut settings.battery),
-            ApiMessage::Cpu(x) => x.process(&mut settings.cpus),
-            ApiMessage::Gpu(x) => x.process(&mut settings.gpu),
-            ApiMessage::General(x) => x.process(&mut settings.general),
+            ApiMessage::Battery(x) => x.process(settings.battery.as_mut()),
+            ApiMessage::Cpu(x) => x.process(settings.cpus.as_mut()),
+            ApiMessage::Gpu(x) => x.process(settings.gpu.as_mut()),
+            ApiMessage::General(x) => x.process(settings.general.as_mut()),
             ApiMessage::OnResume => {
                 if let Err(e) = settings.on_resume() {
                     log::error!("Settings on_resume() err: {}", e);
@@ -194,6 +192,14 @@ impl ApiMessageHandler {
             }
             ApiMessage::LoadSystemSettings => {
                 settings.load_system_default();
+            },
+            ApiMessage::GetLimits(cb) => {
+                cb(super::SettingsLimits {
+                    battery: settings.battery.limits(),
+                    cpu: settings.cpus.limits(),
+                    gpu: settings.gpu.limits(),
+                    general: settings.general.limits(),
+                });
             }
         }
     }

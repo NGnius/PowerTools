@@ -44,6 +44,8 @@ fn main() -> Result<(), ()> {
     log::info!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
     println!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
 
+    crate::settings::driver::auto_detect_loud();
+
     let mut loaded_settings = persist::SettingsJson::open(utility::settings_dir().join(DEFAULT_SETTINGS_FILE))
         .map(|settings| settings::Settings::from_json(settings, DEFAULT_SETTINGS_FILE.into()))
         .unwrap_or_else(|_| settings::Settings::system_default(DEFAULT_SETTINGS_FILE.into()));
@@ -183,6 +185,10 @@ fn main() -> Result<(), ()> {
         .register_async(
             "GENERAL_wait_for_unlocks",
             api::general::lock_unlock_all(api_sender.clone())
+        )
+        .register(
+            "GENERAL_get_limits",
+            api::general::get_limits(api_sender.clone())
         );
 
     api_worker::spawn(loaded_settings, api_handler);

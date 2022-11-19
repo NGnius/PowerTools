@@ -3,7 +3,7 @@ use std::default::Default;
 use serde::{Deserialize, Serialize};
 
 use super::JsonError;
-use super::{BatteryJson, CpuJson, GpuJson};
+use super::{BatteryJson, CpuJson, GpuJson, DriverJson};
 
 #[derive(Serialize, Deserialize)]
 pub struct SettingsJson {
@@ -13,6 +13,7 @@ pub struct SettingsJson {
     pub cpus: Vec<CpuJson>,
     pub gpu: GpuJson,
     pub battery: BatteryJson,
+    pub provider: Option<DriverJson>,
 }
 
 impl Default for SettingsJson {
@@ -24,6 +25,7 @@ impl Default for SettingsJson {
             cpus: Vec::with_capacity(8),
             gpu: GpuJson::default(),
             battery: BatteryJson::default(),
+            provider: None,
         }
     }
 }

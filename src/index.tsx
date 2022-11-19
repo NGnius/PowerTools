@@ -6,7 +6,7 @@ import {
   //MenuItem,
   PanelSection,
   PanelSectionRow,
-  //Router,
+  Router,
   ServerAPI,
   //showContextMenu,
   staticClasses,
@@ -17,8 +17,8 @@ import {
   //DropdownOption,
   SingleDropdownOption,
   //NotchLabel
-  gamepadDialogClasses,
-  joinClassNames,
+  //gamepadDialogClasses,
+  //joinClassNames,
 } from "decky-frontend-lib";
 import { VFC, useState } from "react";
 import { GiDrill } from "react-icons/gi";
@@ -32,7 +32,9 @@ var lifetimeHook: any = null;
 var startHook: any = null;
 var usdplReady = false;
 
-var smtAllowed = true;
+var eggCount = 0;
+
+//var smtAllowed = true;
 var advancedMode = false;
 var advancedCpu = 1;
 
@@ -41,36 +43,11 @@ type MinMax = {
   max: number | null;
 }
 
-const governorOptions: SingleDropdownOption[] = [
-  {
-    data: "conservative",
-    label: <span>conservative</span>,
-  },
-  {
-    data: "ondemand",
-    label: <span>ondemand</span>,
-  },
-  {
-    data: "userspace",
-    label: <span>userspace</span>,
-  },
-  {
-    data: "powersave",
-    label: <span>powersave</span>,
-  },
-  {
-    data: "performance",
-    label: <span>performance</span>,
-  },
-  {
-    data: "schedutil",
-    label: <span>schedutil</span>,
-  },
-];
-
 // usdpl persistent store keys
 
 const BACKEND_INFO = "VINFO";
+
+const LIMITS_INFO = "LIMITS_all";
 
 const CURRENT_BATT = "BATTERY_current_now";
 const CHARGE_RATE_BATT = "BATTERY_charge_rate";
@@ -78,7 +55,7 @@ const CHARGE_NOW_BATT = "BATTERY_charge_now";
 const CHARGE_FULL_BATT = "BATTERY_charge_full";
 const CHARGE_DESIGN_BATT = "BATTERY_charge_design"
 
-const TOTAL_CPUS = "CPUs_total";
+//const TOTAL_CPUS = "CPUs_total";
 const ONLINE_CPUS = "CPUs_online";
 const ONLINE_STATUS_CPUS = "CPUs_status_online";
 const SMT_CPU = "CPUs_SMT";
@@ -107,7 +84,7 @@ function countCpus(statii: boolean[]): number {
 }
 
 function syncPlebClockToAdvanced() {
-  const cpuCount = get_value(TOTAL_CPUS);
+  const cpuCount = (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.count;
   const minClock = get_value(CLOCK_MIN_CPU);
   const maxClock = get_value(CLOCK_MAX_CPU);
   let clockArr = [];
@@ -123,18 +100,23 @@ function syncPlebClockToAdvanced() {
 const reload = function() {
   if (!usdplReady) {return;}
 
+  backend.resolve(backend.getLimits(), (limits) => {
+    set_value(LIMITS_INFO, limits);
+    console.debug("POWERTOOLS: got limits", limits);
+  });
+
   backend.resolve(backend.getBatteryCurrent(), (rate: number) => { set_value(CURRENT_BATT, rate) });
   backend.resolve(backend.getBatteryChargeRate(), (rate: number) => { set_value(CHARGE_RATE_BATT, rate) });
   backend.resolve(backend.getBatteryChargeNow(), (rate: number) => { set_value(CHARGE_NOW_BATT, rate) });
   backend.resolve(backend.getBatteryChargeFull(), (rate: number) => { set_value(CHARGE_FULL_BATT, rate) });
   backend.resolve(backend.getBatteryChargeDesign(), (rate: number) => { set_value(CHARGE_DESIGN_BATT, rate) });
 
-  backend.resolve(backend.getCpuCount(), (count: number) => { set_value(TOTAL_CPUS, count)});
+  //backend.resolve(backend.getCpuCount(), (count: number) => { set_value(TOTAL_CPUS, count)});
   backend.resolve(backend.getCpusOnline(), (statii: boolean[]) => {
     set_value(ONLINE_STATUS_CPUS, statii);
     const count = countCpus(statii);
     set_value(ONLINE_CPUS, count);
-    set_value(SMT_CPU, statii.length > 3 && statii[0] == statii[1] && statii[2] == statii[3] && smtAllowed);
+    set_value(SMT_CPU, statii.length > 3 && statii[0] == statii[1] && statii[2] == statii[3]);
   });
   backend.resolve(backend.getCpuClockLimits(0), (limits: number[]) => {
     set_value(CLOCK_MIN_CPU, limits[0]);
@@ -144,7 +126,6 @@ const reload = function() {
   backend.resolve(backend.getCpusGovernor(), (governors: string[]) => {
     set_value(GOVERNOR_CPU, governors);
     console.log("POWERTOOLS: Governors from backend", governors);
-    console.log("POWERTOOLS: Governors in dropdown", governorOptions);
   });
 
   backend.resolve(backend.getGpuPpt(), (ppts: number[]) => {
@@ -226,10 +207,16 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
       reloadGUI("periodic" + (new Date()).getTime().toString());
   }, 1000);
 
-  const FieldWithSeparator = joinClassNames(gamepadDialogClasses.Field, gamepadDialogClasses.WithBottomSeparatorStandard);
+  //const FieldWithSeparator = joinClassNames(gamepadDialogClasses.Field, gamepadDialogClasses.WithBottomSeparatorStandard);
 
-  const total_cpus = get_value(TOTAL_CPUS);
+  const total_cpus = (get_value(LIMITS_INFO) as backend.SettingsLimits | null)?.cpu.count ?? 8;
   const advancedCpuIndex = advancedCpu - 1;
+  const smtAllowed = (get_value(LIMITS_INFO) as backend.SettingsLimits | null)?.cpu.smt_capable ?? true;
+
+  const governorOptions: SingleDropdownOption[] = (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].governors.map((elem) => {return {
+    data: elem,
+    label: <span>{elem}</span>,
+  };});
 
   return (
     <PanelSection>
@@ -280,7 +267,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           label="Threads"
           value={get_value(ONLINE_CPUS)}
           step={1}
-          max={get_value(SMT_CPU)? total_cpus : total_cpus/2}
+          max={get_value(SMT_CPU) || !smtAllowed ? total_cpus : total_cpus/2}
           min={1}
           showValue={true}
           onChange={(cpus: number) => {
@@ -307,13 +294,17 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
       </PanelSectionRow>}
       {!advancedMode && <PanelSectionRow>
         <ToggleField
-          checked={get_value(CLOCK_MIN_CPU) != null && get_value(CLOCK_MAX_CPU) != null}
+          checked={get_value(CLOCK_MIN_CPU) != null || get_value(CLOCK_MAX_CPU) != null}
           label="Frequency Limits"
           description="Set bounds on clock speed"
           onChange={(value: boolean) => {
             if (value) {
-              set_value(CLOCK_MIN_CPU, 1400);
-              set_value(CLOCK_MAX_CPU, 3500);
+              if ((get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_min_limits != null) {
+                set_value(CLOCK_MIN_CPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_min_limits!.min);
+              }
+              if ((get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_max_limits != null) {
+                set_value(CLOCK_MAX_CPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_max_limits!.max);
+              }
               syncPlebClockToAdvanced();
               reloadGUI("CPUFreqToggle");
             } else {
@@ -330,13 +321,13 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           }}
         />
       </PanelSectionRow>}
-      {!advancedMode && <PanelSectionRow>
+      {!advancedMode && (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_min_limits != null && <PanelSectionRow>
         {get_value(CLOCK_MIN_CPU) != null && <SliderField
           label="Minimum (MHz)"
           value={get_value(CLOCK_MIN_CPU)}
-          max={3500}
-          min={1400}
-          step={100}
+          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_min_limits!.max}
+          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_min_limits!.min}
+          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_step}
           showValue={true}
           disabled={get_value(CLOCK_MIN_CPU) == null}
           onChange={(freq: number) => {
@@ -360,13 +351,13 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           }}
         />}
       </PanelSectionRow>}
-      {!advancedMode && <PanelSectionRow>
+      {!advancedMode && (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_max_limits != null && <PanelSectionRow>
         {get_value(CLOCK_MAX_CPU) != null && <SliderField
           label="Maximum (MHz)"
           value={get_value(CLOCK_MAX_CPU)}
-          max={3500}
-          min={500}
-          step={100}
+          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_max_limits!.max}
+          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_max_limits!.min}
+          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_step}
           showValue={true}
           disabled={get_value(CLOCK_MAX_CPU) == null}
           onChange={(freq: number) => {
@@ -393,10 +384,10 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
       {/* CPU advanced mode */}
       {advancedMode && <PanelSectionRow>
         <SliderField
-          label="CPU to modify"
+          label="Selected CPU"
           value={advancedCpu}
           step={1}
-          max={8}
+          max={total_cpus}
           min={1}
           showValue={true}
           onChange={(cpuNum: number) => {
@@ -406,9 +397,9 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
       </PanelSectionRow>}
       {advancedMode && <PanelSectionRow>
         <ToggleField
-          checked={get_value(ONLINE_CPUS)[advancedCpuIndex]}
+          checked={get_value(ONLINE_STATUS_CPUS)[advancedCpuIndex]}
           label="Online"
-          description="Allow the CPU thread to do processing"
+          description="Allow the CPU thread to do work"
           onChange={(status: boolean) => {
             console.debug("CPU " + advancedCpu.toString() + " is now " + status.toString());
             if (get_value(SMT_CPU)) {
@@ -426,14 +417,19 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
       </PanelSectionRow>}
       {advancedMode && <PanelSectionRow>
         <ToggleField
-          checked={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].min != null && get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].max}
+          checked={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].min != null || get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].max != null}
           label="Frequency Limits"
           description="Set bounds on clock speed"
           onChange={(value: boolean) => {
             if (value) {
               const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
-              clocks[advancedCpuIndex].min = 1400;
-              clocks[advancedCpuIndex].max = 3500;
+              if ((get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_min_limits != null) {
+                clocks[advancedCpuIndex].min = (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_min_limits!.min;
+              }
+
+              if ((get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_max_limits != null) {
+                clocks[advancedCpuIndex].max = (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_max_limits!.max;
+              }
               set_value(CLOCK_MIN_MAX_CPU, clocks);
               reloadGUI("CPUFreqToggle");
             } else {
@@ -448,13 +444,13 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           }}
         />
       </PanelSectionRow>}
-      {advancedMode && <PanelSectionRow>
+      {advancedMode && (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_min_limits != null && <PanelSectionRow>
         {get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].min != null && <SliderField
           label="Minimum (MHz)"
           value={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].min}
-          max={3500}
-          min={1400}
-          step={100}
+          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_min_limits!.max}
+          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_min_limits!.min}
+          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_step}
           showValue={true}
           disabled={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].min == null}
           onChange={(freq: number) => {
@@ -473,13 +469,13 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           }}
         />}
       </PanelSectionRow>}
-      {advancedMode && <PanelSectionRow>
+      {advancedMode && (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_max_limits != null && <PanelSectionRow>
         {get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].max != null && <SliderField
           label="Maximum (MHz)"
           value={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].max}
-          max={3500}
-          min={500}
-          step={100}
+          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_max_limits!.max}
+          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_max_limits!.min}
+          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_step}
           showValue={true}
           disabled={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].max == null}
           onChange={(freq: number) => {
@@ -498,7 +494,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           }}
         />}
       </PanelSectionRow>}
-      {advancedMode && <PanelSectionRow>
+      {advancedMode && (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].governors.length != 0 && <PanelSectionRow>
         <Field
           label="Governor"
         >
@@ -527,15 +523,20 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
       <div className={staticClasses.PanelSectionTitle}>
         GPU
       </div>
-      <PanelSectionRow>
+      { ((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits != null ||(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits != null) && <PanelSectionRow>
         <ToggleField
-          checked={get_value(SLOW_PPT_GPU) != null && get_value(FAST_PPT_GPU) != null}
+          checked={get_value(SLOW_PPT_GPU) != null || get_value(FAST_PPT_GPU) != null}
           label="PowerPlay Limits"
           description="Override APU TDP settings"
           onChange={(value: boolean) => {
             if (value) {
-              set_value(SLOW_PPT_GPU, 15000000);
-              set_value(FAST_PPT_GPU, 15000000);
+              if ((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits != null) {
+                set_value(SLOW_PPT_GPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits!.max);
+              }
+
+              if ((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits != null) {
+                set_value(FAST_PPT_GPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits!.max);
+              }
               reloadGUI("GPUPPTToggle");
             } else {
               set_value(SLOW_PPT_GPU, null);
@@ -546,21 +547,22 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             }
           }}
         />
-      </PanelSectionRow>
+      </PanelSectionRow>}
       <PanelSectionRow>
         { get_value(SLOW_PPT_GPU) != null && <SliderField
-          label="SlowPPT (uW)"
+          label="SlowPPT (W)"
           value={get_value(SLOW_PPT_GPU)}
-          max={29000000}
-          min={1000000}
-          step={1000000}
+          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits!.max}
+          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits!.min}
+          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.ppt_step}
           showValue={true}
           disabled={get_value(SLOW_PPT_GPU) == null}
           onChange={(ppt: number) => {
             console.debug("SlowPPT is now " + ppt.toString());
             const pptNow = get_value(SLOW_PPT_GPU);
-            if (ppt != pptNow) {
-              backend.resolve(backend.setGpuPpt(get_value(FAST_PPT_GPU), ppt),
+            const realPpt = ppt;
+            if (realPpt != pptNow) {
+              backend.resolve(backend.setGpuPpt(get_value(FAST_PPT_GPU), realPpt),
                               (limits: number[]) => {
                 set_value(FAST_PPT_GPU, limits[0]);
                 set_value(SLOW_PPT_GPU, limits[1]);
@@ -572,18 +574,19 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
       </PanelSectionRow>
       <PanelSectionRow>
         {get_value(FAST_PPT_GPU) != null && <SliderField
-          label="FastPPT (uW)"
+          label="FastPPT (W)"
           value={get_value(FAST_PPT_GPU)}
-          max={29000000}
-          min={1000000}
-          step={1000000}
+          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits!.max}
+          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits!.min}
+          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.ppt_step}
           showValue={true}
           disabled={get_value(FAST_PPT_GPU) == null}
           onChange={(ppt: number) => {
             console.debug("FastPPT is now " + ppt.toString());
             const pptNow = get_value(FAST_PPT_GPU);
-            if (ppt != pptNow) {
-              backend.resolve(backend.setGpuPpt(get_value(SLOW_PPT_GPU), ppt),
+            const realPpt = ppt;
+            if (realPpt != pptNow) {
+              backend.resolve(backend.setGpuPpt(realPpt, get_value(SLOW_PPT_GPU)),
                               (limits: number[]) => {
                 set_value(FAST_PPT_GPU, limits[0]);
                 set_value(SLOW_PPT_GPU, limits[1]);
@@ -593,15 +596,21 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           }}
         />}
       </PanelSectionRow>
-      <PanelSectionRow>
+      {((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits != null || (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_max_limits != null) && <PanelSectionRow>
         <ToggleField
-          checked={get_value(CLOCK_MIN_GPU) != null && get_value(CLOCK_MAX_GPU) != null}
+          checked={get_value(CLOCK_MIN_GPU) != null || get_value(CLOCK_MAX_GPU) != null}
           label="Frequency Limits"
           description="Override bounds on gpu clock"
           onChange={(value: boolean) => {
             if (value) {
-              set_value(CLOCK_MIN_GPU, 200);
-              set_value(CLOCK_MAX_GPU, 1600);
+              let clock_min_limits = (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits;
+              let clock_max_limits = (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_max_limits;
+              if (clock_min_limits != null) {
+                set_value(CLOCK_MIN_GPU, clock_min_limits.min);
+              }
+              if (clock_max_limits != null) {
+                set_value(CLOCK_MAX_GPU, clock_max_limits.max);
+              }
               reloadGUI("GPUFreqToggle");
             } else {
               set_value(CLOCK_MIN_GPU, null);
@@ -612,14 +621,14 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             }
           }}
         />
-      </PanelSectionRow>
+      </PanelSectionRow>}
       <PanelSectionRow>
         { get_value(CLOCK_MIN_GPU) != null && <SliderField
           label="Minimum (MHz)"
           value={get_value(CLOCK_MIN_GPU)}
-          max={1600}
-          min={200}
-          step={100}
+          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits!.max}
+          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits!.min}
+          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_step}
           showValue={true}
           disabled={get_value(CLOCK_MIN_GPU) == null}
           onChange={(val: number) => {
@@ -640,9 +649,9 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
         {get_value(CLOCK_MAX_GPU) != null && <SliderField
           label="Maximum (MHz)"
           value={get_value(CLOCK_MAX_GPU)}
-          max={1600}
-          min={200}
-          step={100}
+          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_max_limits!.max}
+          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_max_limits!.min}
+          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_step}
           showValue={true}
           disabled={get_value(CLOCK_MAX_GPU) == null}
           onChange={(val: number) => {
@@ -659,7 +668,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           }}
         />}
       </PanelSectionRow>
-      <PanelSectionRow>
+      {(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.memory_control_capable && <PanelSectionRow>
         <ToggleField
           checked={get_value(SLOW_MEMORY_GPU)}
           label="Downclock Memory"
@@ -671,36 +680,28 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             })
           }}
         />
-      </PanelSectionRow>
+      </PanelSectionRow>}
       {/* Battery */}
       <div className={staticClasses.PanelSectionTitle}>
         Battery
       </div>
-      <PanelSectionRow>
-        <div className={FieldWithSeparator}>
-          <div className={gamepadDialogClasses.FieldLabelRow}>
-            <div className={gamepadDialogClasses.FieldLabel}>
-            Now (Charge)
-            </div>
-            <div className={gamepadDialogClasses.FieldChildren}>
-            {get_value(CHARGE_NOW_BATT).toFixed(1)} Wh ({(100 * get_value(CHARGE_NOW_BATT) / get_value(CHARGE_FULL_BATT)).toFixed(1)}%)
-            </div>
-          </div>
-        </div>
-      </PanelSectionRow>
-      <PanelSectionRow>
-        <div className={FieldWithSeparator}>
-          <div className={gamepadDialogClasses.FieldLabelRow}>
-            <div className={gamepadDialogClasses.FieldLabel}>
-            Max (Design)
-            </div>
-            <div className={gamepadDialogClasses.FieldChildren}>
-            {get_value(CHARGE_FULL_BATT).toFixed(1)} Wh ({(100 * get_value(CHARGE_FULL_BATT) / get_value(CHARGE_DESIGN_BATT)).toFixed(1)}%)
-            </div>
-          </div>
-        </div>
-      </PanelSectionRow>
-      <PanelSectionRow>
+      {get_value(CHARGE_NOW_BATT) != null && get_value(CHARGE_FULL_BATT) != null && <PanelSectionRow>
+        <Field
+          label="Now (Charge)"
+          onClick={()=> eggCount++}
+          focusable={false}>
+          {get_value(CHARGE_NOW_BATT).toFixed(1)} Wh ({(100 * get_value(CHARGE_NOW_BATT) / get_value(CHARGE_FULL_BATT)).toFixed(1)}%)
+        </Field>
+      </PanelSectionRow>}
+      {get_value(CHARGE_FULL_BATT) != null && get_value(CHARGE_DESIGN_BATT) != null && <PanelSectionRow>
+        <Field
+          label="Max (Design)"
+          onClick={()=> eggCount++}
+          focusable={false}>
+          {get_value(CHARGE_FULL_BATT).toFixed(1)} Wh ({(100 * get_value(CHARGE_FULL_BATT) / get_value(CHARGE_DESIGN_BATT)).toFixed(1)}%)
+        </Field>
+      </PanelSectionRow>}
+      {(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_rate != null && <PanelSectionRow>
         <ToggleField
           checked={get_value(CHARGE_RATE_BATT) != null}
           label="Charge Current Limits"
@@ -720,9 +721,9 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
         { get_value(CHARGE_RATE_BATT) != null && <SliderField
           label="Maximum (mA)"
           value={get_value(CHARGE_RATE_BATT)}
-          max={2500}
-          min={250}
-          step={50}
+          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_rate!.max}
+          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_rate!.min}
+          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_step}
           showValue={true}
           disabled={get_value(CHARGE_RATE_BATT) == null}
           onChange={(val: number) => {
@@ -737,18 +738,14 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             }
           }}
         />}
-      </PanelSectionRow>
+      </PanelSectionRow>}
       <PanelSectionRow>
-        <div className={FieldWithSeparator}>
-          <div className={gamepadDialogClasses.FieldLabelRow}>
-            <div className={gamepadDialogClasses.FieldLabel}>
-            Current
-            </div>
-            <div className={gamepadDialogClasses.FieldChildren}>
-            {get_value(CURRENT_BATT)} mA
-            </div>
-          </div>
-        </div>
+        <Field
+          label="Current"
+          onClick={()=> eggCount++}
+          focusable={false}>
+          {get_value(CURRENT_BATT)} mA
+        </Field>
       </PanelSectionRow>
       {/* Persistence */}
       <div className={staticClasses.PanelSectionTitle}>
@@ -769,56 +766,51 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
         />
       </PanelSectionRow>
       <PanelSectionRow>
-        <div className={FieldWithSeparator}>
-          <div className={gamepadDialogClasses.FieldLabelRow}>
-            <div className={gamepadDialogClasses.FieldLabel}>
-            Profile
-            </div>
-            <div className={gamepadDialogClasses.FieldChildren}>
-            {get_value(NAME_GEN)}
-            </div>
-          </div>
-        </div>
+        <Field
+          label="Profile"
+          onClick={()=> eggCount++}
+          focusable={false}>
+          {get_value(NAME_GEN)}
+        </Field>
       </PanelSectionRow>
       {/* Version Info */}
       <div className={staticClasses.PanelSectionTitle}>
-        Debug
+        {eggCount % 10 == 9 ? "Ha! Nerd" : "Debug"}
       </div>
       <PanelSectionRow>
-        <div className={FieldWithSeparator}>
-          <div className={gamepadDialogClasses.FieldLabelRow}>
-            <div className={gamepadDialogClasses.FieldLabel}>
-            Native
-            </div>
-            <div className={gamepadDialogClasses.FieldChildren}>
-            {get_value(BACKEND_INFO)}
-            </div>
-          </div>
-        </div>
+        <Field
+          label={eggCount % 10 == 9 ? "PowerTools" : "Native"}
+          onClick={()=> {
+            if (eggCount % 10 == 9) {
+              // you know you're bored and/or conceited when you spend time adding an easter egg
+              // that just sends people to your own project's repo
+              Router.NavigateToExternalWeb("https://github.com/NGnius/PowerTools");
+            }
+            eggCount++;
+          }}>
+          {eggCount % 10 == 9 ? "by NGnius" : get_value(BACKEND_INFO)}
+        </Field>
       </PanelSectionRow>
       <PanelSectionRow>
-        <div className={FieldWithSeparator}>
-          <div className={gamepadDialogClasses.FieldLabelRow}>
-            <div className={gamepadDialogClasses.FieldLabel}>
-            Framework
-            </div>
-            <div className={gamepadDialogClasses.FieldChildren}>
-            {target_usdpl()}
-            </div>
-          </div>
-        </div>
+        <Field
+          label="Framework"
+          onClick={()=> eggCount++}>
+          {eggCount % 10 == 9 ? "<3 <3 <3" : target_usdpl()}
+        </Field>
       </PanelSectionRow>
       <PanelSectionRow>
-        <div className={FieldWithSeparator}>
-          <div className={gamepadDialogClasses.FieldLabelRow}>
-            <div className={gamepadDialogClasses.FieldLabel}>
-            USDPL
-            </div>
-            <div className={gamepadDialogClasses.FieldChildren}>
-            v{version_usdpl()}
-            </div>
-          </div>
-        </div>
+        <Field
+          label="USDPL"
+          onClick={()=> {
+            if (eggCount % 10 == 9) {
+              // you know you're bored and/or conceited when you spend time adding an easter egg
+              // that just sends people to your own project's repo
+              Router.NavigateToExternalWeb("https://github.com/NGnius/usdpl-rs");
+            }
+            eggCount++;
+          }}>
+          v{version_usdpl()}
+        </Field>
       </PanelSectionRow>
       <PanelSectionRow>
         <ButtonItem

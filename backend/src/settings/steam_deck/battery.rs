@@ -1,12 +1,14 @@
 use std::convert::Into;
 
-use super::{OnResume, OnSet, SettingError, SettingsRange};
+use crate::api::RangeLimit;
+use crate::settings::{OnResume, OnSet, SettingError, SettingsRange};
+use crate::settings::TBattery;
 use crate::persist::BatteryJson;
 
 #[derive(Debug, Clone)]
 pub struct Battery {
     pub charge_rate: Option<u64>,
-    state: crate::state::Battery,
+    state: crate::state::steam_deck::Battery,
 }
 
 const BATTERY_VOLTAGE: f64 = 7.7;
@@ -23,11 +25,11 @@ impl Battery {
         match version {
             0 => Self {
                 charge_rate: other.charge_rate,
-                state: crate::state::Battery::default(),
+                state: crate::state::steam_deck::Battery::default(),
             },
             _ => Self {
                 charge_rate: other.charge_rate,
-                state: crate::state::Battery::default(),
+                state: crate::state::steam_deck::Battery::default(),
             },
         }
     }
@@ -38,7 +40,7 @@ impl Battery {
             usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, charge_rate).map_err(
                 |e| SettingError {
                     msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
-                    setting: super::SettingVariant::Battery,
+                    setting: crate::settings::SettingVariant::Battery,
                 },
             )
         } else if self.state.charge_rate_set {
@@ -46,7 +48,7 @@ impl Battery {
             usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, Self::max().charge_rate.unwrap()).map_err(
                 |e| SettingError {
                     msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
-                    setting: super::SettingVariant::Battery,
+                    setting: crate::settings::SettingVariant::Battery,
                 },
             )
         } else {
@@ -66,11 +68,11 @@ impl Battery {
         match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CURRENT_NOW_PATH) {
             Err((Some(e), None)) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", BATTERY_CURRENT_NOW_PATH, e),
-                setting: super::SettingVariant::Battery,
+                setting: crate::settings::SettingVariant::Battery,
             }),
             Err((None, Some(e))) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", BATTERY_CURRENT_NOW_PATH, e),
-                setting: super::SettingVariant::Battery,
+                setting: crate::settings::SettingVariant::Battery,
             }),
             Err(_) => panic!(
                 "Invalid error while reading from `{}`",
@@ -86,11 +88,11 @@ impl Battery {
         match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_NOW_PATH) {
             Err((Some(e), None)) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_NOW_PATH, e),
-                setting: super::SettingVariant::Battery,
+                setting: crate::settings::SettingVariant::Battery,
             }),
             Err((None, Some(e))) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_NOW_PATH, e),
-                setting: super::SettingVariant::Battery,
+                setting: crate::settings::SettingVariant::Battery,
             }),
             Err(_) => panic!(
                 "Invalid error while reading from `{}`",
@@ -105,11 +107,11 @@ impl Battery {
         match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_FULL_PATH) {
             Err((Some(e), None)) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_FULL_PATH, e),
-                setting: super::SettingVariant::Battery,
+                setting: crate::settings::SettingVariant::Battery,
             }),
             Err((None, Some(e))) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_FULL_PATH, e),
-                setting: super::SettingVariant::Battery,
+                setting: crate::settings::SettingVariant::Battery,
             }),
             Err(_) => panic!(
                 "Invalid error while reading from `{}`",
@@ -124,11 +126,11 @@ impl Battery {
         match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_DESIGN_PATH) {
             Err((Some(e), None)) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_DESIGN_PATH, e),
-                setting: super::SettingVariant::Battery,
+                setting: crate::settings::SettingVariant::Battery,
             }),
             Err((None, Some(e))) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_DESIGN_PATH, e),
-                setting: super::SettingVariant::Battery,
+                setting: crate::settings::SettingVariant::Battery,
             }),
             Err(_) => panic!(
                 "Invalid error while reading from `{}`",
@@ -142,7 +144,7 @@ impl Battery {
     pub fn system_default() -> Self {
         Self {
             charge_rate: None,
-            state: crate::state::Battery::default(),
+            state: crate::state::steam_deck::Battery::default(),
         }
     }
 }
@@ -174,7 +176,7 @@ impl SettingsRange for Battery {
     fn max() -> Self {
         Self {
             charge_rate: Some(2500),
-            state: crate::state::Battery::default(),
+            state: crate::state::steam_deck::Battery::default(),
         }
     }
 
@@ -182,7 +184,33 @@ impl SettingsRange for Battery {
     fn min() -> Self {
         Self {
             charge_rate: Some(250),
-            state: crate::state::Battery::default(),
+            state: crate::state::steam_deck::Battery::default(),
         }
+    }
+}
+
+impl TBattery for Battery {
+    fn limits(&self) -> crate::api::BatteryLimits {
+        let max = Self::max();
+        let min = Self::min();
+        crate::api::BatteryLimits {
+            charge_rate: Some(RangeLimit{
+                min: min.charge_rate.unwrap(),
+                max: max.charge_rate.unwrap(),
+            }),
+            charge_step: 50,
+        }
+    }
+
+    fn json(&self) -> crate::persist::BatteryJson {
+        self.clone().into()
+    }
+
+    fn charge_rate(&mut self, rate: Option<u64>) {
+        self.charge_rate = rate;
+    }
+
+    fn get_charge_rate(&self) -> Option<u64> {
+        self.charge_rate
     }
 }

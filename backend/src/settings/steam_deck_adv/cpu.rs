@@ -1,7 +1,9 @@
 use std::convert::Into;
 
-use super::MinMax;
-use super::{OnResume, OnSet, SettingError, SettingsRange};
+use crate::api::RangeLimit;
+use crate::settings::MinMax;
+use crate::settings::{OnResume, OnSet, SettingError, SettingsRange};
+use crate::settings::{TCpus, TCpu};
 use crate::persist::CpuJson;
 
 const CPU_PRESENT_PATH: &str = "/sys/devices/system/cpu/present";
@@ -25,7 +27,7 @@ impl OnSet for Cpus {
                             "Failed to write `on` to `{}`: {}",
                             CPU_SMT_PATH, e
                         ),
-                        setting: super::SettingVariant::Cpu,
+                        setting: crate::settings::SettingVariant::Cpu,
                     }
                 })?;
             } else {
@@ -35,7 +37,7 @@ impl OnSet for Cpus {
                             "Failed to write `off` to `{}`: {}",
                             CPU_SMT_PATH, e
                         ),
-                        setting: super::SettingVariant::Cpu,
+                        setting: crate::settings::SettingVariant::Cpu,
                     }
                 })?;
             }
@@ -129,13 +131,35 @@ impl Cpus {
     }
 }
 
+impl TCpus for Cpus {
+    fn limits(&self) -> crate::api::CpusLimits {
+        crate::api::CpusLimits {
+            cpus: self.cpus.iter().map(|x| x.limits()).collect(),
+            count: self.cpus.len(),
+            smt_capable: self.smt_capable,
+        }
+    }
+
+    fn json(&self) -> Vec<crate::persist::CpuJson> {
+        self.cpus.iter().map(|x| x.to_owned().into()).collect()
+    }
+
+    fn cpus(&mut self) -> Vec<&mut dyn TCpu> {
+        self.cpus.iter_mut().map(|x| x as &mut dyn TCpu).collect()
+    }
+
+    fn len(&self) -> usize {
+        self.cpus.len()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Cpu {
     pub online: bool,
     pub clock_limits: Option<MinMax<u64>>,
     pub governor: String,
     index: usize,
-    state: crate::state::Cpu,
+    state: crate::state::steam_deck::Cpu,
 }
 
 const CPU_CLOCK_LIMITS_PATH: &str = "/sys/class/drm/card0/device/pp_od_clk_voltage";
@@ -150,14 +174,14 @@ impl Cpu {
                 clock_limits: other.clock_limits.map(|x| MinMax::from_json(x, version)),
                 governor: other.governor,
                 index: i,
-                state: crate::state::Cpu::default(),
+                state: crate::state::steam_deck::Cpu::default(),
             },
             _ => Self {
                 online: other.online,
                 clock_limits: other.clock_limits.map(|x| MinMax::from_json(x, version)),
                 governor: other.governor,
                 index: i,
-                state: crate::state::Cpu::default(),
+                state: crate::state::steam_deck::Cpu::default(),
             },
         }
     }
@@ -169,7 +193,7 @@ impl Cpu {
             usdpl_back::api::files::write_single(&online_path, self.online as u8).map_err(|e| {
                 SettingError {
                     msg: format!("Failed to write to `{}`: {}", &online_path, e),
-                    setting: super::SettingVariant::Cpu,
+                    setting: crate::settings::SettingVariant::Cpu,
                 }
             })?;
         }
@@ -184,7 +208,7 @@ impl Cpu {
                         "Failed to write `manual` to `{}`: {}",
                         CPU_FORCE_LIMITS_PATH, e
                     ),
-                    setting: super::SettingVariant::Cpu,
+                    setting: crate::settings::SettingVariant::Cpu,
                 }
             })?;
         }
@@ -199,7 +223,7 @@ impl Cpu {
                         "Failed to write `{}` to `{}`: {}",
                         &payload_max, CPU_CLOCK_LIMITS_PATH, e
                     ),
-                    setting: super::SettingVariant::Cpu,
+                    setting: crate::settings::SettingVariant::Cpu,
                 },
             )?;
             // min clock
@@ -210,7 +234,7 @@ impl Cpu {
                         "Failed to write `{}` to `{}`: {}",
                         &payload_min, CPU_CLOCK_LIMITS_PATH, e
                     ),
-                    setting: super::SettingVariant::Cpu,
+                    setting: crate::settings::SettingVariant::Cpu,
                 },
             )?;
         } else if self.state.clock_limits_set || self.state.is_resuming {
@@ -225,7 +249,7 @@ impl Cpu {
                         "Failed to write `{}` to `{}`: {}",
                         &payload_max, CPU_CLOCK_LIMITS_PATH, e
                     ),
-                    setting: super::SettingVariant::Cpu,
+                    setting: crate::settings::SettingVariant::Cpu,
                 },
             )?;
             // min clock
@@ -236,7 +260,7 @@ impl Cpu {
                         "Failed to write `{}` to `{}`: {}",
                         &payload_min, CPU_CLOCK_LIMITS_PATH, e
                     ),
-                    setting: super::SettingVariant::Cpu,
+                    setting: crate::settings::SettingVariant::Cpu,
                 },
             )?;
         }
@@ -244,7 +268,7 @@ impl Cpu {
         usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
             SettingError {
                 msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
-                setting: super::SettingVariant::Cpu,
+                setting: crate::settings::SettingVariant::Cpu,
             }
         })?;
 
@@ -257,7 +281,7 @@ impl Cpu {
                         "Failed to write `{}` to `{}`: {}",
                         &self.governor, &governor_path, e
                     ),
-                    setting: super::SettingVariant::Cpu,
+                    setting: crate::settings::SettingVariant::Cpu,
                 }
             })?;
         }
@@ -275,14 +299,34 @@ impl Cpu {
         }
     }
 
-    fn from_sys(index: usize) -> Self {
+    fn from_sys(cpu_index: usize) -> Self {
         Self {
-            online: usdpl_back::api::files::read_single(cpu_online_path(index)).unwrap_or(1u8) != 0,
+            online: usdpl_back::api::files::read_single(cpu_online_path(cpu_index)).unwrap_or(1u8) != 0,
             clock_limits: None,
-            governor: usdpl_back::api::files::read_single(cpu_governor_path(index))
+            governor: usdpl_back::api::files::read_single(cpu_governor_path(cpu_index))
                 .unwrap_or("schedutil".to_owned()),
-            index: index,
-            state: crate::state::Cpu::default(),
+            index: cpu_index,
+            state: crate::state::steam_deck::Cpu::default(),
+        }
+    }
+
+    fn limits(&self) -> crate::api::CpuLimits {
+        let max = Self::max();
+        let max_clocks = max.clock_limits.unwrap();
+
+        let min = Self::min();
+        let min_clocks = min.clock_limits.unwrap();
+        crate::api::CpuLimits {
+            clock_min_limits: Some(RangeLimit {
+                min: min_clocks.min,
+                max: max_clocks.min
+            }),
+            clock_max_limits: Some(RangeLimit {
+                min: min_clocks.max,
+                max: max_clocks.max
+            }),
+            clock_step: 100,
+            governors: vec![], // TODO
         }
     }
 }
@@ -313,6 +357,28 @@ impl OnResume for Cpu {
     }
 }
 
+impl TCpu for Cpu {
+    fn online(&mut self) -> &mut bool {
+        &mut self.online
+    }
+
+    fn governor(&mut self, governor: String) {
+        self.governor = governor;
+    }
+
+    fn get_governor(&self) -> &'_ str {
+        &self.governor
+    }
+
+    fn clock_limits(&mut self, limits: Option<MinMax<u64>>) {
+        self.clock_limits = limits;
+    }
+
+    fn get_clock_limits(&self) -> Option<&MinMax<u64>> {
+        self.clock_limits.as_ref()
+    }
+}
+
 impl SettingsRange for Cpu {
     #[inline]
     fn max() -> Self {
@@ -324,7 +390,7 @@ impl SettingsRange for Cpu {
             }),
             governor: "schedutil".to_owned(),
             index: usize::MAX,
-            state: crate::state::Cpu::default(),
+            state: crate::state::steam_deck::Cpu::default(),
         }
     }
 
@@ -335,7 +401,7 @@ impl SettingsRange for Cpu {
             clock_limits: Some(MinMax { max: 500, min: 1400 }),
             governor: "schedutil".to_owned(),
             index: usize::MIN,
-            state: crate::state::Cpu::default(),
+            state: crate::state::steam_deck::Cpu::default(),
         }
     }
 }

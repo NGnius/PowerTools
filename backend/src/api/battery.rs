@@ -6,22 +6,22 @@ use super::handler::{ApiMessage, BatteryMessage};
 
 /// Current current (ha!) web method
 pub fn current_now(_: super::ApiParameterType) -> super::ApiParameterType {
-    super::utility::map_result(crate::settings::Battery::read_current_now())
+    super::utility::map_optional_result(crate::settings::driver::read_current_now())
 }
 
 /// Charge now web method
 pub fn charge_now(_: super::ApiParameterType) -> super::ApiParameterType {
-    super::utility::map_result(crate::settings::Battery::read_charge_now())
+    super::utility::map_optional_result(crate::settings::driver::read_charge_now())
 }
 
 /// Charge full web method
 pub fn charge_full(_: super::ApiParameterType) -> super::ApiParameterType {
-    super::utility::map_result(crate::settings::Battery::read_charge_full())
+    super::utility::map_optional_result(crate::settings::driver::read_charge_full())
 }
 
 /// Charge design web method
 pub fn charge_design(_: super::ApiParameterType) -> super::ApiParameterType {
-    super::utility::map_result(crate::settings::Battery::read_charge_design())
+    super::utility::map_optional_result(crate::settings::driver::read_charge_design())
 }
 
 /// Generate set battery charge rate web method

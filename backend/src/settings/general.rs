@@ -1,9 +1,9 @@
-use std::convert::Into;
 use std::path::PathBuf;
 //use std::sync::{Arc, Mutex};
 
-use super::{Battery, Cpus, Gpu};
+//use super::{Battery, Cpus, Gpu};
 use super::{OnResume, OnSet, SettingError};
+use super::{TGeneral, TGpu, TCpus, TBattery};
 use crate::persist::SettingsJson;
 //use crate::utility::unwrap_lock;
 
@@ -33,6 +33,7 @@ pub struct General {
     pub persistent: bool,
     pub path: PathBuf,
     pub name: String,
+    pub driver: crate::persist::DriverJson,
 }
 
 impl OnSet for General {
@@ -41,12 +42,52 @@ impl OnSet for General {
     }
 }
 
-#[derive(Debug, Clone)]
+impl OnResume for General {
+    fn on_resume(&self) -> Result<(), SettingError> {
+        Ok(())
+    }
+}
+
+impl TGeneral for General {
+    fn limits(&self) -> crate::api::GeneralLimits {
+        crate::api::GeneralLimits {  }
+    }
+
+    fn get_persistent(&self) -> bool {
+        self.persistent
+    }
+
+    fn persistent(&mut self) -> &'_ mut bool {
+        &mut self.persistent
+    }
+
+    fn get_path(&self) -> &'_ std::path::Path {
+        &self.path
+    }
+
+    fn path(&mut self, path: std::path::PathBuf) {
+        self.path = path;
+    }
+
+    fn get_name(&self) -> &'_ str {
+        &self.name
+    }
+
+    fn name(&mut self, name: String) {
+        self.name = name;
+    }
+
+    fn provider(&self) -> crate::persist::DriverJson {
+        self.driver.clone()
+    }
+}
+
+#[derive(Debug)]
 pub struct Settings {
-    pub general: General,
-    pub cpus: Cpus,
-    pub gpu: Gpu,
-    pub battery: Battery,
+    pub general: Box<dyn TGeneral>,
+    pub cpus: Box<dyn TCpus>,
+    pub gpu: Box<dyn TGpu>,
+    pub battery: Box<dyn TBattery>,
 }
 
 impl OnSet for Settings {
@@ -62,47 +103,38 @@ impl OnSet for Settings {
 impl Settings {
     #[inline]
     pub fn from_json(other: SettingsJson, json_path: PathBuf) -> Self {
-        match other.version {
-            0 => Self {
-                general: General {
-                    persistent: other.persistent,
-                    path: json_path,
-                    name: other.name,
-                },
-                cpus: Cpus::from_json(other.cpus, other.version),
-                gpu: Gpu::from_json(other.gpu, other.version),
-                battery: Battery::from_json(other.battery, other.version),
+        match super::Driver::init(other, json_path.clone()) {
+            Ok(x) => {
+                log::info!("Loaded settings for driver {:?}", x.general.provider());
+                Self {
+                    general: x.general,
+                    cpus: x.cpus,
+                    gpu: x.gpu,
+                    battery: x.battery,
+                }
             },
-            _ => Self {
-                general: General {
-                    persistent: other.persistent,
-                    path: json_path,
-                    name: other.name,
-                },
-                cpus: Cpus::from_json(other.cpus, other.version),
-                gpu: Gpu::from_json(other.gpu, other.version),
-                battery: Battery::from_json(other.battery, other.version),
-            },
+            Err(e) => {
+                log::error!("Driver init error: {}", e);
+                Self::system_default(json_path)
+            }
         }
     }
 
     pub fn system_default(json_path: PathBuf) -> Self {
+        let driver = super::Driver::system_default(json_path);
         Self {
-            general: General {
-                persistent: false,
-                path: json_path,
-                name: crate::consts::DEFAULT_SETTINGS_NAME.to_owned(),
-            },
-            cpus: Cpus::system_default(),
-            gpu: Gpu::system_default(),
-            battery: Battery::system_default(),
+            general: driver.general,
+            cpus: driver.cpus,
+            gpu: driver.gpu,
+            battery: driver.battery,
         }
     }
 
     pub fn load_system_default(&mut self) {
-        self.cpus = Cpus::system_default();
-        self.gpu = Gpu::system_default();
-        self.battery = Battery::system_default();
+        let driver = super::Driver::system_default(self.general.get_path().to_owned());
+        self.cpus = driver.cpus;
+        self.gpu = driver.gpu;
+        self.battery = driver.battery;
     }
     
     pub fn load_file(&mut self, filename: PathBuf, name: String, system_defaults: bool) -> Result<bool, SettingError> {
@@ -115,24 +147,36 @@ impl Settings {
             })?;
             if !settings_json.persistent {
                 log::warn!("Loaded persistent config `{}` ({}) with persistent=false", &settings_json.name, json_path.display());
-                self.general.persistent = false;
-                self.general.name = name;
+                *self.general.persistent() = false;
+                self.general.name(name);
             } else {
-                self.cpus = Cpus::from_json(settings_json.cpus, settings_json.version);
-                self.gpu = Gpu::from_json(settings_json.gpu, settings_json.version);
-                self.battery = Battery::from_json(settings_json.battery, settings_json.version);
-                self.general.persistent = true;
-                self.general.name = settings_json.name;
+                self.cpus = Box::new(super::steam_deck::Cpus::from_json(settings_json.cpus, settings_json.version));
+                self.gpu = Box::new(super::steam_deck::Gpu::from_json(settings_json.gpu, settings_json.version));
+                self.battery = Box::new(super::steam_deck::Battery::from_json(settings_json.battery, settings_json.version));
+                *self.general.persistent() = true;
+                self.general.name(settings_json.name);
             }
         } else {
             if system_defaults {
                 self.load_system_default();
             }
-            self.general.persistent = false;
-            self.general.name = name;
+            *self.general.persistent() = false;
+            self.general.name(name);
         }
-        self.general.path = json_path;
-        Ok(self.general.persistent)
+        self.general.path(json_path);
+        Ok(*self.general.persistent())
+    }
+
+    pub fn json(&self) -> SettingsJson {
+        SettingsJson {
+            version: LATEST_VERSION,
+            name: self.general.get_name().to_owned(),
+            persistent: self.general.get_persistent(),
+            cpus: self.cpus.json(),
+            gpu: self.gpu.json(),
+            battery: self.battery.json(),
+            provider: Some(self.general.provider()),
+        }
     }
 }
 
@@ -149,21 +193,18 @@ impl OnResume for Settings {
     }
 }
 
-impl Into<SettingsJson> for Settings {
+/*impl Into<SettingsJson> for Settings {
     #[inline]
     fn into(self) -> SettingsJson {
         log::debug!("Converting into json");
         SettingsJson {
             version: LATEST_VERSION,
-            name: self.general.name.clone(),
-            persistent: self.general.persistent,
-            cpus: self.cpus.cpus
-                .clone()
-                .drain(..)
-                .map(|cpu| cpu.into())
-                .collect(),
-            gpu: self.gpu.clone().into(),
-            battery: self.battery.clone().into(),
+            name: self.general.get_name().to_owned(),
+            persistent: self.general.get_persistent(),
+            cpus: self.cpus.json(),
+            gpu: self.gpu.json(),
+            battery: self.battery.json(),
+            provider: Some(self.general.provider()),
         }
     }
-}
+}*/
