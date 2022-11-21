@@ -22,6 +22,8 @@ pub enum ApiMessage {
 pub enum BatteryMessage {
     SetChargeRate(Option<u64>),
     GetChargeRate(Callback<Option<u64>>),
+    SetChargeMode(Option<String>),
+    GetChargeMode(Callback<Option<String>>),
 }
 
 impl BatteryMessage {
@@ -29,6 +31,8 @@ impl BatteryMessage {
         match self {
             Self::SetChargeRate(rate) => settings.charge_rate(rate),
             Self::GetChargeRate(cb) => cb(settings.get_charge_rate()),
+            Self::SetChargeMode(mode) => settings.charge_mode(mode),
+            Self::GetChargeMode(cb) => cb(settings.get_charge_mode()),
         }
     }
 }

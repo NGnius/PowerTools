@@ -79,4 +79,8 @@ pub trait TBattery: OnResume + OnSet + Debug + Send {
     fn charge_rate(&mut self, rate: Option<u64>);
 
     fn get_charge_rate(&self) -> Option<u64>;
+
+    fn charge_mode(&mut self, mode: Option<String>);
+
+    fn get_charge_mode(&self) -> Option<String>;
 }

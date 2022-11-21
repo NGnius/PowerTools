@@ -177,3 +177,12 @@ pub fn get_limits(
         vec![Primitive::Json(serde_json::to_string(&getter()).unwrap())]
     }
 }
+
+pub fn gunter(_: super::ApiParameterType) -> super::ApiParameterType {
+    std::thread::spawn(|| {
+        log::info!("Zhu Li, do the thing!");
+        crate::settings::driver::maybe_do_button();
+        log::info!("Thing done.")
+    });
+    vec![true.into()]
+}

@@ -701,7 +701,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           {get_value(CHARGE_FULL_BATT).toFixed(1)} Wh ({(100 * get_value(CHARGE_FULL_BATT) / get_value(CHARGE_DESIGN_BATT)).toFixed(1)}%)
         </Field>
       </PanelSectionRow>}
-      {(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_rate != null && <PanelSectionRow>
+      {(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_current != null && <PanelSectionRow>
         <ToggleField
           checked={get_value(CHARGE_RATE_BATT) != null}
           label="Charge Current Limits"
@@ -721,9 +721,9 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
         { get_value(CHARGE_RATE_BATT) != null && <SliderField
           label="Maximum (mA)"
           value={get_value(CHARGE_RATE_BATT)}
-          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_rate!.max}
-          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_rate!.min}
-          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_step}
+          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_current!.max}
+          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_current!.min}
+          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_current_step}
           showValue={true}
           disabled={get_value(CHARGE_RATE_BATT) == null}
           onChange={(val: number) => {
@@ -812,6 +812,16 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           v{version_usdpl()}
         </Field>
       </PanelSectionRow>
+      {eggCount % 10 == 9 && <PanelSectionRow>
+        <ButtonItem
+          layout="below"
+          onClick={(_: MouseEvent) => {
+            backend.idk();
+          }}
+        >
+        ???
+        </ButtonItem>
+      </PanelSectionRow>}
       <PanelSectionRow>
         <ButtonItem
           layout="below"

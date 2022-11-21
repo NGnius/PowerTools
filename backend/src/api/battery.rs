@@ -71,3 +71,51 @@ pub fn unset_charge_rate(
         vec![true.into()]
     }
 }
+
+/// Generate set battery charge mode web method
+pub fn set_charge_mode(
+    sender: Sender<ApiMessage>,
+) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let setter = move |mode: String|
+        sender.lock()
+            .unwrap()
+            .send(ApiMessage::Battery(BatteryMessage::SetChargeMode(Some(mode))))
+            .expect("set_charge_mode send failed");
+    move |params_in: super::ApiParameterType| {
+        if let Some(Primitive::String(new_val)) = params_in.get(0) {
+            setter(new_val.to_owned());
+            vec![new_val.to_owned().into()]
+        } else {
+            vec!["set_charge_rate missing parameter".into()]
+        }
+    }
+}
+
+/// Generate get battery charge mode web method
+pub fn get_charge_mode(
+    sender: Sender<ApiMessage>,
+) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let (tx, rx) = mpsc::channel();
+        let callback = move |mode: Option<String>| tx.send(mode).expect("get_charge_mode callback send failed");
+        sender.lock().unwrap().send(ApiMessage::Battery(BatteryMessage::GetChargeMode(Box::new(callback)))).expect("get_charge_mode send failed");
+        rx.recv().expect("get_charge_mode callback recv failed")
+    };
+    move |_: super::ApiParameterType| {
+        vec![getter().map(|x| x.into()).unwrap_or(Primitive::Empty)]
+    }
+}
+
+/// Generate unset battery charge mode web method
+pub fn unset_charge_mode(
+    sender: Sender<ApiMessage>,
+) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let setter = move || sender.lock().unwrap().send(ApiMessage::Battery(BatteryMessage::SetChargeMode(None))).expect("unset_charge_mode send failed");
+    move |_params_in: super::ApiParameterType| {
+        setter();
+        vec![true.into()]
+    }
+}

@@ -82,6 +82,18 @@ fn main() -> Result<(), ()> {
             "BATTERY_unset_charge_rate",
             api::battery::unset_charge_rate(api_sender.clone()),
         )
+        .register(
+            "BATTERY_set_charge_mode",
+            api::battery::set_charge_mode(api_sender.clone()),
+        )
+        .register(
+            "BATTERY_get_charge_mode",
+            api::battery::get_charge_mode(api_sender.clone()),
+        )
+        .register(
+            "BATTERY_unset_charge_mode",
+            api::battery::unset_charge_mode(api_sender.clone()),
+        )
         // cpu API functions
         .register("CPU_count", api::cpu::max_cpus)
         .register(
@@ -186,10 +198,11 @@ fn main() -> Result<(), ()> {
             "GENERAL_wait_for_unlocks",
             api::general::lock_unlock_all(api_sender.clone())
         )
-        .register(
+        .register_blocking(
             "GENERAL_get_limits",
             api::general::get_limits(api_sender.clone())
-        );
+        )
+        .register("GENERAL_idk", api::general::gunter);
 
     api_worker::spawn(loaded_settings, api_handler);
 

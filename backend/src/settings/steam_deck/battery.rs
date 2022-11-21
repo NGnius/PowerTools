@@ -4,10 +4,12 @@ use crate::api::RangeLimit;
 use crate::settings::{OnResume, OnSet, SettingError, SettingsRange};
 use crate::settings::TBattery;
 use crate::persist::BatteryJson;
+use super::util::ChargeMode;
 
 #[derive(Debug, Clone)]
 pub struct Battery {
     pub charge_rate: Option<u64>,
+    pub charge_mode: Option<ChargeMode>,
     state: crate::state::steam_deck::Battery,
 }
 
@@ -25,12 +27,33 @@ impl Battery {
         match version {
             0 => Self {
                 charge_rate: other.charge_rate,
+                charge_mode: other.charge_mode.map(|x| Self::str_to_charge_mode(&x)).flatten(),
                 state: crate::state::steam_deck::Battery::default(),
             },
             _ => Self {
                 charge_rate: other.charge_rate,
+                charge_mode: other.charge_mode.map(|x| Self::str_to_charge_mode(&x)).flatten(),
                 state: crate::state::steam_deck::Battery::default(),
             },
+        }
+    }
+
+    #[inline]
+    fn charge_mode_to_str(mode: ChargeMode) -> String {
+        match mode {
+            ChargeMode::Normal => "normal",
+            ChargeMode::Idle => "idle",
+            ChargeMode::Discharge => "discharge",
+        }.to_owned()
+    }
+
+    #[inline]
+    fn str_to_charge_mode(s: &str) -> Option<ChargeMode> {
+        match s {
+            "normal" => Some(ChargeMode::Normal),
+            "idle" => Some(ChargeMode::Idle),
+            "discharge" | "disacharge" => Some(ChargeMode::Discharge),
+            _ => None,
         }
     }
 
@@ -42,7 +65,7 @@ impl Battery {
                     msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
                     setting: crate::settings::SettingVariant::Battery,
                 },
-            )
+            )?;
         } else if self.state.charge_rate_set {
             self.state.charge_rate_set = false;
             usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, Self::max().charge_rate.unwrap()).map_err(
@@ -50,10 +73,26 @@ impl Battery {
                     msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
                     setting: crate::settings::SettingVariant::Battery,
                 },
-            )
-        } else {
-            Ok(())
+            )?;
         }
+        if let Some(charge_mode) = self.charge_mode {
+            self.state.charge_mode_set = true;
+            super::util::set(super::util::Setting::ChargeMode, charge_mode as _).map_err(
+                |e| SettingError {
+                    msg: format!("Failed to set charge mode: {}", e),
+                    setting: crate::settings::SettingVariant::Battery,
+                },
+            )?;
+        } else if self.state.charge_mode_set {
+            self.state.charge_mode_set = false;
+            super::util::set(super::util::Setting::ChargeMode, ChargeMode::Normal as _).map_err(
+                |e| SettingError {
+                    msg: format!("Failed to set charge mode: {}", e),
+                    setting: crate::settings::SettingVariant::Battery,
+                },
+            )?;
+        }
+        Ok(())
     }
 
     fn clamp_all(&mut self) {
@@ -144,6 +183,7 @@ impl Battery {
     pub fn system_default() -> Self {
         Self {
             charge_rate: None,
+            charge_mode: None,
             state: crate::state::steam_deck::Battery::default(),
         }
     }
@@ -154,6 +194,7 @@ impl Into<BatteryJson> for Battery {
     fn into(self) -> BatteryJson {
         BatteryJson {
             charge_rate: self.charge_rate,
+            charge_mode: self.charge_mode.map(Self::charge_mode_to_str),
         }
     }
 }
@@ -176,6 +217,7 @@ impl SettingsRange for Battery {
     fn max() -> Self {
         Self {
             charge_rate: Some(2500),
+            charge_mode: None,
             state: crate::state::steam_deck::Battery::default(),
         }
     }
@@ -184,6 +226,7 @@ impl SettingsRange for Battery {
     fn min() -> Self {
         Self {
             charge_rate: Some(250),
+            charge_mode: None,
             state: crate::state::steam_deck::Battery::default(),
         }
     }
@@ -194,11 +237,12 @@ impl TBattery for Battery {
         let max = Self::max();
         let min = Self::min();
         crate::api::BatteryLimits {
-            charge_rate: Some(RangeLimit{
+            charge_current: Some(RangeLimit{
                 min: min.charge_rate.unwrap(),
                 max: max.charge_rate.unwrap(),
             }),
-            charge_step: 50,
+            charge_current_step: 50,
+            charge_modes: vec!["discharge".to_owned(), "idle".to_owned(), "normal".to_owned()],
         }
     }
 
@@ -212,5 +256,13 @@ impl TBattery for Battery {
 
     fn get_charge_rate(&self) -> Option<u64> {
         self.charge_rate
+    }
+
+    fn charge_mode(&mut self, mode: Option<String>) {
+        self.charge_mode = mode.map(|s| Self::str_to_charge_mode(&s)).flatten()
+    }
+
+    fn get_charge_mode(&self) -> Option<String> {
+        self.charge_mode.map(Self::charge_mode_to_str)
     }
 }

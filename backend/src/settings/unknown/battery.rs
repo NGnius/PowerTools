@@ -12,6 +12,7 @@ impl Into<BatteryJson> for Battery {
     fn into(self) -> BatteryJson {
         BatteryJson {
             charge_rate: None,
+            charge_mode: None,
         }
     }
 }
@@ -31,8 +32,9 @@ impl OnResume for Battery {
 impl TBattery for Battery {
     fn limits(&self) -> crate::api::BatteryLimits {
         crate::api::BatteryLimits {
-            charge_rate: None,
-            charge_step: 50,
+            charge_current: None,
+            charge_current_step: 50,
+            charge_modes: vec![],
         }
     }
 
@@ -44,6 +46,13 @@ impl TBattery for Battery {
     }
 
     fn get_charge_rate(&self) -> Option<u64> {
+        None
+    }
+
+    fn charge_mode(&mut self, _rate: Option<String>) {
+    }
+
+    fn get_charge_mode(&self) -> Option<String> {
         None
     }
 }
