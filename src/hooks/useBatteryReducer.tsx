@@ -1,9 +1,15 @@
-import { BATTERY } from "../constants";
 import { useAsyncReducer } from "./useAsyncReducer";
 import { call_backend } from "../utilities/augmentedUsdplFront";
 import { backendFactory, clone } from "../utilities/backendFactory";
 
-const getInitialState = () => backendFactory(BATTERY);
+const getInitialState = () => backendFactory([
+    "BATTERY_current_now",
+    "BATTERY_charge_rate",
+    "BATTERY_charge_now",
+    "BATTERY_charge_full",
+    "BATTERY_charge_design",
+    "BATTERY_charge_mode",
+]);
 
 type State = ReturnType<typeof getInitialState>;
 

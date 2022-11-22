@@ -1,4 +1,3 @@
-import { GENERAL } from "../constants";
 import { useAsyncReducer } from "../hooks/useAsyncReducer";
 import { call_backend } from "../utilities/augmentedUsdplFront";
 import { backendFactory, clone } from "../utilities/backendFactory";
@@ -9,7 +8,7 @@ type Action =
     | [type: "SetPersistent", payload: boolean]
     | [type: "refresh"];
 
-const getInitialState = () => backendFactory(GENERAL);
+const getInitialState = () => backendFactory(["V_INFO", "GENERAL_persistent", "GENERAL_name"]);
 
 type State = ReturnType<typeof getInitialState>;
 

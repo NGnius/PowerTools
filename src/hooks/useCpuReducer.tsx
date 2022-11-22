@@ -1,4 +1,3 @@
-import { Cpu, CPU } from "../constants";
 import { useAsyncReducer } from "../hooks/useAsyncReducer";
 import { MinMax } from "../types";
 import { call_backend } from "../utilities/augmentedUsdplFront";
@@ -21,12 +20,25 @@ type Action =
     | [type: "SMT", payload: boolean]
     | [type: "SMTAdvanced", payload: boolean];
 
-const getInitialState = (): BackendObject<Cpu> & {
+type FilterOnPrefix<Prefix extends string, T> = T extends `${Prefix}${string}` ? T : never;
+type CpuProperties = FilterOnPrefix<"CPU", BackendProperties> | Extract<BackendProperties, "LIMITS_all">;
+
+const getInitialState = (): BackendObject<CpuProperties> & {
     advancedMode?: boolean;
     advancedModeCpu?: number;
     smtAllowed?: boolean;
     total_cpus?: number;
-} => backendFactory(CPU);
+} => backendFactory([
+    // "CPUs_total",
+    "LIMITS_all",
+    "CPUs_online",
+    "CPUs_status_online",
+    "CPUs_SMT",
+    "CPUs_min_clock",
+    "CPUs_max_clock",
+    "CPUs_minmax_clocks",
+    "CPUs_governor"
+]);
 
 type State = ReturnType<typeof getInitialState>;
 

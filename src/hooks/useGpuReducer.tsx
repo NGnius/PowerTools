@@ -1,4 +1,3 @@
-import { GPU } from "../constants";
 import { useAsyncReducer } from "../hooks/useAsyncReducer";
 import { call_backend } from "../utilities/augmentedUsdplFront";
 import { backendFactory, clone } from "../utilities/backendFactory";
@@ -14,7 +13,14 @@ type Action =
     | [type: "GPUUnsetFreq", payload?: undefined]
     | [type: "GPUUnsetPPT", payload?: undefined];
 
-const getInitialState = () => backendFactory(GPU);
+const getInitialState = () => backendFactory([
+    "LIMITS_all",
+    "GPU_fastPPT",
+    "GPU_slowPPT",
+    "GPU_min_clock",
+    "GPU_max_clock",
+    "GPU_slow_memory"
+]);
 
 type State = ReturnType<typeof getInitialState>;
 
