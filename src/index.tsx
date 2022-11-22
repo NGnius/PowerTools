@@ -354,7 +354,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                 </FieldRow>
             )}
             {limits.battery.charge_current !== null && (
-                <Fragment>
+                <>
                     <ToggleRow
                         checked={batteryState.BATTERY_charge_rate !== null}
                         label="Charge Current Limits"
@@ -371,7 +371,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                         disabled={batteryState.BATTERY_charge_rate === null}
                         onChange={(val) => batteryDispatch(["BATTChargeRate", val])}
                     />
-                </Fragment>
+                </>
             )}
 
             {chargeModeOptions.length !== 0 && (
@@ -429,7 +429,6 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
             >
                 {isNerd ? "by NGnius" : generalState.V_INFO}
             </FieldRow>
-            <FieldRow label="Native">{generalState.V_INFO}</FieldRow>
             <FieldRow label="Framework">{target_usdpl()}</FieldRow>
             <FieldRow
                 label="USDPL"
@@ -443,6 +442,14 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                 v{version_usdpl()}
             </FieldRow>
             <FieldRow label="USDPL">{`v${version_usdpl()}`}</FieldRow>
+            {eggCount % 10 == 9 && (
+                <PanelSectionRow>
+                    <ButtonItem layout="below" onClick={(_: MouseEvent) => backend.idk}>
+                        ???
+                    </ButtonItem>
+                </PanelSectionRow>
+            )}
+
             <ButtonItem layout="below" onClick={() => generalDispatch(["LoadSystemDefaults"])}>
                 Defaults
             </ButtonItem>
