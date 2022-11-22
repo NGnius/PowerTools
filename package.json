@@ -24,6 +24,10 @@
     "url": "https://github.com/NGnius/PowerTools/issues"
   },
   "homepage": "https://github.com/NGnius/PowerTools#readme",
+  "workspaces": [
+    "src/usdpl_front",
+    "src"
+  ],
   "devDependencies": {
     "@rollup/plugin-commonjs": "^21.1.0",
     "@rollup/plugin-json": "^4.1.0",
@@ -32,6 +36,14 @@
     "@rollup/plugin-typescript": "^8.3.2",
     "@types/react": "16.14.0",
     "@types/webpack": "^5.28.0",
+    "@typescript-eslint/eslint-plugin": "^5.43.0",
+    "@typescript-eslint/parser": "^5.43.0",
+    "eslint": "^8.28.0",
+    "eslint-plugin-eqeqeq-fix": "^1.0.3",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-react": "^7.31.11",
+    "prettier": "^2.7.1",
+    "prettier-eslint": "^15.0.1",
     "rollup": "^2.70.2",
     "rollup-plugin-import-assets": "^1.1.1",
     "shx": "^0.3.4",
@@ -40,7 +52,6 @@
   },
   "dependencies": {
     "decky-frontend-lib": "3.*",
-    "react-icons": "^4.4.0",
-    "usdpl-front": "file:./src/usdpl_front"
+    "react-icons": "^4.4.0"
   }
 }
