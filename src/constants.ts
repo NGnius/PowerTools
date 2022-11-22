@@ -1,13 +1,12 @@
-// usdpl persistent store keys
-
-import { KVMap } from "./utilities/augmentedUsdplFront";
+import { BackendProperyMap, BackendProperties } from "./utilities/augmentedUsdplFront";
 
 type FilterOnPrefix<Prefix extends string, T> = T extends `${Prefix}${string}` ? T : never;
+type Limits = Extract<BackendProperties, "LIMITS_all">
 
-export type General = FilterOnPrefix<"GENERAL", keyof KVMap> | Extract<keyof KVMap, "V_INFO">;
-export type Battery = FilterOnPrefix<"BATTERY", keyof KVMap>;
-export type Cpu = FilterOnPrefix<"CPU", keyof KVMap> | Extract<keyof KVMap, "LIMITS_all">;
-export type Gpu = FilterOnPrefix<"GPU", keyof KVMap> | Extract<keyof KVMap, "LIMITS_all">;
+export type General = FilterOnPrefix<"GENERAL", BackendProperties> | Extract<BackendProperties, "V_INFO">;
+export type Battery = FilterOnPrefix<"BATTERY", BackendProperties>;
+export type Cpu = FilterOnPrefix<"CPU", BackendProperties> | Limits;
+export type Gpu = FilterOnPrefix<"GPU", BackendProperties> | Limits;
 
 export const GENERAL: General[] = ["V_INFO", "GENERAL_persistent", "GENERAL_name"];
 

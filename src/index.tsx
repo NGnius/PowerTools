@@ -10,7 +10,7 @@ import {
     ToggleField,
     Router,
 } from "decky-frontend-lib";
-import { Fragment, useEffect, useRef, useState, VFC } from "react";
+import { useCallback, useEffect, useRef, useState, VFC } from "react";
 import { GiDrill } from "react-icons/gi";
 
 import { init_embedded, init_usdpl, target_usdpl, version_usdpl } from "usdpl-front";
@@ -39,6 +39,9 @@ const USDPL_PORT = 44443;
     console.log("USDPL started for framework: " + target_usdpl());
     usdplReady = true;
     set_value("GENERAL_name", "Default");
+    // reload(); // technically this is only a load
+    // reload moved to body of Content component so that reload is called within
+    // the react component lifecycle
 
     // register Steam callbacks
     lifetimeHook = SteamClient.GameSessions.RegisterForAppLifetimeNotifications((update) => {
@@ -71,6 +74,25 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
     const [eggCount, setEggCount] = useState(0);
     const smtAllowedRef = useRef(!!cpuState.smtAllowed);
     smtAllowedRef.current = !!cpuState.smtAllowed;
+    const [mounted, setMounted] = useState(false);
+
+    const initialFetch = useCallback(async () => {
+        await reload(usdplReady, smtAllowedRef);
+        batteryRefetch();
+        generalRefetch();
+        cpuRefetch();
+        gpuRefetch();
+        isLoading(false);
+    }, []);
+
+    if (!mounted) {
+        initialFetch();
+    }
+
+    // fetch data on initial render
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // poll BE for updates
     useInterval(() => {
@@ -80,19 +102,6 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
         cpuRefetch();
         gpuRefetch();
     }, 5000);
-
-    // fetch data on initial render
-    useEffect(() => {
-        async function initialFetch() {
-            await reload(usdplReady, smtAllowedRef);
-            batteryRefetch();
-            generalRefetch();
-            cpuRefetch();
-            gpuRefetch();
-            isLoading(false);
-        }
-        initialFetch();
-    }, []);
 
     const limits = get_value("LIMITS_all");
 
@@ -130,19 +139,66 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                     onChange={(toggle) => cpuDispatch(["advancedModeToggle", toggle])}
                 />
             </PanelSectionRow>
-            {/* CPU plebeian mode */}
-            {!cpuState.advancedMode && cpuState.smtAllowed && (
-                <PanelSectionRow>
-                    <ToggleField
-                        checked={cpuState.CPUs_SMT}
-                        label="SMT"
-                        description="Enables odd-numbered CPUs"
-                        onChange={(smt) => cpuDispatch(["SMT", smt])}
+            {!cpuState.advancedMode ? (
+                <>
+                    {/* CPU plebeian mode */}
+                    {cpuState.smtAllowed && (
+                        <ToggleRow
+                            checked={!!cpuState.CPUs_SMT}
+                            label="SMT"
+                            description="Enables odd-numbered CPUs"
+                            onChange={(smt) => cpuDispatch(["SMT", smt])}
+                        />
+                    )}
+                    {typeof cpuState.total_cpus === "number" && (
+                        <SliderRow
+                            label="Threads"
+                            value={cpuState.CPUs_online ?? -1}
+                            step={1}
+                            max={
+                                cpuState.CPUs_SMT || !cpuState.smtAllowed
+                                    ? cpuState.total_cpus
+                                    : cpuState.total_cpus / 2
+                            }
+                            min={1}
+                            showValue={true}
+                            onChange={(cpus) => cpuDispatch(["CPUsImmediate", cpus])}
+                        />
+                    )}
+                    <ToggleRow
+                        checked={cpuState.CPUs_min_clock !== null && cpuState.CPUs_max_clock !== null}
+                        label="Frequency Limits"
+                        description="Set bounds on clock speed"
+                        onChange={(toggle) => cpuDispatch(["CPUFreqToggle", toggle])}
                     />
-                </PanelSectionRow>
-            )}
-            {cpuState.advancedMode ? (
-                <Fragment>
+                    {cpuState.CPUs_min_clock !== null && cpuLimits.clock_min_limits && (
+                        <SliderRow
+                            label="Minimum (MHz)"
+                            value={cpuState.CPUs_min_clock}
+                            max={cpuLimits.clock_min_limits.max}
+                            min={cpuLimits.clock_min_limits.min}
+                            step={cpuLimits.clock_step}
+                            showValue={true}
+                            disabled={cpuState.CPUs_min_clock === null}
+                            onChange={(freq) => cpuDispatch(["CPUMinFreq", freq])}
+                        />
+                    )}
+                    {cpuState.CPUs_max_clock !== null && cpuLimits.clock_max_limits && (
+                        <SliderRow
+                            label="Maximum (MHz)"
+                            value={cpuState.CPUs_max_clock}
+                            max={cpuLimits.clock_max_limits.max}
+                            min={cpuLimits.clock_max_limits.min}
+                            step={cpuLimits.clock_step}
+                            showValue={true}
+                            disabled={cpuState.CPUs_max_clock === null}
+                            onChange={(freq) => cpuDispatch(["CPUMaxFreq", freq])}
+                        />
+                    )}
+                </>
+            ) : (
+                <>
+                    {/* CPU advanced mode */}
                     <SliderRow
                         label="Selected CPU"
                         // this should probably not be translated and instead be kept zero-based to match common
@@ -207,63 +263,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                             />
                         </FieldRow>
                     )}
-                </Fragment>
-            ) : (
-                <Fragment>
-                    {cpuState.smtAllowed && (
-                        <ToggleRow
-                            checked={!!cpuState.CPUs_SMT}
-                            label="SMT"
-                            description="Enables odd-numbered CPUs"
-                            onChange={(smt) => cpuDispatch(["SMT", smt])}
-                        />
-                    )}
-                    {typeof cpuState.total_cpus === "number" && (
-                        <SliderRow
-                            label="Threads"
-                            value={cpuState.CPUs_online ?? -1}
-                            step={1}
-                            max={
-                                cpuState.CPUs_SMT || !cpuState.smtAllowed
-                                    ? cpuState.total_cpus
-                                    : cpuState.total_cpus / 2
-                            }
-                            min={1}
-                            showValue={true}
-                            onChange={(cpus) => cpuDispatch(["CPUsImmediate", cpus])}
-                        />
-                    )}
-                    <ToggleRow
-                        checked={cpuState.CPUs_min_clock !== null && cpuState.CPUs_max_clock !== null}
-                        label="Frequency Limits"
-                        description="Set bounds on clock speed"
-                        onChange={(toggle) => cpuDispatch(["CPUFreqToggle", toggle])}
-                    />
-                    {cpuState.CPUs_min_clock !== null && (
-                        <SliderRow
-                            label="Minimum (MHz)"
-                            value={cpuState.CPUs_min_clock ?? -1}
-                            max={3500}
-                            min={1400}
-                            step={100}
-                            showValue={true}
-                            disabled={cpuState.CPUs_min_clock === null}
-                            onChange={(freq) => cpuDispatch(["CPUMinFreq", freq])}
-                        />
-                    )}
-                    {cpuState.CPUs_max_clock !== null && (
-                        <SliderRow
-                            label="Maximum (MHz)"
-                            value={cpuState.CPUs_max_clock ?? -1}
-                            max={3500}
-                            min={500}
-                            step={100}
-                            showValue={true}
-                            disabled={cpuState.CPUs_max_clock === null}
-                            onChange={(freq) => cpuDispatch(["CPUMaxFreq", freq])}
-                        />
-                    )}
-                </Fragment>
+                </>
             )}
 
             {/* GPU */}

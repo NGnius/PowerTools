@@ -1,5 +1,5 @@
-import "decky-frontend-lib";
 import { SteamClient as DeckySteamClient } from "decky-frontend-lib";
+
 declare module "*.svg" {
     const content: string;
     export default content;

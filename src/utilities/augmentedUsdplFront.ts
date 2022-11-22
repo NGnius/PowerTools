@@ -1,4 +1,6 @@
 // augments src/usdpl_front/usdpl-front.d.ts
+// use module augmentation to make augmented types opt-in/opt-out by changing import in usdpl-front consumers
+
 import { call_backend as _call_backend, get_value as _get_value, set_value as _set_value } from "usdpl-front";
 import { MinMax } from "../types";
 
@@ -47,51 +49,10 @@ export type GpuLimits = {
     memory_control_capable: boolean;
 };
 
-// use module augmentation to make augmented types opt-in/opt-out by changing import in usdpl-front consumers
-
-type Backends =
-    | "BATTERY_charge_design"
-    | "BATTERY_charge_full"
-    | "BATTERY_charge_now"
-    | "BATTERY_current_now"
-    | "BATTERY_get_charge_mode"
-    | "BATTERY_get_charge_rate"
-    | "BATTERY_set_charge_mode"
-    | "BATTERY_set_charge_rate"
-    | "BATTERY_unset_charge_mode"
-    | "BATTERY_unset_charge_rate"
-    | "CPU_count"
-    | "CPU_get_clock_limits"
-    | "CPU_get_governors"
-    | "CPU_get_onlines"
-    | "CPU_set_clock_limits"
-    | "CPU_set_governor"
-    | "CPU_set_online"
-    | "CPU_set_onlines"
-    | "CPU_set_smt"
-    | "CPU_unset_clock_limits"
-    | "GENERAL_get_limits"
-    | "GENERAL_get_name"
-    | "GENERAL_get_persistent"
-    | "GENERAL_idk"
-    | "GENERAL_load_default_settings"
-    | "GENERAL_load_settings"
-    | "GENERAL_load_system_settings"
-    | "GENERAL_set_persistent"
-    | "GENERAL_wait_for_unlocks"
-    | "GPU_get_clock_limits"
-    | "GPU_get_ppt"
-    | "GPU_get_slow_memory"
-    | "GPU_set_clock_limits"
-    | "GPU_set_ppt"
-    | "GPU_set_slow_memory"
-    | "GPU_unset_clock_limits"
-    | "GPU_unset_ppt"
-    | "V_INFO";
 
 type BackendsTypeGuard<T extends Required<{ [K in Backends]: { params: any; return: any } }>> = T;
 
-type CallBackendMap = BackendsTypeGuard<{
+type CallBackendMap = {
     // TODO
     BATTERY_unset_charge_mode: { params: any[]; return: any[] };
     CPU_count: { params: any[]; return: any[] };
@@ -133,17 +94,15 @@ type CallBackendMap = BackendsTypeGuard<{
     GPU_unset_clock_limits: { params: never[]; return: any[] };
     GPU_unset_ppt: { params: never[]; return: any[] };
     V_INFO: { params: never[]; return: string[] };
-}>;
+}
 
-export interface KVMap {
+export type BackendProperyMap = {
     BATTERY_charge_design: number;
     BATTERY_charge_full: number;
     BATTERY_charge_now: number;
     BATTERY_charge_rate: number | null;
     BATTERY_current_now: number;
     BATTERY_charge_mode: string | null;
-
-    //
     // CPUs_total: number;
     CPUs_governor: string[];
     CPUs_max_clock: number | null;
@@ -152,24 +111,23 @@ export interface KVMap {
     CPUs_online: number;
     CPUs_SMT: boolean;
     CPUs_status_online: boolean[];
-    //
     GENERAL_name: string;
     GENERAL_persistent: boolean;
-    //
     GPU_fastPPT: number;
     GPU_max_clock: number | null;
     GPU_min_clock: number | null;
     GPU_slow_memory: boolean;
     GPU_slowPPT: number;
-    //
     LIMITS_all: SettingsLimits;
     V_INFO: string;
     // VINFO: string;??
 }
 
-type GetValue = <T extends keyof KVMap>(key: T) => KVMap[T];
+export type BackendProperties = keyof BackendProperyMap;
 
-type SetValue = <T extends keyof KVMap>(key: T, value: KVMap[T]) => void;
+type GetValue = <T extends keyof BackendProperyMap>(key: T) => BackendProperyMap[T];
+
+type SetValue = <T extends keyof BackendProperyMap>(key: T, value: BackendProperyMap[T]) => void;
 
 type CallBackend = <K extends keyof CallBackendMap>(
     name: K,
