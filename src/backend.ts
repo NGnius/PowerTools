@@ -41,7 +41,7 @@ export type SettingsLimits = {
 export type BatteryLimits = {
     charge_current: RangeLimit | null;
     charge_current_step: number;
-    charge_modes: number;
+    charge_modes: string[];
 };
 
 export type CpuLimits = {
@@ -105,11 +105,11 @@ export async function unsetBatteryChargeRate(): Promise<any[]> {
     return await call_backend("BATTERY_unset_charge_rate", []);
 }
 
-export async function getBatteryChargeMode(): Promise<number> {
+export async function getBatteryChargeMode(): Promise<string> {
     return (await call_backend("BATTERY_get_charge_mode", []))[0];
 }
 
-export async function setBatteryChargeMode(val: number): Promise<number> {
+export async function setBatteryChargeMode(val: string): Promise<string> {
     return (await call_backend("BATTERY_set_charge_mode", [val]))[0];
 }
 

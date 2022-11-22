@@ -55,4 +55,12 @@ impl TBattery for Battery {
     fn get_charge_mode(&self) -> Option<String> {
         None
     }
+
+    fn read_charge_full(&self) -> Option<f64> { None }
+
+    fn read_charge_now(&self) -> Option<f64> { None }
+
+    fn read_charge_design(&self) -> Option<f64> { None }
+
+    fn read_current_now(&self) -> Option<f64> { None }
 }
