@@ -10,11 +10,10 @@ import {
     ToggleField,
     Router,
 } from "decky-frontend-lib";
-import { useCallback, useEffect, useRef, useState, VFC } from "react";
+import { useEffect, useRef, useState, VFC } from "react";
 import { GiDrill } from "react-icons/gi";
-
 import { init_embedded, init_usdpl, target_usdpl, version_usdpl } from "usdpl-front";
-import { call_backend, get_value, set_value } from "./utilities/augmentedUsdplFront";
+import { BackendCalls, General, callBackend, getValue, setValue } from "./usdplFront";
 
 import { FieldRow, SliderRow, ToggleRow } from "./Fields";
 import { useBatteryReducer } from "./hooks/useBatteryReducer";
@@ -22,7 +21,6 @@ import { useCpuReducer } from "./hooks/useCpuReducer";
 import { useGeneralReducer } from "./hooks/useGeneralReducer";
 import { useGpuReducer } from "./hooks/useGpuReducer";
 import { useInterval } from "./hooks/useInterval";
-import { periodicals } from "./utilities/periodicals";
 import { reload } from "./utilities/reload";
 import { toPercentString } from "./utilities/toPercentString";
 
@@ -38,10 +36,7 @@ const USDPL_PORT = 44443;
     init_usdpl(USDPL_PORT);
     console.log("USDPL started for framework: " + target_usdpl());
     usdplReady = true;
-    set_value("GENERAL_name", "Default");
-    // reload(); // technically this is only a load
-    // reload moved to body of Content component so that reload is called within
-    // the react component lifecycle
+    setValue(General.Name, "Default");
 
     // register Steam callbacks
     lifetimeHook = SteamClient.GameSessions.RegisterForAppLifetimeNotifications((update) => {
@@ -49,7 +44,7 @@ const USDPL_PORT = 44443;
             //console.debug("AppID " + update.unAppID.toString() + " is now running");
         } else {
             //console.debug("AppID " + update.unAppID.toString() + " is no longer running");
-            call_backend("GENERAL_load_default_settings", []).then(([ok]) =>
+            callBackend(BackendCalls.GeneralLoadDefaultSettings, []).then(([ok]) =>
                 console.debug("Loading default settings ok? " + ok)
             );
         }
@@ -57,7 +52,7 @@ const USDPL_PORT = 44443;
     startHook = SteamClient.Apps.RegisterForGameActionStart((_, id) => {
         const gameInfo = appStore.GetAppOverviewByGameID(id);
         // don't use gameInfo.appid, haha
-        call_backend("GENERAL_load_settings", [id.toString() + ".json", gameInfo.display_name]).then(([ok]) =>
+        callBackend(BackendCalls.GeneralLoadSettings, [id.toString() + ".json", gameInfo.display_name]).then(([ok]) =>
             console.debug("Loading settings ok? " + ok)
         );
     });
@@ -70,43 +65,40 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
     const [generalState, generalDispatch, generalRefetch] = useGeneralReducer();
     const [cpuState, cpuDispatch, cpuRefetch] = useCpuReducer();
     const [gpuState, gpuDispatch, gpuRefetch] = useGpuReducer();
-    const [, isLoading] = useState(true); // maybe initialize app with a loading state?
+    const reloadInflightRef = useRef(false); // don't re-render when inflight flag flips
     const [eggCount, setEggCount] = useState(0);
-    const smtAllowedRef = useRef(!!cpuState.smtAllowed);
-    smtAllowedRef.current = !!cpuState.smtAllowed;
-    const [mounted, setMounted] = useState(false);
 
-    const initialFetch = useCallback(async () => {
-        await reload(usdplReady, smtAllowedRef);
-        batteryRefetch();
-        generalRefetch();
-        cpuRefetch();
-        gpuRefetch();
-        isLoading(false);
-    }, []);
-
-    if (!mounted) {
-        initialFetch();
-    }
-
-    // fetch data on initial render
+    // load data on initial render
     useEffect(() => {
-        setMounted(true);
+        reloadInflightRef.current = true;
+        reload({ usdplReady, fullReload: true, smtAllowed: cpuState.smtAllowed }).then(() => {
+            batteryRefetch();
+            generalRefetch();
+            cpuRefetch();
+            gpuRefetch();
+            reloadInflightRef.current = false;
+        });
     }, []);
 
     // poll BE for updates
     useInterval(() => {
-        periodicals(usdplReady, smtAllowedRef);
-        batteryRefetch();
-        generalRefetch();
-        cpuRefetch();
-        gpuRefetch();
+        if (reloadInflightRef.current) {
+            return; // exit early if reloading
+        }
+        reloadInflightRef.current = true;
+        reload({ usdplReady, fullReload: false, smtAllowed: cpuState.smtAllowed }).then(() => {
+            batteryRefetch();
+            generalRefetch();
+            cpuRefetch();
+            gpuRefetch();
+            reloadInflightRef.current = false;
+        });
     }, 5000);
 
-    const limits = get_value("LIMITS_all");
+    const limits = getValue(General.LimitsAll);
 
     const governorOptions: SingleDropdownOption[] = (
-        cpuState.advancedModeCpu ? cpuState.LIMITS_all.cpu.cpus[cpuState.advancedModeCpu].governors : []
+        cpuState.advancedCpuIndex ? limits.cpu.cpus[cpuState.advancedCpuIndex].governors : []
     ).map((elem) => {
         return {
             data: elem,
@@ -121,11 +113,20 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
         };
     });
 
-    const advancedModeCpu = cpuState.advancedModeCpu ?? 0;
-    const cpuMinmaxMin = cpuState.CPUs_minmax_clocks[advancedModeCpu].min;
-    const cpuMinmaxMax = cpuState.CPUs_minmax_clocks[advancedModeCpu].max;
-    const cpuLimits = limits.cpu.cpus[0];
     const isNerd = eggCount % 10 === 9;
+
+    const cpuMinmaxMin = cpuState.CPUs_minmax_clocks[cpuState.advancedCpuIndex].min;
+    const cpuMinmaxMax = cpuState.CPUs_minmax_clocks[cpuState.advancedCpuIndex].max;
+    const cpu0Limits = limits.cpu.cpus[0];
+
+    const chargeNow =
+        batteryState.BATTERY_charge_now !== null &&
+        batteryState.BATTERY_charge_full !== null &&
+        toPercentString(batteryState.BATTERY_charge_now, batteryState.BATTERY_charge_full, "Wh");
+    const chargeMax =
+        batteryState.BATTERY_charge_full !== null &&
+        batteryState.BATTERY_charge_design !== null &&
+        toPercentString(batteryState.BATTERY_charge_full, batteryState.BATTERY_charge_design, "Wh");
 
     return (
         <PanelSection>
@@ -145,9 +146,9 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                     {cpuState.smtAllowed && (
                         <ToggleRow
                             checked={!!cpuState.CPUs_SMT}
-                            label="SMT"
+                            label="setSmt"
                             description="Enables odd-numbered CPUs"
-                            onChange={(smt) => cpuDispatch(["SMT", smt])}
+                            onChange={(smt) => cpuDispatch(["setSmt", smt])}
                         />
                     )}
                     {typeof cpuState.total_cpus === "number" && (
@@ -162,37 +163,37 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                             }
                             min={1}
                             showValue={true}
-                            onChange={(cpus) => cpuDispatch(["CPUsImmediate", cpus])}
+                            onChange={(cpus) => cpuDispatch(["immediate", cpus])}
                         />
                     )}
                     <ToggleRow
                         checked={cpuState.CPUs_min_clock !== null && cpuState.CPUs_max_clock !== null}
                         label="Frequency Limits"
                         description="Set bounds on clock speed"
-                        onChange={(toggle) => cpuDispatch(["CPUFreqToggle", toggle])}
+                        onChange={(toggle) => cpuDispatch(["freqToggle", toggle])}
                     />
-                    {cpuState.CPUs_min_clock !== null && cpuLimits.clock_min_limits && (
+                    {cpuState.CPUs_min_clock !== null && cpu0Limits.clock_min_limits && (
                         <SliderRow
                             label="Minimum (MHz)"
                             value={cpuState.CPUs_min_clock}
-                            max={cpuLimits.clock_min_limits.max}
-                            min={cpuLimits.clock_min_limits.min}
-                            step={cpuLimits.clock_step}
+                            max={cpu0Limits.clock_min_limits.max}
+                            min={cpu0Limits.clock_min_limits.min}
+                            step={cpu0Limits.clock_step}
                             showValue={true}
                             disabled={cpuState.CPUs_min_clock === null}
-                            onChange={(freq) => cpuDispatch(["CPUMinFreq", freq])}
+                            onChange={(freq) => cpuDispatch(["minFreq", freq])}
                         />
                     )}
-                    {cpuState.CPUs_max_clock !== null && cpuLimits.clock_max_limits && (
+                    {cpuState.CPUs_max_clock !== null && cpu0Limits.clock_max_limits && (
                         <SliderRow
                             label="Maximum (MHz)"
                             value={cpuState.CPUs_max_clock}
-                            max={cpuLimits.clock_max_limits.max}
-                            min={cpuLimits.clock_max_limits.min}
-                            step={cpuLimits.clock_step}
+                            max={cpu0Limits.clock_max_limits.max}
+                            min={cpu0Limits.clock_max_limits.min}
+                            step={cpu0Limits.clock_step}
                             showValue={true}
                             disabled={cpuState.CPUs_max_clock === null}
-                            onChange={(freq) => cpuDispatch(["CPUMaxFreq", freq])}
+                            onChange={(freq) => cpuDispatch(["maxFreq", freq])}
                         />
                     )}
                 </>
@@ -201,9 +202,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                     {/* CPU advanced mode */}
                     <SliderRow
                         label="Selected CPU"
-                        // this should probably not be translated and instead be kept zero-based to match common
-                        // patterns for cpu/thread count indexing?
-                        value={advancedModeCpu + 1}
+                        value={cpuState.advancedCpuIndex + 1}
                         step={1}
                         max={cpuState.total_cpus}
                         min={1}
@@ -214,52 +213,51 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                         }}
                     />
                     <ToggleRow
-                        checked={cpuState.CPUs_status_online[advancedModeCpu]}
-                        // checked={cpuState.CPUs_online[advancedModeCpu]}
+                        checked={cpuState.CPUs_status_online[cpuState.advancedCpuIndex]}
                         label="Online"
                         description="Allow the CPU thread to do work"
-                        onChange={(status) => cpuDispatch(["SMTAdvanced", status])}
+                        onChange={(status) => cpuDispatch(["setSmtAdvanced", status])}
                     />
                     <ToggleRow
                         checked={cpuMinmaxMin !== null || cpuMinmaxMax !== null}
                         label="Frequency Limits"
                         description="Set bounds on clock speed"
-                        onChange={(value) => cpuDispatch(["CPUFreqToggleAdvanced", value])}
+                        onChange={(value) => cpuDispatch(["freqToggleAdvanced", value])}
                     />
-                    {cpuLimits.clock_min_limits !== null && cpuMinmaxMin !== null && (
+                    {cpu0Limits.clock_min_limits !== null && cpuMinmaxMin !== null && (
                         <SliderRow
                             label="Minimum (MHz)"
                             value={cpuMinmaxMin}
-                            max={cpuLimits.clock_min_limits.max}
-                            min={cpuLimits.clock_min_limits.min}
-                            step={cpuLimits.clock_step}
+                            max={cpu0Limits.clock_min_limits.max}
+                            min={cpu0Limits.clock_min_limits.min}
+                            step={cpu0Limits.clock_step}
                             showValue={true}
                             disabled={cpuMinmaxMin === null}
-                            onChange={(freq) => cpuDispatch(["CPUMinFreqAdvanced", freq])}
+                            onChange={(freq) => cpuDispatch(["minFreqAdvanced", freq])}
                         />
                     )}
-                    {cpuLimits.clock_max_limits !== null && cpuMinmaxMax !== null && (
+                    {cpu0Limits.clock_max_limits !== null && cpuMinmaxMax !== null && (
                         <SliderRow
                             label="Maximum (MHz)"
                             value={cpuMinmaxMax}
-                            max={cpuLimits.clock_max_limits.max}
-                            min={cpuLimits.clock_max_limits.min}
-                            step={cpuLimits.clock_step}
+                            max={cpu0Limits.clock_max_limits.max}
+                            min={cpu0Limits.clock_max_limits.min}
+                            step={cpu0Limits.clock_step}
                             showValue={true}
                             disabled={cpuMinmaxMax === null}
-                            onChange={(freq) => cpuDispatch(["CPUMaxFreqAdvanced", freq])}
+                            onChange={(freq) => cpuDispatch(["maxFreqAdvanced", freq])}
                         />
                     )}
-                    {advancedModeCpu !== null && governorOptions.length !== null && (
+                    {cpuState.advancedCpuIndex !== null && governorOptions.length !== null && (
                         <FieldRow label="Governor">
                             <Dropdown
                                 menuLabel="Governor"
                                 rgOptions={governorOptions}
                                 selectedOption={governorOptions.find(
-                                    (val) => val.data === cpuState.CPUs_governor[advancedModeCpu]
+                                    (val) => val.data === cpuState.CPUs_governor[cpuState.advancedCpuIndex]
                                 )}
-                                strDefaultLabel={cpuState.CPUs_governor[advancedModeCpu]}
-                                onChange={({ data }: SingleDropdownOption) => cpuDispatch(["CPUGovernor", data])}
+                                strDefaultLabel={cpuState.CPUs_governor[cpuState.advancedCpuIndex]}
+                                onChange={({ data }: SingleDropdownOption) => cpuDispatch(["governor", data])}
                             />
                         </FieldRow>
                     )}
@@ -273,7 +271,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                     checked={gpuState.GPU_slowPPT !== null || gpuState.GPU_fastPPT !== null}
                     label="PowerPlay Limits"
                     description="Override APU TDP settings"
-                    onChange={(toggle: boolean) => gpuDispatch(["GPUPPTToggle", toggle ? 15000000 : null])}
+                    onChange={(toggle: boolean) => gpuDispatch(["pptToggle", toggle])}
                 />
             )}
             {gpuState.GPU_slowPPT !== null && limits.gpu.slow_ppt_limits && (
@@ -285,10 +283,10 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                     step={limits.gpu.ppt_step}
                     showValue={true}
                     disabled={gpuState.GPU_slowPPT === null}
-                    onChange={(ppt) => gpuDispatch(["GPUSlowPPT", ppt])}
+                    onChange={(ppt) => gpuDispatch(["slowPPT", ppt])}
                 />
             )}
-            {gpuState.GPU_fastPPT !== null && limits.gpu.fast_ppt_limits?.max && limits.gpu.fast_ppt_limits.min && (
+            {gpuState.GPU_fastPPT !== null && limits.gpu.fast_ppt_limits && (
                 <SliderRow
                     label="FastPPT (W)"
                     value={gpuState.GPU_fastPPT}
@@ -297,18 +295,18 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                     step={limits.gpu.ppt_step}
                     showValue={true}
                     disabled={gpuState.GPU_fastPPT === null}
-                    onChange={(ppt) => gpuDispatch(["GPUFastPPT", ppt])}
+                    onChange={(ppt) => gpuDispatch(["fastPPT", ppt])}
                 />
             )}
-            {(limits.gpu.clock_min_limits !== null || limits.gpu.clock_max_limits !== null) && (
+            {(limits.gpu.clock_min_limits || limits.gpu.clock_max_limits) && (
                 <ToggleRow
                     checked={gpuState.GPU_min_clock !== null || gpuState.GPU_max_clock !== null}
                     label="Frequency Limits"
                     description="Override bounds on gpu clock"
-                    onChange={(toggle) => gpuDispatch(["GPUFreqToggle", toggle])}
+                    onChange={(toggle) => gpuDispatch(["freqToggle", toggle])}
                 />
             )}
-            {gpuState.GPU_min_clock !== null && limits.gpu.clock_min_limits !== null && (
+            {gpuState.GPU_min_clock !== null && limits.gpu.clock_min_limits && (
                 <SliderRow
                     label="Minimum (MHz)"
                     value={gpuState.GPU_min_clock}
@@ -317,10 +315,10 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                     step={limits.gpu.clock_step}
                     showValue={true}
                     disabled={gpuState.GPU_min_clock === null}
-                    onChange={(val) => gpuDispatch(["GPUMinClock", val])}
+                    onChange={(val) => gpuDispatch(["minClock", val])}
                 />
             )}
-            {gpuState.GPU_max_clock !== null && limits.gpu.clock_max_limits !== null && (
+            {gpuState.GPU_max_clock !== null && limits.gpu.clock_max_limits && (
                 <SliderRow
                     label="Maximum (MHz)"
                     value={gpuState.GPU_max_clock}
@@ -329,7 +327,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                     step={limits.gpu.clock_step}
                     showValue={true}
                     disabled={gpuState.GPU_max_clock === null}
-                    onChange={(val) => gpuDispatch(["GPUMaxClock", val])}
+                    onChange={(val) => gpuDispatch(["maxClock", val])}
                 />
             )}
             {limits.gpu.memory_control_capable && (
@@ -337,29 +335,28 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                     checked={gpuState.GPU_slow_memory ?? false}
                     label="Downclock Memory"
                     description="Force RAM into low-power mode"
-                    onChange={(value) => gpuDispatch(["GPUSlowMemory", value])}
+                    onChange={(value) => gpuDispatch(["slowMemory", value])}
                 />
             )}
-
             {/* Battery */}
             <div className={staticClasses.PanelSectionTitle}>Battery</div>
-            {batteryState.BATTERY_charge_now !== null && batteryState.BATTERY_charge_full !== null && (
+            {chargeNow && (
                 <FieldRow label="Now (Charge)" onClick={() => setEggCount((prev) => prev + 1)} focusable={false}>
-                    {toPercentString(batteryState.BATTERY_charge_now, batteryState.BATTERY_charge_full, "Wh")}
+                    {chargeNow}
                 </FieldRow>
             )}
-            {batteryState.BATTERY_charge_full !== null && batteryState.BATTERY_charge_design !== null && (
+            {chargeMax && (
                 <FieldRow label="Max (Design)" onClick={() => setEggCount((prev) => prev + 1)} focusable={false}>
-                    {toPercentString(batteryState.BATTERY_charge_full, batteryState.BATTERY_charge_design, "Wh")}
+                    {chargeMax}
                 </FieldRow>
             )}
-            {limits.battery.charge_current !== null && (
+            {limits.battery.charge_current && (
                 <>
                     <ToggleRow
                         checked={batteryState.BATTERY_charge_rate !== null}
                         label="Charge Current Limits"
                         description="Control battery charge rate when awake"
-                        onChange={(toggle) => batteryDispatch(["BATTChargeRateToggle", toggle])}
+                        onChange={(toggle) => batteryDispatch(["chargeRateToggle", toggle])}
                     />
                     <SliderRow
                         label="Maximum (mA)"
@@ -369,19 +366,18 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                         step={limits.battery.charge_current_step}
                         showValue={true}
                         disabled={batteryState.BATTERY_charge_rate === null}
-                        onChange={(val) => batteryDispatch(["BATTChargeRate", val])}
+                        onChange={(val) => batteryDispatch(["chargeRate", val])}
                     />
                 </>
             )}
-
             {chargeModeOptions.length !== 0 && (
-                <PanelSectionRow>
-                    <ToggleField
+                <>
+                    <ToggleRow
                         checked={batteryState.BATTERY_charge_mode !== null}
                         label="Charge Mode"
                         description="Force battery charge mode"
                         onChange={(toggle) =>
-                            batteryDispatch(["BATTChargeModeToggle", { toggle, value: chargeModeOptions[0].data }])
+                            batteryDispatch(["chargeModeToggle", { toggle, value: chargeModeOptions[0].data }])
                         }
                     />
                     {batteryState.BATTERY_charge_mode !== null && (
@@ -393,13 +389,12 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                                     (val) => val.data === batteryState.BATTERY_charge_mode
                                 )}
                                 strDefaultLabel={batteryState.BATTERY_charge_mode}
-                                onChange={(elem) => batteryDispatch(["BATTChargeMode", elem.data])}
+                                onChange={(elem) => batteryDispatch(["chargeMode", elem.data])}
                             />
                         </FieldRow>
                     )}
-                </PanelSectionRow>
+                </>
             )}
-
             <FieldRow label="Current" onClick={() => setEggCount((prev) => prev + 1)} focusable={false}>
                 {batteryState.BATTERY_current_now} mA
             </FieldRow>
@@ -409,10 +404,9 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                 checked={generalState.GENERAL_persistent ?? false}
                 label="Persistent"
                 description="Save profile and load it next time"
-                onChange={(persist) => generalDispatch(["SetPersistent", persist])}
+                onChange={(persist) => generalDispatch(["setPersistent", persist])}
             />
             <FieldRow label="Profile">{generalState.GENERAL_name ?? "NULL"}</FieldRow>
-
             {/* Version Info */}
             <div className={staticClasses.PanelSectionTitle}>
                 Debug
@@ -442,15 +436,22 @@ const Content: VFC<{ serverAPI: ServerAPI }> = () => {
                 v{version_usdpl()}
             </FieldRow>
             <FieldRow label="USDPL">{`v${version_usdpl()}`}</FieldRow>
-            {eggCount % 10 == 9 && (
+            {eggCount % 10 === 9 && (
                 <PanelSectionRow>
-                    <ButtonItem layout="below" onClick={(_: MouseEvent) => backend.idk}>
+                    <ButtonItem layout="below" onClick={() => generalDispatch(["idk"])}>
                         ???
                     </ButtonItem>
                 </PanelSectionRow>
             )}
-
-            <ButtonItem layout="below" onClick={() => generalDispatch(["LoadSystemDefaults"])}>
+            <ButtonItem
+                layout="below"
+                onClick={() =>
+                    generalDispatch([
+                        "loadSystemDefaults",
+                        () => reload({ usdplReady: true, fullReload: true, smtAllowed: cpuState.smtAllowed }),
+                    ])
+                }
+            >
                 Defaults
             </ButtonItem>
         </PanelSection>

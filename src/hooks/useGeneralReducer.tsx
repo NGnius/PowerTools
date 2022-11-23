@@ -1,37 +1,39 @@
+import { General, BackendCalls, callBackend } from "../usdplFront";
 import { useAsyncReducer } from "../hooks/useAsyncReducer";
-import { call_backend } from "../utilities/augmentedUsdplFront";
 import { backendFactory, clone } from "../utilities/backendFactory";
-import { reload } from "../utilities/reload";
 
 type Action =
-    | [type: "LoadSystemDefaults", payload?: undefined]
-    | [type: "SetPersistent", payload: boolean]
+    | [type: "loadSystemDefaults", payload: () => Promise<void>]
+    | [type: "setPersistent", payload: boolean]
+    | [type: "idk"]
     | [type: "refresh"];
 
-const getInitialState = () => backendFactory(["V_INFO", "GENERAL_persistent", "GENERAL_name"]);
+const getInitialState = () => backendFactory([General.VInfo, General.Persistent, General.Name]);
 
 type State = ReturnType<typeof getInitialState>;
 
 async function reducer(state: State, action: Action) {
     const [type, payload] = action;
+
     console.debug(`General Action: ${type}; Payload: ${payload}`);
+
     switch (type) {
-        case "SetPersistent": {
-            const [newValue] = await call_backend("GENERAL_set_persistent", [payload]);
+        case "idk":
+            callBackend(BackendCalls.GeneralIdk, []);
+            return state;
+        case "setPersistent": {
+            const [newValue] = await callBackend(BackendCalls.GeneralSetPersistent, [payload]);
             state.GENERAL_persistent = newValue;
             return clone(state);
         }
         case "refresh":
             return clone(state);
-        case "LoadSystemDefaults": {
-            const [newValue] = await call_backend("GENERAL_set_persistent", [false]);
+        case "loadSystemDefaults": {
+            const [newValue] = await callBackend(BackendCalls.GeneralSetPersistent, [false]);
             state.GENERAL_persistent = newValue;
-            await call_backend("GENERAL_load_system_settings", []);
-            // TODO - pass values from react -- set context that imports
-            // module-scoped vars, which can be imported in all JS regardless of
-            // framework?
-            await reload(true, { current: true });
-            await call_backend("GENERAL_wait_for_unlocks", []);
+            await callBackend(BackendCalls.GeneralLoadSystemSettings, []);
+            await payload();
+            await callBackend(BackendCalls.GeneralWaitForUnlocks, []);
             return clone(state);
         }
         default:

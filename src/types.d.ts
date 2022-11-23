@@ -1,19 +1,6 @@
 import { SteamClient as DeckySteamClient } from "decky-frontend-lib";
 
-declare module "*.svg" {
-    const content: string;
-    export default content;
-}
-
-declare module "*.png" {
-    const content: string;
-    export default content;
-}
-
-declare module "*.jpg" {
-    const content: string;
-    export default content;
-}
+// TODO: make PR against decky-frontend-lib with these types
 
 interface Apps extends DeckySteamClient["Apps"] {
     RegisterForGameActionStart: (callback: (actionType: unknown, id: number) => void) => Registerable;
@@ -34,9 +21,4 @@ declare global {
     const appStore: {
         GetAppOverviewByGameID: (id: unknown) => { display_name: string };
     };
-}
-
-export interface MinMax {
-    min: number | null;
-    max: number | null;
 }
