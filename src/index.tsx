@@ -51,6 +51,7 @@ const LIMITS_INFO = "LIMITS_all";
 
 const CURRENT_BATT = "BATTERY_current_now";
 const CHARGE_RATE_BATT = "BATTERY_charge_rate";
+const CHARGE_MODE_BATT = "BATTERY_charge_mode";
 const CHARGE_NOW_BATT = "BATTERY_charge_now";
 const CHARGE_FULL_BATT = "BATTERY_charge_full";
 const CHARGE_DESIGN_BATT = "BATTERY_charge_design"
@@ -107,6 +108,7 @@ const reload = function() {
 
   backend.resolve(backend.getBatteryCurrent(), (rate: number) => { set_value(CURRENT_BATT, rate) });
   backend.resolve(backend.getBatteryChargeRate(), (rate: number) => { set_value(CHARGE_RATE_BATT, rate) });
+  backend.resolve(backend.getBatteryChargeMode(), (mode: string) => { set_value(CHARGE_MODE_BATT, mode) });
   backend.resolve(backend.getBatteryChargeNow(), (rate: number) => { set_value(CHARGE_NOW_BATT, rate) });
   backend.resolve(backend.getBatteryChargeFull(), (rate: number) => { set_value(CHARGE_FULL_BATT, rate) });
   backend.resolve(backend.getBatteryChargeDesign(), (rate: number) => { set_value(CHARGE_DESIGN_BATT, rate) });
@@ -214,6 +216,11 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
   const smtAllowed = (get_value(LIMITS_INFO) as backend.SettingsLimits | null)?.cpu.smt_capable ?? true;
 
   const governorOptions: SingleDropdownOption[] = (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].governors.map((elem) => {return {
+    data: elem,
+    label: <span>{elem}</span>,
+  };});
+
+  const chargeModeOptions: SingleDropdownOption[] = (get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_modes.map((elem) => {return {
     data: elem,
     label: <span>{elem}</span>,
   };});
@@ -494,7 +501,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           }}
         />}
       </PanelSectionRow>}
-      {advancedMode && (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].governors.length != 0 && <PanelSectionRow>
+      {advancedMode && governorOptions.length != 0 && <PanelSectionRow>
         <Field
           label="Governor"
         >
@@ -738,6 +745,43 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             }
           }}
         />}
+      </PanelSectionRow>}
+      {chargeModeOptions.length != 0 && <PanelSectionRow>
+        <ToggleField
+          checked={get_value(CHARGE_MODE_BATT) != null}
+          label="Charge Mode"
+          description="Force battery charge mode"
+          onChange={(value: boolean) => {
+            if (value) {
+              set_value(CHARGE_MODE_BATT, chargeModeOptions[0].data as string);
+              reloadGUI("BATTChargeModeToggle");
+            } else {
+              set_value(CHARGE_MODE_BATT, null);
+              backend.resolve(backend.unsetBatteryChargeMode(), (_: any[]) => {
+                reloadGUI("BATTUnsetChargeMode");
+              });
+            }
+          }}
+        />
+        {get_value(CHARGE_MODE_BATT) != null && <Field
+          label="Mode"
+        >
+          <Dropdown
+            menuLabel="Charge Mode"
+            rgOptions={chargeModeOptions}
+            selectedOption={chargeModeOptions.find((val: SingleDropdownOption, _index, _arr) => {
+              return val.data == get_value(CHARGE_MODE_BATT);
+            })}
+            strDefaultLabel={get_value(CHARGE_MODE_BATT)}
+            onChange={(elem: SingleDropdownOption) => {
+              console.debug("Charge mode dropdown selected", elem);
+              backend.resolve(backend.setBatteryChargeMode(elem.data as string), (mode: string) => {
+                set_value(CHARGE_MODE_BATT, mode);
+                reloadGUI("BATTChargeMode");
+              });
+            }}
+          />
+        </Field>}
       </PanelSectionRow>}
       <PanelSectionRow>
         <Field

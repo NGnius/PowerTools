@@ -71,10 +71,10 @@ fn main() -> Result<(), ()> {
             vec![format!("{} v{}", PACKAGE_NAME, PACKAGE_VERSION).into()]
         })
         // battery API functions
-        .register("BATTERY_current_now", api::battery::current_now)
-        .register("BATTERY_charge_now", api::battery::charge_now)
-        .register("BATTERY_charge_full", api::battery::charge_full)
-        .register("BATTERY_charge_design", api::battery::charge_design)
+        .register_async("BATTERY_current_now", api::battery::current_now(api_sender.clone()))
+        .register_async("BATTERY_charge_now", api::battery::charge_now(api_sender.clone()))
+        .register_async("BATTERY_charge_full", api::battery::charge_full(api_sender.clone()))
+        .register_async("BATTERY_charge_design", api::battery::charge_design(api_sender.clone()))
         .register(
             "BATTERY_set_charge_rate",
             api::battery::set_charge_rate(api_sender.clone()),
