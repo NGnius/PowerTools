@@ -65,12 +65,6 @@ $(SSH_MOUNT_PATH)/.mounted:
 
 # Cleans and transfers the project
 $(SSH_MOUNT_PATH)/plugins/$(PLUGIN_NAME): $(SRC_FILES)
-#	rm -rf $(SSH_MOUNT_PATH)/plugins/$(PLUGIN_NAME)
-#	mkdir -p $(SSH_MOUNT_PATH)/plugins/$(PLUGIN_NAME)
-#	cp -r $(TAR_FILES) $(SSH_MOUNT_PATH)/plugins/$(PLUGIN_NAME)
-
-# Cleans and transfers the project
-$(SSH_MOUNT_PATH)/plugins/$(PLUGIN_NAME): $(SRC_FILES)
 	rsync -avh $(PWD)/ $(SSH_MOUNT_PATH)/plugins/$(PLUGIN_NAME) --delete
 
 .PHONY: remote-restart
