@@ -18,14 +18,18 @@ use usdpl_back::core::serdes::Primitive;
 use usdpl_back::Instance;
 
 fn main() -> Result<(), ()> {
+
+    let binding = usdpl_back::api::dirs::home().unwrap();
+    let home_path = binding.to_str().unwrap();
+
     #[cfg(debug_assertions)]
-    let log_filepath = format!("/home/deck/{}.log", PACKAGE_NAME);
+    let log_filepath = format!("{}/{}.log", home_path, PACKAGE_NAME);
     #[cfg(not(debug_assertions))]
     let log_filepath = format!("/tmp/{}.log", PACKAGE_NAME);
     #[cfg(debug_assertions)]
     {
         if std::path::Path::new(&log_filepath).exists() {
-            std::fs::copy(&log_filepath, format!("/home/deck/{}.log.old", PACKAGE_NAME)).unwrap();
+            std::fs::copy(&log_filepath, format!("{}/{}.log.old", home_path, PACKAGE_NAME)).unwrap();
         }
     }
     WriteLogger::init(
@@ -41,6 +45,7 @@ fn main() -> Result<(), ()> {
         std::fs::File::create(&log_filepath).unwrap(),
     )
     .unwrap();
+    log::debug!("Found home dir {:?}", home_path);
     log::info!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
     println!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
 
