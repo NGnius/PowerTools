@@ -242,7 +242,7 @@ impl TBattery for Battery {
                 max: max.charge_rate.unwrap(),
             }),
             charge_current_step: 50,
-            charge_modes: vec!["discharge".to_owned(), "idle".to_owned(), "normal".to_owned()],
+            charge_modes: vec!["normal".to_owned(), "discharge".to_owned(), "idle".to_owned()],
         }
     }
 
@@ -264,5 +264,45 @@ impl TBattery for Battery {
 
     fn get_charge_mode(&self) -> Option<String> {
         self.charge_mode.map(Self::charge_mode_to_str)
+    }
+
+    fn read_charge_full(&self) -> Option<f64> {
+        match Self::read_charge_full() {
+            Ok(x) => Some(x),
+            Err(e) => {
+                log::warn!("read_charge_full err: {}", e.msg);
+                None
+            }
+        }
+    }
+
+    fn read_charge_now(&self) -> Option<f64> {
+        match Self::read_charge_now() {
+            Ok(x) => Some(x),
+            Err(e) => {
+                log::warn!("read_charge_now err: {}", e.msg);
+                None
+            }
+        }
+    }
+
+    fn read_charge_design(&self) -> Option<f64> {
+        match Self::read_charge_design() {
+            Ok(x) => Some(x),
+            Err(e) => {
+                log::warn!("read_charge_design err: {}", e.msg);
+                None
+            }
+        }
+    }
+
+    fn read_current_now(&self) -> Option<f64> {
+        match Self::read_current_now() {
+            Ok(x) => Some(x as f64),
+            Err(e) => {
+                log::warn!("read_current_now err: {}", e.msg);
+                None
+            }
+        }
     }
 }

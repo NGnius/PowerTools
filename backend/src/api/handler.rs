@@ -24,6 +24,10 @@ pub enum BatteryMessage {
     GetChargeRate(Callback<Option<u64>>),
     SetChargeMode(Option<String>),
     GetChargeMode(Callback<Option<String>>),
+    ReadChargeFull(Callback<Option<f64>>),
+    ReadChargeNow(Callback<Option<f64>>),
+    ReadChargeDesign(Callback<Option<f64>>),
+    ReadCurrentNow(Callback<Option<f64>>),
 }
 
 impl BatteryMessage {
@@ -33,6 +37,10 @@ impl BatteryMessage {
             Self::GetChargeRate(cb) => cb(settings.get_charge_rate()),
             Self::SetChargeMode(mode) => settings.charge_mode(mode),
             Self::GetChargeMode(cb) => cb(settings.get_charge_mode()),
+            Self::ReadChargeFull(cb) => cb(settings.read_charge_full()),
+            Self::ReadChargeNow(cb) => cb(settings.read_charge_now()),
+            Self::ReadChargeDesign(cb) => cb(settings.read_charge_design()),
+            Self::ReadCurrentNow(cb) => cb(settings.read_current_now()),
         }
     }
 }

@@ -142,44 +142,7 @@ impl Driver {
     }
 }
 
-// static battery calls
-
-#[inline]
-pub fn read_current_now() -> Result<Option<u64>, SettingError> {
-    match auto_detect() {
-        DriverJson::SteamDeck => super::steam_deck::Battery::read_current_now().map(|x| Some(x)),
-        DriverJson::SteamDeckAdvance => super::steam_deck::Battery::read_current_now().map(|x| Some(x)),
-        DriverJson::Unknown => Ok(None),
-    }
-}
-
-#[inline]
-pub fn read_charge_now() -> Result<Option<f64>, SettingError> {
-    match auto_detect() {
-        DriverJson::SteamDeck => super::steam_deck::Battery::read_charge_now().map(|x| Some(x)),
-        DriverJson::SteamDeckAdvance => super::steam_deck::Battery::read_charge_now().map(|x| Some(x)),
-        DriverJson::Unknown => Ok(None),
-    }
-}
-
-#[inline]
-pub fn read_charge_full() -> Result<Option<f64>, SettingError> {
-    match auto_detect() {
-        DriverJson::SteamDeck => super::steam_deck::Battery::read_charge_full().map(|x| Some(x)),
-        DriverJson::SteamDeckAdvance => super::steam_deck::Battery::read_charge_full().map(|x| Some(x)),
-        DriverJson::Unknown => Ok(None),
-    }
-}
-
-#[inline]
-pub fn read_charge_design() -> Result<Option<f64>, SettingError> {
-    match auto_detect() {
-        DriverJson::SteamDeck => super::steam_deck::Battery::read_charge_design().map(|x| Some(x)),
-        DriverJson::SteamDeckAdvance => super::steam_deck::Battery::read_charge_design().map(|x| Some(x)),
-        DriverJson::Unknown => Ok(None),
-    }
-}
-
+// sshhhh, this function isn't here ;)
 #[inline]
 pub fn maybe_do_button() {
     match auto_detect() {

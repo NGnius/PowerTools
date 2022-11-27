@@ -1,27 +1,101 @@
 use std::sync::mpsc::{Sender, self};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use usdpl_back::core::serdes::Primitive;
+use usdpl_back::AsyncCallable;
 
 use super::handler::{ApiMessage, BatteryMessage};
 
 /// Current current (ha!) web method
-pub fn current_now(_: super::ApiParameterType) -> super::ApiParameterType {
-    super::utility::map_optional_result(crate::settings::driver::read_current_now())
+pub fn current_now(
+    sender: Sender<ApiMessage>,
+) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move || {
+            let (tx, rx) = mpsc::channel();
+            let callback = move |val: Option<f64>| tx.send(val).expect("current_now callback send failed");
+            sender2.lock().unwrap().send(ApiMessage::Battery(BatteryMessage::ReadCurrentNow(Box::new(callback)))).expect("current_now send failed");
+            rx.recv().expect("current_now callback recv failed")
+        }
+    };
+    super::async_utils::AsyncIshGetter {
+        set_get: getter,
+        trans_getter: |result| {
+            super::utility::map_optional_result(Ok(result))
+        }
+    }
 }
 
+/// Current current (ha!) web method
+/*pub fn current_now(_: super::ApiParameterType) -> super::ApiParameterType {
+    super::utility::map_optional_result(crate::settings::driver::read_current_now())
+}*/
+
 /// Charge now web method
-pub fn charge_now(_: super::ApiParameterType) -> super::ApiParameterType {
-    super::utility::map_optional_result(crate::settings::driver::read_charge_now())
+pub fn charge_now(
+    sender: Sender<ApiMessage>,
+) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move || {
+            let (tx, rx) = mpsc::channel();
+            let callback = move |val: Option<f64>| tx.send(val).expect("charge_now callback send failed");
+            sender2.lock().unwrap().send(ApiMessage::Battery(BatteryMessage::ReadChargeNow(Box::new(callback)))).expect("charge_now send failed");
+            rx.recv().expect("charge_now callback recv failed")
+        }
+    };
+    super::async_utils::AsyncIshGetter {
+        set_get: getter,
+        trans_getter: |result| {
+            super::utility::map_optional_result(Ok(result))
+        }
+    }
 }
 
 /// Charge full web method
-pub fn charge_full(_: super::ApiParameterType) -> super::ApiParameterType {
-    super::utility::map_optional_result(crate::settings::driver::read_charge_full())
+pub fn charge_full(
+    sender: Sender<ApiMessage>,
+) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move || {
+            let (tx, rx) = mpsc::channel();
+            let callback = move |val: Option<f64>| tx.send(val).expect("charge_full callback send failed");
+            sender2.lock().unwrap().send(ApiMessage::Battery(BatteryMessage::ReadChargeFull(Box::new(callback)))).expect("charge_full send failed");
+            rx.recv().expect("charge_full callback recv failed")
+        }
+    };
+    super::async_utils::AsyncIshGetter {
+        set_get: getter,
+        trans_getter: |result| {
+            super::utility::map_optional_result(Ok(result))
+        }
+    }
 }
 
 /// Charge design web method
-pub fn charge_design(_: super::ApiParameterType) -> super::ApiParameterType {
-    super::utility::map_optional_result(crate::settings::driver::read_charge_design())
+pub fn charge_design(
+    sender: Sender<ApiMessage>,
+) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move || {
+            let (tx, rx) = mpsc::channel();
+            let callback = move |val: Option<f64>| tx.send(val).expect("charge_design callback send failed");
+            sender2.lock().unwrap().send(ApiMessage::Battery(BatteryMessage::ReadChargeDesign(Box::new(callback)))).expect("charge_design send failed");
+            rx.recv().expect("charge_design callback recv failed")
+        }
+    };
+    super::async_utils::AsyncIshGetter {
+        set_get: getter,
+        trans_getter: |result| {
+            super::utility::map_optional_result(Ok(result))
+        }
+    }
 }
 
 /// Generate set battery charge rate web method
