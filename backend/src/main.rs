@@ -23,12 +23,19 @@ fn main() -> Result<(), ()> {
     let log_filepath = usdpl_back::api::dirs::home()
         .unwrap_or_else(|| "/tmp/".into())
         .join(PACKAGE_NAME.to_owned()+".log");
-    println!("Found home dir: {:?}", log_filepath);
+    #[cfg(not(debug_assertions))]
+    let log_filepath = std::path::PathBuf.new("/tmp/"+PACKAGE_NAME.to_owned()+".log");
+    #[cfg(debug_assertions)]
+    let old_log_filepath = usdpl_back::api::dirs::home()
+        .unwrap_or_else(|| "/tmp/".into())
+        .join(PACKAGE_NAME.to_owned()+".log.old");
+    #[cfg(debug_assertions)]
     {
         if std::path::Path::new(&log_filepath).exists() {
-            std::fs::copy(&log_filepath, &log_filepath.join(".old"));
+            std::fs::copy(&log_filepath, &old_log_filepath).expect("Unable to increment logs. Do you have write permissions?");
         }
     }
+    #[cfg(debug_assertions)]
     WriteLogger::init(
         #[cfg(debug_assertions)]
         {
@@ -42,7 +49,8 @@ fn main() -> Result<(), ()> {
         std::fs::File::create(&log_filepath).unwrap(),
     )
     .unwrap();
-    log::debug!("Loggin started at {:?}.", log_filepath);
+    log::debug!("Logging to: {:?}.", log_filepath);
+    println!("Logging to: {:?}", log_filepath);
     log::info!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
     println!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
 
