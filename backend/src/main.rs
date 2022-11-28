@@ -19,17 +19,14 @@ use usdpl_back::Instance;
 
 fn main() -> Result<(), ()> {
 
-    let binding = usdpl_back::api::dirs::home().unwrap();
-    let home_path = binding.to_str().unwrap();
-
     #[cfg(debug_assertions)]
-    let log_filepath = format!("{}/{}.log", home_path, PACKAGE_NAME);
-    #[cfg(not(debug_assertions))]
-    let log_filepath = format!("/tmp/{}.log", PACKAGE_NAME);
-    #[cfg(debug_assertions)]
+    let log_filepath = usdpl_back::api::dirs::home()
+        .unwrap_or_else(|| "/tmp/".into())
+        .join(PACKAGE_NAME.to_owned()+".log");
+    println!("Found home dir: {:?}", log_filepath);
     {
         if std::path::Path::new(&log_filepath).exists() {
-            std::fs::copy(&log_filepath, format!("{}/{}.log.old", home_path, PACKAGE_NAME)).unwrap();
+            std::fs::copy(&log_filepath, &log_filepath.join(".old"));
         }
     }
     WriteLogger::init(
@@ -45,7 +42,7 @@ fn main() -> Result<(), ()> {
         std::fs::File::create(&log_filepath).unwrap(),
     )
     .unwrap();
-    log::debug!("Found home dir {:?}", home_path);
+    log::debug!("Loggin started at {:?}.", log_filepath);
     log::info!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
     println!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
 
