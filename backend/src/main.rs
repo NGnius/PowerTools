@@ -35,7 +35,6 @@ fn main() -> Result<(), ()> {
             std::fs::copy(&log_filepath, &old_log_filepath).expect("Unable to increment logs. Do you have write permissions?");
         }
     }
-    #[cfg(debug_assertions)]
     WriteLogger::init(
         #[cfg(debug_assertions)]
         {
