@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 type Primitive = string | boolean | number | undefined | null | symbol;
 
@@ -20,18 +20,25 @@ type UseAsyncReducer = <S extends Json, A>(
 
 export const useAsyncReducer: UseAsyncReducer = function useAsyncReducer(reducer, getInitialState) {
     const [state, setState] = useState(getInitialState());
+
+    const stateRef = useRef(state);
+    stateRef.current = state;
+
+    const getInitialStateRef = useRef(getInitialState);
+    getInitialStateRef.current = getInitialState;
+
     const asyncDispatch = useCallback(
         async (action: Parameters<typeof reducer>[1]) => {
-            const updatedState = await reducer(state, action);
+            const updatedState = await reducer(stateRef.current, action);
             // shallow equality check -- reducer must ensure a new obj is returned if state changes
-            if (state !== updatedState) {
+            if (stateRef.current !== updatedState) {
                 setState(updatedState);
             }
         },
-        [setState]
+        [reducer]
     );
     const refetchState = useCallback(() => {
-        setState((prev) => ({ ...prev, ...getInitialState() }));
+        setState((prev) => ({ ...prev, ...getInitialStateRef.current() }));
     }, []);
 
     return [state, asyncDispatch, refetchState];

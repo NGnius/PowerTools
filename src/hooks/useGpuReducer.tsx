@@ -1,6 +1,8 @@
-import { Gpu, General, BackendCalls, callBackend, getValue } from "../usdplFront";
+import { BACKEND_CALLS, callBackend, GpuTypes } from "../usdpl";
 import { useAsyncReducer } from "../hooks/useAsyncReducer";
-import { backendFactory, clone } from "../utilities/backendFactory";
+import { Copy } from "../utilities/backendFactory";
+import { GPU_BE } from "../usdplBackend";
+import { SETTINGS_LIMITS } from "../utilities/settingsLimits";
 
 type Action =
     | [type: "fastPPT", payload: number]
@@ -13,47 +15,43 @@ type Action =
     | [type: "unsetFreq", payload?: undefined]
     | [type: "unsetPPT", payload?: undefined];
 
-const getInitialState = () => backendFactory([Gpu.FastPpt, Gpu.SlowPpt, Gpu.MinClock, Gpu.MaxClock, Gpu.SlowMemory]);
-
-type State = ReturnType<typeof getInitialState>;
-
-async function reducer(state: State, action: Action) {
+async function reducer(state: GpuTypes, action: Action) {
     const [type, payload] = action;
-    const limits = getValue(General.LimitsAll);
+    const limits = SETTINGS_LIMITS;
     const { slow_ppt_limits, fast_ppt_limits } = limits.gpu;
 
     console.debug(`GPU Action: ${type}; Payload: ${payload}`);
 
     switch (type) {
         case "slowMemory": {
-            const [val] = await callBackend(BackendCalls.GpuSetSlowMemory, [payload]);
+            const [val] = await callBackend(BACKEND_CALLS.GpuSetSlowMemory, [payload]);
             state.GPU_slow_memory = val;
             const slowMemory = state.GPU_slow_memory;
-            return slowMemory === state.GPU_slow_memory ? state : clone(state);
+            return slowMemory === state.GPU_slow_memory ? state : state[Copy]();
         }
         case "maxClock": {
             const maxNow = state.GPU_max_clock;
             const minNow = state.GPU_min_clock;
             if (payload !== maxNow && minNow) {
-                const limits = await callBackend(BackendCalls.GpuSetClockLimits, [minNow, payload]); // -> [min, max]
+                const limits = await callBackend(BACKEND_CALLS.GpuSetClockLimits, [minNow, payload]); // -> [min, max]
                 state.GPU_min_clock = limits[0];
                 state.GPU_max_clock = limits[1];
             }
             const clockMin = state.GPU_min_clock;
             const clockMax = state.GPU_max_clock;
-            return clockMin === state.GPU_min_clock && clockMax === state.GPU_max_clock ? state : clone(state);
+            return clockMin === state.GPU_min_clock && clockMax === state.GPU_max_clock ? state : state[Copy]();
         }
         case "minClock": {
             const minNow = state.GPU_min_clock;
             const maxNow = state.GPU_max_clock;
             if (payload !== minNow && maxNow) {
-                const limits = await callBackend(BackendCalls.GpuSetClockLimits, [payload, maxNow]); // -> [min, max]
+                const limits = await callBackend(BACKEND_CALLS.GpuSetClockLimits, [payload, maxNow]); // -> [min, max]
                 state.GPU_min_clock = limits[0];
                 state.GPU_max_clock = limits[1];
             }
             const clockMin = state.GPU_min_clock;
             const clockMax = state.GPU_max_clock;
-            return clockMin === state.GPU_min_clock && clockMax === state.GPU_max_clock ? state : clone(state);
+            return clockMin === state.GPU_min_clock && clockMax === state.GPU_max_clock ? state : state[Copy]();
         }
         case "freqToggle": {
             if (payload) {
@@ -68,37 +66,39 @@ async function reducer(state: State, action: Action) {
             } else {
                 state.GPU_min_clock = null;
                 state.GPU_max_clock = null;
-                await callBackend(BackendCalls.GpuUnsetClockLimits, []);
+                await callBackend(BACKEND_CALLS.GpuUnsetClockLimits, []);
             }
             const clockMin = state.GPU_min_clock;
             const clockMax = state.GPU_max_clock;
-            return clockMin === state.GPU_min_clock && clockMax === state.GPU_max_clock ? state : clone(state);
+            return clockMin === state.GPU_min_clock && clockMax === state.GPU_max_clock ? state : state[Copy]();
         }
         case "fastPPT": {
             const pptNow = state.GPU_fastPPT;
+            let slowPpt = state.GPU_slowPPT;
             const realPpt = payload;
             // is GPU_slowPPT null allowed?
-            if (realPpt !== pptNow && state.GPU_slowPPT !== null) {
-                const limits: number[] = await callBackend(BackendCalls.GpuSetPpt, [realPpt, state.GPU_slowPPT]); // -> [fastPPT, slowPPT]
+            if (realPpt !== pptNow && state.GPU_slowPPT !== null && typeof slowPpt === "number") {
+                const limits: number[] = await callBackend(BACKEND_CALLS.GpuSetPpt, [realPpt, realPpt]); // -> [fastPPT, slowPPT]
                 state.GPU_fastPPT = limits[0];
                 state.GPU_slowPPT = limits[1];
             }
             const fastPpt = state.GPU_fastPPT;
-            const slowPpt = state.GPU_slowPPT;
-            return fastPpt === state.GPU_fastPPT && slowPpt === state.GPU_slowPPT ? state : clone(state);
+            slowPpt = state.GPU_slowPPT;
+            return fastPpt === state.GPU_fastPPT && slowPpt === state.GPU_slowPPT ? state : state[Copy]();
         }
         case "slowPPT": {
             const pptNow = state.GPU_slowPPT;
+            let fastPpt = state.GPU_fastPPT;
             const realPpt = payload;
             // is GPU_fastPPT null allowed?
-            if (realPpt !== pptNow && state.GPU_fastPPT !== null) {
-                const limits: number[] = await callBackend(BackendCalls.GpuSetPpt, [state.GPU_fastPPT, payload]); // -> [fastPPT, slowPPT]
+            if (realPpt !== pptNow && state.GPU_fastPPT !== null && typeof fastPpt === "number") {
+                const limits: number[] = await callBackend(BACKEND_CALLS.GpuSetPpt, [fastPpt, payload]); // -> [fastPPT, slowPPT]
                 state.GPU_fastPPT = limits[0];
                 state.GPU_slowPPT = limits[1];
             }
-            const fastPpt = state.GPU_fastPPT;
+            fastPpt = state.GPU_fastPPT;
             const slowPpt = state.GPU_slowPPT;
-            return fastPpt === state.GPU_fastPPT && slowPpt === state.GPU_slowPPT ? state : clone(state);
+            return fastPpt === state.GPU_fastPPT && slowPpt === state.GPU_slowPPT ? state : state[Copy]();
         }
         case "pptToggle": {
             if (payload) {
@@ -111,13 +111,13 @@ async function reducer(state: State, action: Action) {
             } else {
                 state.GPU_slowPPT = null;
                 state.GPU_fastPPT = null;
-                await callBackend(BackendCalls.GpuUnsetPpt, []);
+                await callBackend(BACKEND_CALLS.GpuUnsetPpt, []);
             }
-            return clone(state);
+            return state[Copy]();
         }
         default:
             throw new Error(`Unhandled GPU action ${type}`);
     }
 }
 
-export const useGpuReducer = () => useAsyncReducer(reducer, getInitialState);
+export const useGpuReducer = () => useAsyncReducer(reducer, () => GPU_BE);

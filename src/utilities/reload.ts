@@ -1,52 +1,53 @@
-import { BackendCalls, callBackend, setValue, getValue, Battery, Cpu, Gpu, General } from "../usdplFront";
-import { countCpus } from "./countCpus";
+import { GENERAL_BE } from "../usdplBackend";
+import { BACKEND_CALLS, callBackend, setValue, BATTERY, CPU, GPU, GENERAL } from "../usdpl";
+import { countCpus } from "./helpers";
 import { syncPlebClockToAdvanced } from "./syncPlebClockToAdvanced";
 
 const getPeriodicCalls = () => [
-    callBackend(BackendCalls.BatteryCurrentNow, []).then(([data]) => setValue(Battery.CurrentNow, data)),
-    callBackend(BackendCalls.BatteryChargeNow, []).then(([data]) => setValue(Battery.ChargeNow, data)),
-    callBackend(BackendCalls.BatteryChargeFull, []).then(([data]) => setValue(Battery.ChargeFull, data)),
-    callBackend(BackendCalls.GeneralGetPersistent, []).then(([ok]) => setValue(General.Persistent, ok)),
+    callBackend(BACKEND_CALLS.BatteryCurrentNow, []).then(([data]) => setValue(BATTERY.CurrentNow, data)),
+    callBackend(BACKEND_CALLS.BatteryChargeNow, []).then(([data]) => setValue(BATTERY.ChargeNow, data)),
+    callBackend(BACKEND_CALLS.BatteryChargeFull, []).then(([data]) => setValue(BATTERY.ChargeFull, data)),
+    callBackend(BACKEND_CALLS.GeneralGetPersistent, []).then(([ok]) => setValue(GENERAL.Persistent, ok)),
 ];
 
 const getAllCalls = (smtAllowed: boolean) => [
     ...getPeriodicCalls(),
-    callBackend(BackendCalls.GeneralGetLimits, []).then(([limits]) => {
-        setValue(General.LimitsAll, limits);
+    callBackend(BACKEND_CALLS.GeneralGetLimits, []).then(([limits]) => {
+        setValue(GENERAL.LimitsAll, limits);
         console.debug("POWERTOOLS: got limits", limits);
     }),
-    callBackend(BackendCalls.BatteryGetChargeRate, []).then(([rate]) => setValue(Battery.ChargeRate, rate)),
-    callBackend(BackendCalls.BatteryChargeDesign, []).then(([rate]) => setValue(Battery.ChargeDesign, rate)),
-    callBackend(BackendCalls.CpuGetOnlines, []).then((statii) => {
-        setValue(Cpu.StatusOnline, statii);
-        setValue(Cpu.Online, countCpus(statii));
-        setValue(Cpu.Smt, statii.length > 3 && statii[0] === statii[1] && statii[2] === statii[3]);
-        setValue(Cpu.Smt, statii.length > 3 && statii[0] === statii[1] && statii[2] === statii[3] && smtAllowed);
+    callBackend(BACKEND_CALLS.BatteryGetChargeRate, []).then(([rate]) => setValue(BATTERY.ChargeRate, rate)),
+    callBackend(BACKEND_CALLS.BatteryChargeDesign, []).then(([rate]) => setValue(BATTERY.ChargeDesign, rate)),
+    callBackend(BACKEND_CALLS.CpuGetOnlines, []).then((statii) => {
+        setValue(CPU.StatusOnline, statii);
+        setValue(CPU.Online, countCpus(statii));
+        setValue(CPU.Smt, statii.length > 3 && statii[0] === statii[1] && statii[2] === statii[3]);
+        setValue(CPU.Smt, statii.length > 3 && statii[0] === statii[1] && statii[2] === statii[3] && smtAllowed);
     }),
-    callBackend(BackendCalls.CpuGetClockLimits, [0]).then((limits) => {
-        setValue(Cpu.MaxClock, limits[0]);
-        setValue(Cpu.MaxClock, limits[1]);
+    callBackend(BACKEND_CALLS.CpuGetClockLimits, [0]).then((limits) => {
+        setValue(CPU.MaxClock, limits[0]);
+        setValue(CPU.MaxClock, limits[1]);
         syncPlebClockToAdvanced();
     }),
-    callBackend(BackendCalls.CpuGetGovernors, []).then((governors) => setValue(Cpu.Governor, governors)),
-    callBackend(BackendCalls.GpuGetPpt, []).then((ppts) => {
-        setValue(Gpu.FastPpt, ppts[0]);
-        setValue(Gpu.SlowPpt, ppts[1]);
+    callBackend(BACKEND_CALLS.CpuGetGovernors, []).then((governors) => setValue(CPU.Governor, governors)),
+    callBackend(BACKEND_CALLS.GpuGetPpt, []).then((ppts) => {
+        setValue(GPU.FastPpt, ppts[0]);
+        setValue(GPU.SlowPpt, ppts[1]);
     }),
-    callBackend(BackendCalls.GpuGetClockLimits, []).then((limits) => {
-        setValue(Gpu.MinClock, limits[0]);
-        setValue(Gpu.MaxClock, limits[1]);
+    callBackend(BACKEND_CALLS.GpuGetClockLimits, []).then((limits) => {
+        setValue(GPU.MinClock, limits[0]);
+        setValue(GPU.MaxClock, limits[1]);
     }),
-    callBackend(BackendCalls.GpuGetSlowMemory, []).then(([status]) => setValue(Gpu.SlowMemory, status)),
-    callBackend(BackendCalls.GeneralGetName, []).then(([name]) => setValue(General.Name, name)),
-    callBackend(BackendCalls.VInfo, []).then(([info]) => setValue(General.VInfo, info)),
+    callBackend(BACKEND_CALLS.GpuGetSlowMemory, []).then(([status]) => setValue(GPU.SlowMemory, status)),
+    callBackend(BACKEND_CALLS.GeneralGetName, []).then(([name]) => setValue(GENERAL.Name, name)),
+    callBackend(BACKEND_CALLS.VInfo, []).then(([info]) => setValue(GENERAL.VInfo, info)),
 ];
 
 /** this function reloads GENERAL_name and determines if all backends should reload */
 const getShouldReloadAll = () =>
-    callBackend(BackendCalls.GeneralGetName, []).then(([newName]) => {
-        const prevName = getValue(General.Name);
-        setValue(General.Name, newName);
+    callBackend(BACKEND_CALLS.GeneralGetName, []).then(([newName]) => {
+        const prevName = GENERAL_BE[GENERAL.Name];
+        setValue(GENERAL.Name, newName);
         return newName !== prevName;
     });
 

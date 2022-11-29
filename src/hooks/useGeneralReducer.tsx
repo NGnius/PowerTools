@@ -1,6 +1,7 @@
-import { General, BackendCalls, callBackend } from "../usdplFront";
+import { BACKEND_CALLS, callBackend, GeneralTypes } from "../usdpl";
 import { useAsyncReducer } from "../hooks/useAsyncReducer";
-import { backendFactory, clone } from "../utilities/backendFactory";
+import { Copy } from "../utilities/backendFactory";
+import { GENERAL_BE } from "../usdplBackend";
 
 type Action =
     | [type: "loadSystemDefaults", payload: () => Promise<void>]
@@ -8,37 +9,33 @@ type Action =
     | [type: "idk"]
     | [type: "refresh"];
 
-const getInitialState = () => backendFactory([General.VInfo, General.Persistent, General.Name]);
-
-type State = ReturnType<typeof getInitialState>;
-
-async function reducer(state: State, action: Action) {
+async function reducer(state: GeneralTypes, action: Action) {
     const [type, payload] = action;
 
     console.debug(`General Action: ${type}; Payload: ${payload}`);
 
     switch (type) {
         case "idk":
-            callBackend(BackendCalls.GeneralIdk, []);
+            callBackend(BACKEND_CALLS.GeneralIdk, []);
             return state;
         case "setPersistent": {
-            const [newValue] = await callBackend(BackendCalls.GeneralSetPersistent, [payload]);
+            const [newValue] = await callBackend(BACKEND_CALLS.GeneralSetPersistent, [payload]);
             state.GENERAL_persistent = newValue;
-            return clone(state);
+            return state[Copy]();
         }
         case "refresh":
-            return clone(state);
+            return state[Copy]();
         case "loadSystemDefaults": {
-            const [newValue] = await callBackend(BackendCalls.GeneralSetPersistent, [false]);
+            const [newValue] = await callBackend(BACKEND_CALLS.GeneralSetPersistent, [false]);
             state.GENERAL_persistent = newValue;
-            await callBackend(BackendCalls.GeneralLoadSystemSettings, []);
+            await callBackend(BACKEND_CALLS.GeneralLoadSystemSettings, []);
             await payload();
-            await callBackend(BackendCalls.GeneralWaitForUnlocks, []);
-            return clone(state);
+            await callBackend(BACKEND_CALLS.GeneralWaitForUnlocks, []);
+            return state[Copy]();
         }
         default:
             throw new Error(`Unhandled General Action ${type}`);
     }
 }
 
-export const useGeneralReducer = () => useAsyncReducer(reducer, getInitialState);
+export const useGeneralReducer = () => useAsyncReducer(reducer, () => GENERAL_BE);

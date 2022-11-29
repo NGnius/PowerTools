@@ -1,30 +1,41 @@
-import { getValue, setValue, BackendFrameworkMap } from "../usdplFront";
+import { getValue, setValue, BackendTypes, ALL } from "../usdpl";
 import { assertRequired } from "./assertRequired";
 
-// allows for shallow clones that keep setter/getter property descriptors.
-// useful for making shallow equals tests (such as the kind commonly used for
-// react state/reducer management) fail
-export function clone<T>(obj: T): T {
-    return Object.create(Object.getPrototypeOf(obj), Object.getOwnPropertyDescriptors(obj));
-}
+export const Copy = Symbol("copy symbol");
 
-type BackendObject<T extends keyof BackendFrameworkMap> = { -readonly [K in T]: BackendFrameworkMap[K] };
+type Copyable<T> = T & Record<typeof Copy, () => Copyable<T>>;
 
-// this might be better off as a class? or a proxy with a state property that enforces immutability on the state
-// property? maybe something with a Map interface (set, get, has) that allows for more flexibility in the future instead
-// of marrying BackendObject to object accessor syntax
-export function backendFactory<T extends ReadonlyArray<keyof BackendFrameworkMap>>(
-    backendKeys: T
-): BackendObject<T[number]> {
-    const obj: Partial<BackendObject<T[number]>> = {};
-    for (const beKey of backendKeys) {
-        Object.defineProperty(obj, beKey, {
-            enumerable: true,
-            get: () => getValue(beKey),
-            set: (newValue: BackendFrameworkMap[typeof beKey]) => setValue(beKey, newValue),
-        });
+export function backendFactory<
+    K extends string,
+    T extends { [Key in Extract<K, keyof BackendTypes>]: BackendTypes[Key] }
+>(backendDefaults: T): Copyable<T> {
+    const obj: Partial<Copyable<T>> = {};
+
+    // using a Symbol for this function property prevents property name collisions without restricting possible property names
+    Object.defineProperty(obj, Copy, {
+        enumerable: false,
+        get() {
+            return Object.create(Object.getPrototypeOf(this), Object.getOwnPropertyDescriptors(this));
+        },
+        set() {
+            return false;
+        },
+    });
+
+    for (const kv of Object.entries(backendDefaults)) {
+        const key = kv[0] as keyof BackendTypes;
+        const value = kv[1];
+        if (key in ALL)
+            Object.defineProperty(obj, key, {
+                enumerable: true,
+                get: () => getValue(key) ?? value,
+                set: (newValue: BackendTypes[typeof key]) => setValue(key, newValue),
+            });
+        else {
+            obj[key] = value;
+        }
     }
     // use type guard function instead of casting obj type
-    assertRequired(obj, backendKeys);
+    assertRequired(obj, Object.keys(backendDefaults) as (keyof T)[]);
     return obj;
 }

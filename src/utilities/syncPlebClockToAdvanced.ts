@@ -1,9 +1,11 @@
-import { Cpu, General, getValue, setValue } from "../usdplFront";
+import { CPU_BE } from "../usdplBackend";
+import { CPU, setValue } from "../usdpl";
+import { SETTINGS_LIMITS } from "./settingsLimits";
 
 export function syncPlebClockToAdvanced() {
-    const cpuCount = getValue(General.LimitsAll).cpu.count;
-    const minClock = getValue(Cpu.MinClock);
-    const maxClock = getValue(Cpu.MaxClock);
+    const cpuCount = SETTINGS_LIMITS.cpu.count;
+    const minClock = CPU_BE[CPU.MinClock];
+    const maxClock = CPU_BE[CPU.MaxClock];
     const clockArr = [];
     for (let i = 0; i < cpuCount; i++) {
         clockArr.push({
@@ -11,5 +13,5 @@ export function syncPlebClockToAdvanced() {
             max: maxClock,
         });
     }
-    setValue(Cpu.MinmaxClocks, clockArr);
+    setValue(CPU.MinmaxClocks, clockArr);
 }
