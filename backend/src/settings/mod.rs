@@ -4,6 +4,7 @@ mod general;
 mod min_max;
 mod traits;
 
+pub mod generic;
 pub mod steam_deck;
 pub mod steam_deck_adv;
 pub mod unknown;

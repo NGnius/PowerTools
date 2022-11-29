@@ -26,6 +26,8 @@ fn auto_detect() -> DriverJson {
         } else {
             DriverJson::SteamDeckAdvance
         }
+    } else if let Some(_) = lscpu.find("model name\t: AMD Ryzen") {
+        DriverJson::Generic
     } else {
         DriverJson::Unknown
     }
@@ -88,6 +90,17 @@ impl Driver {
                 gpu: Box::new(super::steam_deck_adv::Gpu::from_json(settings.gpu, settings.version)),
                 battery: Box::new(super::steam_deck::Battery::from_json(settings.battery, settings.version)),
             }),
+            DriverJson::Generic => Ok(Self {
+                general: Box::new(General {
+                    persistent: settings.persistent,
+                    path: json_path,
+                    name: settings.name,
+                    driver: DriverJson::Unknown,
+                }),
+                cpus: Box::new(super::generic::Cpus::from_json(settings.cpus, settings.version)),
+                gpu: Box::new(super::generic::Gpu::from_json(settings.gpu, settings.version)),
+                battery: Box::new(super::generic::Battery),
+            }),
             DriverJson::Unknown => Ok(Self {
                 general: Box::new(General {
                     persistent: settings.persistent,
@@ -127,6 +140,17 @@ impl Driver {
                 gpu: Box::new(super::steam_deck_adv::Gpu::system_default()),
                 battery: Box::new(super::steam_deck::Battery::system_default()),
             },
+            DriverJson::Generic => Self {
+                general: Box::new(General {
+                    persistent: false,
+                    path: json_path,
+                    name: crate::consts::DEFAULT_SETTINGS_NAME.to_owned(),
+                    driver: DriverJson::Unknown,
+                }),
+                cpus: Box::new(super::generic::Cpus::system_default()),
+                gpu: Box::new(super::generic::Gpu::system_default()),
+                battery: Box::new(super::generic::Battery),
+            },
             DriverJson::Unknown => Self {
                 general: Box::new(General {
                     persistent: false,
@@ -159,6 +183,7 @@ pub fn maybe_do_button() {
                 std::thread::sleep(period);
             }
         },
+        DriverJson::Generic => log::warn!("You need to come up with something fun on generic"),
         DriverJson::Unknown => log::warn!("Can't do button activities on unknown platform"),
     }
 }

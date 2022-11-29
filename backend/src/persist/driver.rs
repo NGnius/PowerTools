@@ -9,6 +9,8 @@ pub enum DriverJson {
     SteamDeck,
     #[serde(rename = "steam-deck-oc", alias = "gabe-boy-advance")]
     SteamDeckAdvance,
+    #[serde(rename = "generic")]
+    Generic,
     #[serde(rename = "unknown")]
     Unknown,
 }
