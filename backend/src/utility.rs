@@ -26,6 +26,6 @@ pub fn unwrap_maybe_fatal<T: Sized, E: Display>(result: Result<T, E>, message: &
 
 pub fn settings_dir() -> std::path::PathBuf {
     usdpl_back::api::dirs::home()
-        .unwrap_or_else(|| "/home/deck".into())
+        .unwrap_or_else(|| "/tmp/".into())
         .join(".config/powertools/")
 }
