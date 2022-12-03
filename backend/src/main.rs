@@ -53,7 +53,8 @@ fn main() -> Result<(), ()> {
     log::info!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
     println!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
 
-    crate::settings::driver::auto_detect_loud();
+    let _limits_handle = crate::settings::limits_worker_spawn();
+    log::info!("Detected device automatically, starting with driver: {:?} (This can be overriden)", crate::settings::auto_detect_provider());
 
     let mut loaded_settings = persist::SettingsJson::open(utility::settings_dir().join(DEFAULT_SETTINGS_FILE))
         .map(|settings| settings::Settings::from_json(settings, DEFAULT_SETTINGS_FILE.into()))

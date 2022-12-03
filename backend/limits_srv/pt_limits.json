@@ -1,0 +1,43 @@
+{
+    "configs": [
+        {
+            "name": "Steam Deck",
+            "conditions": {
+                "cpuinfo": "model name\t: AMD Custom APU 0405\n"
+            },
+            "limits": [
+                {
+                    "limits": "Cpu",
+                    "target": "SteamDeck"
+                },
+                {
+                    "limits": "Gpu",
+                    "target": "SteamDeck"
+                },
+                {
+                    "limits": "Battery",
+                    "target": "SteamDeck"
+                }
+            ]
+        },
+        {
+            "name": "Fallback",
+            "conditions": {},
+            "limits": [
+                {
+                    "limits": "Cpu",
+                    "target": "Unknown"
+                },
+                {
+                    "limits": "Gpu",
+                    "target": "Unknown"
+                },
+                {
+                    "limits": "Battery",
+                    "target": "Unknown"
+                }
+            ]
+        }
+    ],
+    "refresh": "http://limits.ngni.us:45000/powertools/v1"
+}

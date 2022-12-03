@@ -128,6 +128,43 @@ impl Cpus {
             smt_capable: can_smt,
         }
     }
+
+    pub fn from_limits(_limits: limits_core::json::GenericCpuLimit) -> Self {
+        // TODO
+        Self {
+            cpus: vec![],
+            smt: false,
+            smt_capable: false,
+        }
+    }
+
+    pub fn from_json_and_limits(mut other: Vec<CpuJson>, version: u64, _limits: limits_core::json::GenericCpuLimit) -> Self {
+        let (_, can_smt) = Self::system_smt_capabilities();
+        let mut result = Vec::with_capacity(other.len());
+        let max_cpus = Self::cpu_count();
+        for (i, cpu) in other.drain(..).enumerate() {
+            // prevent having more CPUs than available
+            if let Some(max_cpus) = max_cpus {
+                if i == max_cpus {
+                    break;
+                }
+            }
+            result.push(Cpu::from_json(cpu, version, i));
+        }
+        if let Some(max_cpus) = max_cpus {
+            if result.len() != max_cpus {
+                let mut sys_cpus = Cpus::system_default();
+                for i in result.len()..sys_cpus.cpus.len() {
+                    result.push(sys_cpus.cpus.remove(i));
+                }
+            }
+        }
+        Self {
+            cpus: result,
+            smt: true,
+            smt_capable: can_smt,
+        }
+    }
 }
 
 impl TCpus for Cpus {

@@ -38,6 +38,16 @@ impl Battery {
             Ok(val) => Ok(val / 1000.0),
         }
     }
+
+    pub fn from_limits(_limits: limits_core::json::GenericBatteryLimit) -> Self {
+        // TODO
+        Self
+    }
+
+    pub fn from_json_and_limits(_other: BatteryJson, _version: u64, _limits: limits_core::json::GenericBatteryLimit) -> Self {
+        // TODO
+        Self
+    }
 }
 
 impl OnSet for Battery {

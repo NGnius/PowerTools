@@ -1,3 +1,4 @@
+mod detect;
 pub mod driver;
 mod error;
 mod general;
@@ -9,6 +10,7 @@ pub mod steam_deck;
 pub mod steam_deck_adv;
 pub mod unknown;
 
+pub use detect::{auto_detect0, auto_detect_provider, limits_worker::spawn as limits_worker_spawn};
 pub use driver::Driver;
 pub use general::{SettingVariant, Settings, General};
 pub use min_max::MinMax;

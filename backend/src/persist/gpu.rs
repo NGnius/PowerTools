@@ -4,7 +4,7 @@ use std::default::Default;
 use super::MinMaxJson;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct GpuJson {
     pub fast_ppt: Option<u64>,
     pub slow_ppt: Option<u64>,

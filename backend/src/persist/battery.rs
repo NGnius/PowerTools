@@ -3,7 +3,7 @@ use std::default::Default;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct BatteryJson {
     pub charge_rate: Option<u64>,
     pub charge_mode: Option<String>,

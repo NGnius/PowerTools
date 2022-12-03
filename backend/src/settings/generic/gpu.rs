@@ -18,7 +18,20 @@ impl Gpu {
         }
     }
 
-    pub fn system_default() -> Self {
+    /*pub fn system_default() -> Self {
+        Self {
+            slow_memory: false,
+        }
+    }*/
+
+    pub fn from_limits(_limits: limits_core::json::GenericGpuLimit) -> Self {
+        // TODO
+        Self {
+            slow_memory: false,
+        }
+    }
+
+    pub fn from_json_and_limits(_other: GpuJson, _version: u64, _limits: limits_core::json::GenericGpuLimit) -> Self {
         Self {
             slow_memory: false,
         }

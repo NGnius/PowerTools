@@ -18,11 +18,18 @@ async-trait = { version = "0.1" }
 log = "0.4"
 simplelog = "0.12"
 
+# limits & driver functionality
+limits_core = { version = "0.1.0", path = "./limits_core" }
+regex = "1"
+# ureq's tls feature does not like musl targets
+ureq = { version = "2.5", features = ["json", "gzip", "brotli", "charset"], default-features = false, optional = true }
+
 [features]
-default = []
+default = ["online"]
 decky = ["usdpl-back/decky"]
 crankshaft = ["usdpl-back/crankshaft"]
 encrypt = ["usdpl-back/encrypt"]
+online = ["ureq"]
 
 [profile.release]
 debug = false
