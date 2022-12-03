@@ -187,6 +187,10 @@ impl TCpus for Cpus {
     fn len(&self) -> usize {
         self.cpus.len()
     }
+
+    fn provider(&self) -> crate::persist::DriverJson {
+        crate::persist::DriverJson::Generic
+    }
 }
 
 #[derive(Debug, Clone)]

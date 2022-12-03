@@ -305,4 +305,8 @@ impl TBattery for Battery {
             }
         }
     }
+
+    fn provider(&self) -> crate::persist::DriverJson {
+        crate::persist::DriverJson::SteamDeck
+    }
 }

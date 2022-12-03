@@ -29,6 +29,10 @@ pub trait TGpu: OnResume + OnSet + Debug + Send {
     fn get_clock_limits(&self) -> Option<&MinMax<u64>>;
 
     fn slow_memory(&mut self) -> &mut bool;
+
+    fn provider(&self) -> crate::persist::DriverJson {
+        crate::persist::DriverJson::AutoDetect
+    }
 }
 
 pub trait TCpus: OnResume + OnSet + Debug + Send {
@@ -39,6 +43,10 @@ pub trait TCpus: OnResume + OnSet + Debug + Send {
     fn cpus(&mut self) -> Vec<&mut dyn TCpu>;
 
     fn len(&self) -> usize;
+
+    fn provider(&self) -> crate::persist::DriverJson {
+        crate::persist::DriverJson::AutoDetect
+    }
 }
 
 pub trait TCpu: Debug + Send {
@@ -91,4 +99,8 @@ pub trait TBattery: OnResume + OnSet + Debug + Send {
     fn read_charge_design(&self) -> Option<f64>;
 
     fn read_current_now(&self) -> Option<f64>;
+
+    fn provider(&self) -> crate::persist::DriverJson {
+        crate::persist::DriverJson::AutoDetect
+    }
 }

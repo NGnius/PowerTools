@@ -63,4 +63,8 @@ impl TBattery for Battery {
     fn read_charge_design(&self) -> Option<f64> { None }
 
     fn read_current_now(&self) -> Option<f64> { None }
+
+    fn provider(&self) -> crate::persist::DriverJson {
+        crate::persist::DriverJson::Unknown
+    }
 }

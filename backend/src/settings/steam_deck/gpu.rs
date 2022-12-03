@@ -300,6 +300,10 @@ impl TGpu for Gpu {
     fn slow_memory(&mut self) -> &mut bool {
         &mut self.slow_memory
     }
+
+    fn provider(&self) -> crate::persist::DriverJson {
+        crate::persist::DriverJson::SteamDeck
+    }
 }
 
 #[inline]

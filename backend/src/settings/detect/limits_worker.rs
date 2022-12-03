@@ -37,15 +37,7 @@ pub fn spawn() -> JoinHandle<()> {
                             let json_res: std::io::Result<Base> = response.into_json();
                             match json_res {
                                 Ok(new_base) => {
-                                    match std::fs::File::create(&limits_path) {
-                                        Ok(f) => {
-                                            match serde_json::to_writer_pretty(f, &new_base) {
-                                                Ok(_) => log::info!("Successfully updated limits from `{}`, cached at {}", refresh, limits_path.display()),
-                                                Err(e) => log::error!("Failed to save limits json to file `{}`: {}", limits_path.display(), e),
-                                            }
-                                        },
-                                        Err(e) => log::error!("Cannot create {}: {}", limits_path.display(), e)
-                                    }
+                                    save_base(&new_base, &limits_path);
                                 },
                                 Err(e) => log::error!("Cannot parse response from `{}`: {}", refresh, e),
                             }
@@ -98,7 +90,10 @@ pub fn get_limits_blocking() -> Base {
                 Ok(response) => {
                     let json_res: std::io::Result<Base> = response.into_json();
                     match json_res {
-                        Ok(new_base) => return new_base,
+                        Ok(new_base) => {
+                            save_base(&new_base, &limits_path);
+                            return new_base;
+                        },
                         Err(e) => log::error!("Cannot parse response from `{}`: {}", refresh, e)
                     }
                 },
@@ -106,5 +101,19 @@ pub fn get_limits_blocking() -> Base {
             }
         }
         Base::default()
+    }
+}
+
+#[cfg(feature = "online")]
+fn save_base(new_base: &Base, path: impl AsRef<std::path::Path>) {
+    let limits_path = path.as_ref();
+    match std::fs::File::create(&limits_path) {
+        Ok(f) => {
+            match serde_json::to_writer_pretty(f, &new_base) {
+                Ok(_) => log::info!("Successfully saved new limits to {}", limits_path.display()),
+                Err(e) => log::error!("Failed to save limits json to file `{}`: {}", limits_path.display(), e),
+            }
+        },
+        Err(e) => log::error!("Cannot create {}: {}", limits_path.display(), e)
     }
 }

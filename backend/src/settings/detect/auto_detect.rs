@@ -7,10 +7,29 @@ use limits_core::json::{Limits, BatteryLimit, CpuLimit, GpuLimit};
 use crate::persist::{DriverJson, SettingsJson};
 use crate::settings::{TGeneral, TCpus, TGpu, TBattery, Driver, General};
 
+fn get_limits() -> limits_core::json::Base {
+    let limits_path = super::utility::limits_path();
+    match File::open(&limits_path) {
+        Ok(f) => {
+            match serde_json::from_reader(f) {
+                Ok(lim) => lim,
+                Err(e) => {
+                    log::warn!("Failed to parse limits file `{}`, cannot use for auto_detect: {}", limits_path.display(), e);
+                    limits_core::json::Base::default()
+                }
+            }
+        },
+        Err(e) => {
+            log::warn!("Failed to open limits file `{}` (trying force refresh...): {}", limits_path.display(), e);
+            super::limits_worker::get_limits_blocking()
+        }
+    }
+}
+
 #[inline]
 pub fn auto_detect_provider() -> DriverJson {
     let provider = auto_detect0(None, crate::utility::settings_dir().join("autodetect.json"))
-        .general
+        .battery
         .provider();
     //log::info!("Detected device automatically, compatible driver: {:?}", provider);
     provider
@@ -27,22 +46,7 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
     let dmi_info: String = std::process::Command::new("dmidecode").output().map(|out| String::from_utf8_lossy(&out.stdout).into_owned()).unwrap_or_default();
     log::debug!("Read dmidecode:\n{}", dmi_info);
 
-    let limits_path = super::utility::limits_path();
-    let limits = match File::open(&limits_path) {
-        Ok(f) => {
-            match serde_json::from_reader(f) {
-                Ok(lim) => lim,
-                Err(e) => {
-                    log::warn!("Failed to parse limits file `{}`, cannot use for auto_detect: {}", limits_path.display(), e);
-                    limits_core::json::Base::default()
-                }
-            }
-        },
-        Err(e) => {
-            log::warn!("Failed to open limits file `{}` (trying force refresh...): {}", limits_path.display(), e);
-            super::limits_worker::get_limits_blocking()
-        }
-    };
+    let limits = get_limits();
 
     // build driver based on limits conditions
     for conf in limits.configs {
