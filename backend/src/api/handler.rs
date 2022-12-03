@@ -161,15 +161,23 @@ impl ApiMessageHandler {
             // save
             log::debug!("api_worker is saving...");
             let is_persistent = *settings.general.persistent();
+            let save_path = crate::utility::settings_dir()
+                .join(settings.general.get_path().clone());
             if is_persistent {
-                let save_path = crate::utility::settings_dir()
-                    .join(settings.general.get_path().clone());
                 let settings_clone = settings.json();
                 let save_json: SettingsJson = settings_clone.into();
                 unwrap_maybe_fatal(save_json.save(&save_path), "Failed to save settings");
                 log::debug!("Saved settings to {}", save_path.display());
             } else {
-                log::debug!("Ignored save request for non-persistent settings");
+                if save_path.exists() {
+                    if let Err(e) = std::fs::remove_file(&save_path) {
+                        log::warn!("Failed to delete persistent settings file {}: {}", save_path.display(), e);
+                    } else {
+                        log::debug!("Deleted persistent settings file {}", save_path.display());
+                    }
+                } else {
+                    log::debug!("Ignored save request for non-persistent settings");
+                }
             }
         }
     }
