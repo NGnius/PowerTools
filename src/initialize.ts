@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-import { init_embedded, init_usdpl, target_usdpl } from "usdpl-front";
-import { setValue, GENERAL, callBackend, BACKEND_CALLS } from "./usdpl";
+import { setValue, GENERAL, callBackend, BACKEND_CALLS, initEmbedded, initUsdpl, targetUsdpl } from "./usdplFront";
 
 const USDPL_PORT = 44443;
 
@@ -10,9 +8,9 @@ export async function initialize(refs: {
     startHook: unknown | null;
     usdplReady: boolean;
 }) {
-    await init_embedded();
-    init_usdpl(USDPL_PORT);
-    console.log("USDPL started for framework: " + target_usdpl());
+    await initEmbedded();
+    initUsdpl(USDPL_PORT);
+    console.log("USDPL started for framework: " + targetUsdpl());
     refs.usdplReady = true;
     setValue(GENERAL.Name, "Default");
 

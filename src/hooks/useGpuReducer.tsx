@@ -1,7 +1,6 @@
-import { BACKEND_CALLS, callBackend, GpuTypes } from "../usdpl";
 import { useAsyncReducer } from "../hooks/useAsyncReducer";
-import { Copy } from "../utilities/backendFactory";
-import { GPU_BE } from "../usdplBackend";
+import { BACKEND_CALLS, callBackend, GPU, GpuTypes } from "../usdplFront";
+import { backendFactory, Copy } from "../utilities/backendFactory";
 import { SETTINGS_LIMITS } from "../utilities/settingsLimits";
 
 type Action =
@@ -120,4 +119,5 @@ async function reducer(state: GpuTypes, action: Action) {
     }
 }
 
-export const useGpuReducer = () => useAsyncReducer(reducer, () => GPU_BE);
+export const useGpuReducer = () =>
+    useAsyncReducer(reducer, () => backendFactory(Object.values(GPU) as (keyof GpuTypes)[]));

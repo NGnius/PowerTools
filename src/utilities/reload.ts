@@ -1,5 +1,4 @@
-import { GENERAL_BE } from "../usdplBackend";
-import { BACKEND_CALLS, callBackend, setValue, BATTERY, CPU, GPU, GENERAL } from "../usdpl";
+import { BACKEND_CALLS, BATTERY, callBackend, CPU, GENERAL, getValue, GPU, setValue } from "../usdplFront";
 import { countCpus } from "./helpers";
 import { syncPlebClockToAdvanced } from "./syncPlebClockToAdvanced";
 
@@ -46,7 +45,7 @@ const getAllCalls = (smtAllowed: boolean) => [
 /** this function reloads GENERAL_name and determines if all backends should reload */
 const getShouldReloadAll = () =>
     callBackend(BACKEND_CALLS.GeneralGetName, []).then(([newName]) => {
-        const prevName = GENERAL_BE[GENERAL.Name];
+        const prevName = getValue[GENERAL.Name];
         setValue(GENERAL.Name, newName);
         return newName !== prevName;
     });

@@ -1,7 +1,6 @@
-import { BACKEND_CALLS, callBackend, GeneralTypes } from "../usdpl";
 import { useAsyncReducer } from "../hooks/useAsyncReducer";
-import { Copy } from "../utilities/backendFactory";
-import { GENERAL_BE } from "../usdplBackend";
+import { BACKEND_CALLS, callBackend, GENERAL, GeneralTypes } from "../usdplFront";
+import { backendFactory, Copy } from "../utilities/backendFactory";
 
 type Action =
     | [type: "loadSystemDefaults", payload: () => Promise<void>]
@@ -38,4 +37,5 @@ async function reducer(state: GeneralTypes, action: Action) {
     }
 }
 
-export const useGeneralReducer = () => useAsyncReducer(reducer, () => GENERAL_BE);
+export const useGeneralReducer = () =>
+    useAsyncReducer(reducer, () => backendFactory(Object.values(GENERAL) as (keyof GeneralTypes)[]));

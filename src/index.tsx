@@ -1,4 +1,4 @@
-import { definePlugin, ServerAPI, staticClasses } from "decky-frontend-lib";
+import { definePlugin, ServerAPI, staticClasses, PanelSection } from "decky-frontend-lib";
 import { useEffect, useState, VFC } from "react";
 import { GiDrill } from "react-icons/gi";
 import { initialize } from "./initialize";
@@ -30,7 +30,7 @@ const App: VFC<{ serverAPI: ServerAPI }> = ({ serverAPI }) => {
     }, []);
 
     return isInitializing === true ? (
-        <>PowerTools is starting up...</>
+        <PanelSection>PowerTools is starting up...</PanelSection>
     ) : (
         <ErrorBoundary>
             {isInitializing === "timeout" && <h3>Timeout!</h3>}

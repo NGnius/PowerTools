@@ -8,11 +8,9 @@ import {
     ToggleField,
 } from "decky-frontend-lib";
 import { useCallback, useEffect, useRef, useState, VFC } from "react";
-import { target_usdpl, version_usdpl } from "usdpl-front";
 
 import type { GlobalRefs } from "./index";
-// import { CpuGrid } from "./CpuGrid";
-import { ButtonRow, FieldRow, SliderRow, ToggleRow } from "./Fields";
+import { ButtonRow, FieldRow, SliderRow, ToggleRow /* , CpuGrid */ } from "./Fields";
 import { useBatteryReducer } from "./hooks/useBatteryReducer";
 import { useCpuReducer } from "./hooks/useCpuReducer";
 import { useGeneralReducer } from "./hooks/useGeneralReducer";
@@ -21,6 +19,7 @@ import { intervalHookFactory } from "./hooks/useInterval";
 import { isNull, notNull, toPercentString } from "./utilities/helpers";
 import { reload } from "./utilities/reload";
 import { SETTINGS_LIMITS } from "./utilities/settingsLimits";
+import { BACKEND_CALLS, callBackend, targetUsdpl, versionUsdpl } from "./usdplFront";
 
 const useInterval = intervalHookFactory(5000);
 
@@ -28,33 +27,31 @@ export const Content: VFC<{
     serverAPI: ServerAPI;
     globalRefs: GlobalRefs;
 }> = ({ globalRefs }) => {
-    const [batteryState, batteryDispatch, batteryRefetch] = useBatteryReducer();
-    const [generalState, generalDispatch, generalRefetch] = useGeneralReducer();
-    const [cpuState, cpuDispatch, cpuRefetch] = useCpuReducer();
-    const [gpuState, gpuDispatch, gpuRefetch] = useGpuReducer();
-    const reloadInflightRef = useRef(false); // don't re-render when inflight flag flips
+    const [batteryState, batteryDispatch] = useBatteryReducer();
+    const [generalState, generalDispatch] = useGeneralReducer();
+    const [cpuState, cpuDispatch] = useCpuReducer();
+    const [gpuState, gpuDispatch] = useGpuReducer();
+    const [inflight, setInflight] = useState(false);
+    const inflightRef = useRef(inflight); // don't re-render when inflight flag flips
+    inflightRef.current = inflight;
     const [eggCount, setEggCount] = useState(0);
     const { usdplReady } = globalRefs;
     const smtAllowed = cpuState.smtAllowed || false;
 
     const reloadCb = useCallback(() => {
         if (usdplReady) {
-            reloadInflightRef.current = true;
+            setInflight(true);
             reload({ usdplReady, fullReload: true, smtAllowed }).then(() => {
-                batteryRefetch();
-                generalRefetch();
-                cpuRefetch();
-                gpuRefetch();
-                reloadInflightRef.current = false;
+                setInflight(false);
             });
         }
-    }, [batteryRefetch, cpuRefetch, generalRefetch, gpuRefetch, smtAllowed, usdplReady]);
+    }, [smtAllowed, usdplReady]);
 
     // load data on initial render
     useEffect(reloadCb, [reloadCb]);
 
     // poll BE for updates
-    useInterval(() => (reloadInflightRef.current ? undefined : reloadCb()), [reloadCb]);
+    useInterval(() => (inflightRef.current ? undefined : reloadCb()), [reloadCb]);
 
     const governorOptions = (
         cpuState.advancedCpuIndex ? SETTINGS_LIMITS.cpu.cpus[cpuState.advancedCpuIndex].governors : []
@@ -85,8 +82,36 @@ export const Content: VFC<{
             toPercentString(batteryState.BATTERY_charge_full, batteryState.BATTERY_charge_design, "Wh")) ||
         "CHARGE_MAX";
 
+    const [intv, setIntv] = useState({});
+
+    useInterval(() => {
+        async function cb() {
+            const [BatteryCurrentNow] = await callBackend(BACKEND_CALLS.BatteryCurrentNow, []);
+            const [BatteryChargeNow] = await callBackend(BACKEND_CALLS.BatteryChargeNow, []);
+            const [BatteryChargeFull] = await callBackend(BACKEND_CALLS.BatteryChargeFull, []);
+            const [GeneralGetPersistent] = await callBackend(BACKEND_CALLS.GeneralGetPersistent, []);
+            setIntv({
+                BatteryCurrentNow,
+                BatteryChargeNow,
+                BatteryChargeFull,
+                GeneralGetPersistent,
+            });
+        }
+        cb();
+    }, []);
+
     return (
         <>
+            <PanelSection title="Backend Values">
+                <dl>
+                    <dt>INTV</dt>
+                    <dd>{JSON.stringify(intv)}</dd>
+                    <dt>LIMITS_all</dt>
+                    <dd>{JSON.stringify(SETTINGS_LIMITS)}</dd>
+                    <dt>BATTERY</dt>
+                    <dd>{JSON.stringify(batteryState)}</dd>
+                </dl>
+            </PanelSection>
             <PanelSection title="CPU">
                 <PanelSectionRow>
                     <ToggleField
@@ -284,10 +309,10 @@ export const Content: VFC<{
                 />
             </PanelSection>
             <PanelSection title="Battery">
-                <FieldRow label="Now (Charge)" onClick={() => setEggCount((prev) => prev + 1)}>
+                <FieldRow label="Now (Charge)" onClick={() => setEggCount(eggCount + 1)}>
                     {chargeNow}
                 </FieldRow>
-                <FieldRow label="Max (Design)" onClick={() => setEggCount((prev) => prev + 1)}>
+                <FieldRow label="Max (Design)" onClick={() => setEggCount(eggCount + 1)}>
                     {chargeMax}
                 </FieldRow>
                 <>
@@ -325,7 +350,7 @@ export const Content: VFC<{
                         onChange={(elem) => batteryDispatch(["chargeMode", elem.data])}
                     />
                 </FieldRow>
-                <FieldRow label="Current" onClick={() => setEggCount((prev) => prev + 1)}>
+                <FieldRow label="Current" onClick={() => setEggCount(eggCount + 1)}>
                     {batteryState.BATTERY_current_now} mA
                 </FieldRow>
             </PanelSection>
@@ -345,25 +370,25 @@ export const Content: VFC<{
                     onClick={() => {
                         // you know you're bored and/or conceited when you spend time adding an easter egg
                         // that just sends people to your own project's repo
-                        setEggCount((prev) => prev + 1);
+                        setEggCount(eggCount + 1);
                         if (isNerd) Router.NavigateToExternalWeb("https://github.com/NGnius/PowerTools");
                     }}
                 >
                     {isNerd ? "by NGnius" : generalState.V_INFO}
                 </FieldRow>
-                <FieldRow label="Framework">{target_usdpl()}</FieldRow>
+                <FieldRow label="Framework">{targetUsdpl()}</FieldRow>
                 <FieldRow
                     label="USDPL"
                     onClick={() => {
                         // you know you're bored and/or conceited when you spend time adding an easter egg
                         // that just sends people to your own project's repo
-                        setEggCount((prev) => prev + 1);
+                        setEggCount(eggCount + 1);
                         if (isNerd) Router.NavigateToExternalWeb("https://github.com/NGnius/usdpl-rs");
                     }}
                 >
-                    v{version_usdpl()}
+                    v{versionUsdpl()}
                 </FieldRow>
-                {eggCount % 10 === 9 && (
+                {isNerd && (
                     <ButtonRow bottomSeparator="none" onClick={() => generalDispatch(["idk"])}>
                         ???
                     </ButtonRow>

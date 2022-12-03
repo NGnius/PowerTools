@@ -1,18 +1,14 @@
-import { getValue, setValue, BackendTypes, ALL } from "../usdpl";
+import { BackendTypes, BackendObject, getValue, setValue } from "../usdplFront";
 import { assertRequired } from "./assertRequired";
 
-export const Copy = Symbol("copy symbol");
+/** symbol `Copy` is used as the property name for a `backendFactory` object's self-copying function */
+export const Copy = Symbol("backendFactoryCopy");
 
 type Copyable<T> = T & Record<typeof Copy, () => Copyable<T>>;
 
-export function backendFactory<
-    K extends string,
-    T extends { [Key in Extract<K, keyof BackendTypes>]: BackendTypes[Key] }
->(backendDefaults: T): Copyable<T> {
-    const obj: Partial<Copyable<T>> = {};
-
-    // using a Symbol for this function property prevents property name collisions without restricting possible property names
-    Object.defineProperty(obj, Copy, {
+function makeObjectSelfCopying<T>(arg: T): Copyable<T> {
+    // use a symbol to prevent collisions with keys from `arg` source object
+    return Object.defineProperty(arg, Copy, {
         enumerable: false,
         get() {
             return Object.create(Object.getPrototypeOf(this), Object.getOwnPropertyDescriptors(this));
@@ -20,22 +16,20 @@ export function backendFactory<
         set() {
             return false;
         },
-    });
+    }) as Copyable<T>;
+}
 
-    for (const kv of Object.entries(backendDefaults)) {
-        const key = kv[0] as keyof BackendTypes;
-        const value = kv[1];
-        if (key in ALL)
-            Object.defineProperty(obj, key, {
-                enumerable: true,
-                get: () => getValue(key) ?? value,
-                set: (newValue: BackendTypes[typeof key]) => setValue(key, newValue),
-            });
-        else {
-            obj[key] = value;
-        }
+export function backendFactory<T extends keyof BackendTypes>(keys: T[]): Copyable<BackendObject<T>> {
+    const backendObject: Partial<BackendObject<T>> = {};
+    for (const key of keys) {
+        Object.defineProperty(backendObject, key, {
+            enumerable: true,
+            get: () => getValue(key),
+            set: (newValue: BackendTypes[typeof key]) => setValue(key, newValue),
+        });
     }
     // use type guard function instead of casting obj type
-    assertRequired(obj, Object.keys(backendDefaults) as (keyof T)[]);
-    return obj;
+    assertRequired(backendObject, keys);
+
+    return makeObjectSelfCopying(backendObject);
 }

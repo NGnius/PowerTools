@@ -17,14 +17,10 @@
     },
     "plugins": ["react", "@typescript-eslint"],
     "rules": {
+        "@typescript-eslint/no-empty-function": "off",
+        "@typescript-eslint/no-unused-vars": "off",
+        "@typescript-eslint/ban-ts-comment": "off",
         "eqeqeq": "error",
-        "react-hooks/exhaustive-deps": [
-            "warn",
-            {
-                "additionalHooks": "(useInterval|useMyOtherCustomHook)"
-            }
-        ],
-        "@typescript-eslint/consistent-type-definitions": "off",
         "indent": [
             "error",
             4,
@@ -34,8 +30,14 @@
         ],
         "linebreak-style": ["error", "unix"],
         "quotes": ["error", "double"],
-        "react/jsx-indent-props": ["error", 4],
+        "react-hooks/exhaustive-deps": [
+            "warn",
+            {
+                "additionalHooks": "(useInterval|useMyOtherCustomHook)"
+            }
+        ],
         "react/jsx-indent": ["error", 4],
+        "react/jsx-indent-props": ["error", 4],
         "react/react-in-jsx-scope": "off",
         "semi": ["error", "always"]
     }

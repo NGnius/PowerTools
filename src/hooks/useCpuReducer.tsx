@@ -1,10 +1,9 @@
-import { BACKEND_CALLS, callBackend, CpuTypes } from "../usdpl";
+import { BACKEND_CALLS, callBackend, CPU, CpuTypes } from "../usdplFront";
 import { useAsyncReducer } from "../hooks/useAsyncReducer";
 import { backendFactory, Copy } from "../utilities/backendFactory";
 import { syncPlebClockToAdvanced } from "../utilities/syncPlebClockToAdvanced";
 import { SETTINGS_LIMITS } from "../utilities/settingsLimits";
 import { countCpus, notNull } from "../utilities/helpers";
-import { CPU_DEFAULTS } from "../usdplBackend";
 
 type Action =
     | [type: "refresh"]
@@ -22,15 +21,16 @@ type Action =
     | [type: "setSmtAdvanced", payload: boolean];
 
 type FeState = { advancedMode: boolean; advancedCpuIndex: number; smtAllowed: boolean; total_cpus: number };
-// DO NOT MERGE WITH CPUS = 8
 
-const combinedProperties = backendFactory({
-    ...CPU_DEFAULTS,
-    advancedMode: false,
-    advancedCpuIndex: 0,
-    smtAllowed: false,
-    total_cpus: 8,
-});
+const getCombinedState = () => {
+    const cpuBackend = backendFactory(Object.values(CPU) as (keyof CpuTypes)[]);
+    const combinedProperties = cpuBackend as typeof cpuBackend & Partial<FeState>;
+    combinedProperties.advancedMode = false;
+    combinedProperties.advancedCpuIndex = 0;
+    combinedProperties.smtAllowed = false;
+    combinedProperties.total_cpus = 0;
+    return combinedProperties as FeState & typeof combinedProperties;
+};
 
 async function reducer(state: CpuTypes & FeState, action: Action): Promise<CpuTypes & FeState> {
     const [type, payload] = action;
@@ -199,4 +199,4 @@ async function reducer(state: CpuTypes & FeState, action: Action): Promise<CpuTy
     }
 }
 
-export const useCpuReducer = () => useAsyncReducer(reducer, () => combinedProperties);
+export const useCpuReducer = () => useAsyncReducer(reducer, getCombinedState);

@@ -4,6 +4,7 @@
   "description": "Power tweaks for power users",
   "scripts": {
     "build": "shx rm -rf dist && rollup -c",
+    "build:mockBe": "shx rm -rf dist && rollup -c --environment MOCK_BE",
     "watch": "rollup -c -w",
     "tsc": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -39,6 +40,7 @@
     "@types/webpack": "^5.28.0",
     "@typescript-eslint/eslint-plugin": "^5.43.0",
     "@typescript-eslint/parser": "^5.43.0",
+    "dotenv": "^16.0.3",
     "eslint": "^8.28.0",
     "eslint-plugin-eqeqeq-fix": "^1.0.3",
     "eslint-plugin-prettier": "^4.2.1",

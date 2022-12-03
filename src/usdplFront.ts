@@ -1,4 +1,13 @@
-import { call_backend, get_value, set_value } from "usdpl-front";
+import {
+    call_backend,
+    get_value,
+    set_value,
+    init_embedded,
+    init_usdpl,
+    target_usdpl,
+    version_usdpl,
+} from "usdpl-front";
+import { fill } from "./utilities/helpers";
 
 export type MinMax = {
     min: number | null;
@@ -84,13 +93,6 @@ export enum GENERAL {
     LimitsAll = "LIMITS_all",
     VInfo = "V_INFO",
 }
-
-export const ALL = {
-    ...BATTERY,
-    ...CPU,
-    ...GPU,
-    ...GENERAL,
-};
 
 export const enum BACKEND_CALLS {
     BatteryChargeDesign = "BATTERY_charge_design",
@@ -210,15 +212,92 @@ export type GeneralTypes = {
 
 export type BackendTypes = CpuTypes & BatteryTypes & GpuTypes & GeneralTypes;
 
+export const LIMITS: SettingsLimits = {
+    cpu: {
+        cpus: fill(
+            {
+                clock_max_limits: { min: 500, max: 3500 },
+                clock_min_limits: { min: 1400, max: 3500 },
+                clock_step: 100,
+                governors: fill("").map((_, i) => i.toString()),
+            },
+            1
+        ),
+        count: 8,
+        smt_capable: false,
+    },
+    gpu: {
+        clock_max_limits: { min: 200, max: 1600 },
+        clock_min_limits: { min: 200, max: 1600 },
+        clock_step: 100,
+        fast_ppt_limits: { min: 1000000, max: 29000000 },
+        memory_control_capable: false,
+        ppt_step: 1000000,
+        slow_ppt_limits: { min: 1000000, max: 29000000 },
+    },
+    general: undefined as never,
+    battery: {
+        charge_current: { min: 250, max: 2500 },
+        charge_current_step: 50,
+        charge_modes: [],
+    },
+};
+
 type SetValue = <T extends keyof BackendTypes>(key: T, value: BackendTypes[T]) => unknown;
-
 type GetValue = <T extends keyof BackendTypes>(key: T) => BackendTypes[T];
-
 type CallBackend = <K extends keyof CallBackendTypes>(
     name: K,
     parameters: CallBackendTypes[K]["params"]
 ) => Promise<CallBackendTypes[K]["return"]>;
 
-export const setValue = set_value as SetValue;
-export const getValue = get_value as GetValue;
-export const callBackend = call_backend as CallBackend;
+let setValue = set_value as SetValue;
+let getValue = get_value as GetValue;
+let callBackend = call_backend as CallBackend;
+let initEmbedded = init_embedded;
+let initUsdpl = init_usdpl;
+let targetUsdpl = target_usdpl;
+let versionUsdpl = version_usdpl;
+
+// locally mock the backend. useful for testing UI without affecting device
+// hardware or if the backend isn't working. process.env.MOCK_BE is set in
+// rollup config
+if (process.env.MOCK_BE) {
+    const defaults: BackendTypes = {
+        [BATTERY.ChargeDesign]: 0,
+        [BATTERY.ChargeFull]: 0,
+        [BATTERY.ChargeMode]: null,
+        [BATTERY.ChargeNow]: 0,
+        [BATTERY.ChargeRate]: null,
+        [BATTERY.CurrentNow]: 0,
+        [CPU.Governor]: fill("").map((_, i) => i.toString()),
+        [CPU.MaxClock]: null,
+        [CPU.MinClock]: null,
+        [CPU.MinmaxClocks]: fill({ min: null, max: null }),
+        [CPU.Online]: 8,
+        [CPU.Smt]: false,
+        [CPU.StatusOnline]: [true, true, true, true, false, false, false, false],
+        [GENERAL.LimitsAll]: LIMITS,
+        [GENERAL.Name]: "NAME",
+        [GENERAL.Persistent]: false,
+        [GENERAL.VInfo]: "V_INFO",
+        [GPU.FastPpt]: null,
+        [GPU.MaxClock]: null,
+        [GPU.MinClock]: null,
+        [GPU.SlowMemory]: false,
+        [GPU.SlowPpt]: null,
+    };
+
+    console.debug("using mock backend");
+    const mockBackend = { ...defaults };
+    callBackend = async () => new Array(8).fill(0); // callBackend returns string[], number[], or boolean[]. zero can be coerced to work in most of those situations?
+    getValue = (key) => mockBackend[key];
+    setValue = (key, value) => void (mockBackend[key] = value);
+    initEmbedded = () => {};
+    initUsdpl = () => {};
+    targetUsdpl = () => "MOCK_BE";
+    versionUsdpl = () => "MOCK_BE";
+}
+export { callBackend, getValue, setValue, initEmbedded, initUsdpl, targetUsdpl, versionUsdpl };
+
+// helpers
+export type BackendObject<T extends keyof BackendTypes> = { [K in T & keyof BackendTypes]: BackendTypes[K] };

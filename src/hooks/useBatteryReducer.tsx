@@ -1,6 +1,5 @@
-import { BATTERY_BE } from "../usdplBackend";
-import { callBackend, BACKEND_CALLS, BatteryTypes } from "../usdpl";
-import { Copy } from "../utilities/backendFactory";
+import { BACKEND_CALLS, BATTERY, BatteryTypes, callBackend } from "../usdplFront";
+import { backendFactory, Copy } from "../utilities/backendFactory";
 import { useAsyncReducer } from "./useAsyncReducer";
 
 type Action =
@@ -11,7 +10,7 @@ type Action =
     | [type: "chargeModeToggle", payload: { toggle: boolean; value: string }]
     | [type: "refresh"];
 
-async function reducer(state: BatteryTypes, action: Action) {
+async function reducer(state: Partial<BatteryTypes>, action: Action): Promise<typeof state> {
     const [type, payload] = action;
 
     console.debug(`Battery Action: ${type}; Payload: ${payload}`);
@@ -63,4 +62,5 @@ async function reducer(state: BatteryTypes, action: Action) {
     }
 }
 
-export const useBatteryReducer = () => useAsyncReducer(reducer, () => BATTERY_BE);
+export const useBatteryReducer = () =>
+    useAsyncReducer(reducer, () => backendFactory(Object.values(BATTERY) as (keyof BatteryTypes)[]));
