@@ -35,4 +35,14 @@ online = ["ureq"]
 debug = false
 strip = true
 lto = true
-codegen-units = 4
+codegen-units = 1
+
+[profile.docker]
+inherits = "release"
+debug = false
+strip = true
+lto = "thin"
+codegen-units = 16
+opt-level = 2
+debug-assertions = false
+overflow-checks = false

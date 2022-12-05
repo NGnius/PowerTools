@@ -6,7 +6,7 @@ rustc --version
 cargo --version
 
 echo "--- Building plugin backend ---"
-cargo build --release
+cargo build --profile docker
 mkdir -p out
 cp target/release/powertools-rs out/backend
 

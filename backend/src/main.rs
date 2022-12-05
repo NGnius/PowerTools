@@ -24,7 +24,7 @@ fn main() -> Result<(), ()> {
         .unwrap_or_else(|| "/tmp/".into())
         .join(PACKAGE_NAME.to_owned()+".log");
     #[cfg(not(debug_assertions))]
-    let log_filepath = std::path::PathBuf.new("/tmp/"+PACKAGE_NAME.to_owned()+".log");
+    let log_filepath = std::path::Path::new("/tmp").join(format!("{}.log", PACKAGE_NAME));
     #[cfg(debug_assertions)]
     let old_log_filepath = usdpl_back::api::dirs::home()
         .unwrap_or_else(|| "/tmp/".into())
