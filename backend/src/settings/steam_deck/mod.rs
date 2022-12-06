@@ -7,4 +7,4 @@ pub use battery::Battery;
 pub use cpu::{Cpu, Cpus};
 pub use gpu::Gpu;
 
-pub use util::set_led;
+pub use util::flash_led;

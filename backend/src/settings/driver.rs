@@ -80,17 +80,7 @@ impl Driver {
 pub fn maybe_do_button() {
     match super::auto_detect_provider() {
         DriverJson::SteamDeck | DriverJson::SteamDeckAdvance => {
-            let period = std::time::Duration::from_millis(500);
-            for _ in 0..10 {
-                if let Err(e) = crate::settings::steam_deck::set_led(false, true, false) {
-                    log::error!("Thing err: {}", e);
-                }
-                std::thread::sleep(period);
-                if let Err(e) = crate::settings::steam_deck::set_led(false, false, false) {
-                    log::error!("Thing err: {}", e);
-                };
-                std::thread::sleep(period);
-            }
+            crate::settings::steam_deck::flash_led();
         },
         DriverJson::Generic => log::warn!("You need to come up with something fun on generic"),
         DriverJson::Unknown => log::warn!("Can't do button activities on unknown platform"),
