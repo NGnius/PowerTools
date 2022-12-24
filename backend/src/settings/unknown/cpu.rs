@@ -151,6 +151,10 @@ impl TCpus for Cpus {
         self.cpus.len()
     }
 
+    fn smt(&mut self) -> &'_ mut bool {
+        &mut self.smt
+    }
+
     fn provider(&self) -> crate::persist::DriverJson {
         crate::persist::DriverJson::Unknown
     }

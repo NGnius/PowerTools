@@ -67,6 +67,7 @@ impl CpuMessage {
                 }
             },
             Self::SetSmt(status, cb) => {
+                *settings.smt() = status;
                 let mut result = Vec::with_capacity(settings.len());
                 for i in 0..settings.len() {
                     *settings.cpus()[i].online() = *settings.cpus()[i].online() && (status || i % 2 == 0);

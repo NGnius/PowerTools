@@ -44,6 +44,8 @@ pub trait TCpus: OnResume + OnSet + Debug + Send {
 
     fn len(&self) -> usize;
 
+    fn smt(&mut self) -> &'_ mut bool;
+
     fn provider(&self) -> crate::persist::DriverJson {
         crate::persist::DriverJson::AutoDetect
     }

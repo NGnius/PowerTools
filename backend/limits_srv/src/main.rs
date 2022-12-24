@@ -9,13 +9,13 @@ static VISIT_COUNT: AtomicU64 = AtomicU64::new(0);
 
 fn get_limits(base: Base) -> impl warp::Reply {
     VISIT_COUNT.fetch_add(1, Ordering::AcqRel);
-    //println!("Count: {} + 1", old_count);
+    println!("Limits got");
     warp::reply::json(&base)
 }
 
 fn get_visits() -> impl warp::Reply {
     let count = VISIT_COUNT.load(Ordering::Relaxed);
-    //println!("Count: {}", count);
+    println!("Count got");
     warp::reply::json(&count)
 }
 
