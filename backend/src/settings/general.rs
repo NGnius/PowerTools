@@ -2,7 +2,7 @@ use std::convert::Into;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use super::{Battery, Cpu, Gpu};
+use super::{Battery, Cpu, Gpu, Memory};
 use super::{OnResume, OnSet, SettingError};
 use crate::persist::{CpuJson, SettingsJson};
 use crate::utility::unwrap_lock;
@@ -15,6 +15,7 @@ pub enum SettingVariant {
     Cpu,
     Gpu,
     General,
+    Memory,
 }
 
 impl std::fmt::Display for SettingVariant {
@@ -24,6 +25,7 @@ impl std::fmt::Display for SettingVariant {
             Self::Cpu => write!(f, "CPU"),
             Self::Gpu => write!(f, "GPU"),
             Self::General => write!(f, "General"),
+            Self::Memory => write!(f, "Memory"),
         }
     }
 }
@@ -47,6 +49,7 @@ pub struct Settings {
     pub cpus: Arc<Mutex<Vec<Cpu>>>,
     pub gpu: Arc<Mutex<Gpu>>,
     pub battery: Arc<Mutex<Battery>>,
+    pub memory: Arc<Mutex<Memory>>,
 }
 
 impl OnSet for Settings {
@@ -78,6 +81,7 @@ impl Settings {
                 cpus: Arc::new(Mutex::new(Self::convert_cpus(other.cpus, other.version))),
                 gpu: Arc::new(Mutex::new(Gpu::from_json(other.gpu, other.version))),
                 battery: Arc::new(Mutex::new(Battery::from_json(other.battery, other.version))),
+                memory: Arc::new(Mutex::new(Memory::from_json(other.memory, other.version))),
             },
             _ => Self {
                 general: Arc::new(Mutex::new(General {
@@ -88,6 +92,7 @@ impl Settings {
                 cpus: Arc::new(Mutex::new(Self::convert_cpus(other.cpus, other.version))),
                 gpu: Arc::new(Mutex::new(Gpu::from_json(other.gpu, other.version))),
                 battery: Arc::new(Mutex::new(Battery::from_json(other.battery, other.version))),
+                memory: Arc::new(Mutex::new(Memory::from_json(other.memory, other.version))),
             },
         }
     }
@@ -125,6 +130,7 @@ impl Settings {
             cpus: Arc::new(Mutex::new(Cpu::system_default())),
             gpu: Arc::new(Mutex::new(Gpu::system_default())),
             battery: Arc::new(Mutex::new(Battery::system_default())),
+            memory: Arc::new(Mutex::new(Memory::system_default())),
         }
     }
 
@@ -140,6 +146,10 @@ impl Settings {
         {
             let mut battery_lock = unwrap_lock(self.battery.lock(), "battery");
             *battery_lock = Battery::system_default();
+        }
+        {
+            let mut memory_lock = unwrap_lock(self.memory.lock(), "memory");
+            *memory_lock = Memory::system_default();
         }
     }
     
@@ -159,6 +169,7 @@ impl Settings {
                 let new_cpus = Self::convert_cpus(settings_json.cpus, settings_json.version);
                 let new_gpu = Gpu::from_json(settings_json.gpu, settings_json.version);
                 let new_battery = Battery::from_json(settings_json.battery, settings_json.version);
+                let new_memory = Memory::from_json(settings_json.memory, settings_json.version);
                 {
                     let mut cpu_lock = unwrap_lock(self.cpus.lock(), "cpu");
                     *cpu_lock = new_cpus;
@@ -170,6 +181,10 @@ impl Settings {
                 {
                     let mut battery_lock = unwrap_lock(self.battery.lock(), "battery");
                     *battery_lock = new_battery;
+                }
+                {
+                    let mut memory_lock = unwrap_lock(self.memory.lock(), "memory");
+                    *memory_lock = new_memory;
                 }
                 general_lock.persistent = true;
                 general_lock.name = settings_json.name;
@@ -216,6 +231,8 @@ impl Into<SettingsJson> for Settings {
         log::debug!("Got gpu lock");
         let batt_lock = unwrap_lock(self.battery.lock(), "battery");
         log::debug!("Got battery lock");
+        let mem_lock = unwrap_lock(self.memory.lock(), "memory");
+        log::debug!("Got memory lock");
         SettingsJson {
             version: LATEST_VERSION,
             name: gen_lock.name.clone(),
@@ -227,6 +244,7 @@ impl Into<SettingsJson> for Settings {
                 .collect(),
             gpu: gpu_lock.clone().into(),
             battery: batt_lock.clone().into(),
+            memory: mem_lock.clone().into(),
         }
     }
 }

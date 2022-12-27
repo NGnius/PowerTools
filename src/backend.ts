@@ -132,6 +132,20 @@ export async function getGpuSlowMemory(): Promise<boolean> {
     return (await call_backend("GPU_get_slow_memory", []))[0];
 }
 
+// Memory
+
+export async function getMemoryTransparentHugepagesEnabled(): Promise<'always' | 'madvise' | 'never'> {
+    return (await call_backend("MEMORY_get_transparent_hugepages_enabled", []))[0];
+}
+
+export async function setMemoryTransparentHugepagesEnabled(state: 'always' | 'madvise' | 'never'): Promise<'always' | 'madvise' | 'never'> {
+    return (await call_backend("MEMORY_set_transparent_hugepages_enabled", [state]))[0];
+}
+
+export async function unsetMemoryTransparentHugepagesEnabled(): Promise<'always' | 'madvise' | 'never'> {
+    return (await call_backend("MEMORY_unset_transparent_hugepages_enabled", []))[0];
+}
+
 // general
 
 export async function setGeneralPersistent(val: boolean): Promise<boolean> {

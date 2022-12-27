@@ -53,6 +53,8 @@ const CLOCK_MIN_GPU = "GPU_min_clock";
 const CLOCK_MAX_GPU = "GPU_max_clock";
 const SLOW_MEMORY_GPU = "GPU_slow_memory";
 
+const THP_ENABLED_MEM = "MEMORY_transparent_hugepages_enabled";
+
 const PERSISTENT_GEN = "GENERAL_persistent";
 const NAME_GEN = "GENERAL_name";
 
@@ -102,6 +104,8 @@ const reload = function() {
 
   backend.resolve(backend.getGeneralPersistent(), (value: boolean) => { set_value(PERSISTENT_GEN, value) });
   backend.resolve(backend.getGeneralSettingsName(), (name: string) => { set_value(NAME_GEN, name) });
+
+  backend.resolve(backend.getMemoryTransparentHugepagesEnabled(), (state: string) => { set_value(THP_ENABLED_MEM, state) });
 
   backend.resolve(backend.getInfo(), (info: string) => { set_value(BACKEND_INFO, info) });
 };
@@ -464,6 +468,30 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           }}
         />
       </PanelSectionRow>
+      {/* Memory */}
+      <div className={staticClasses.PanelSectionTitle}>
+        Memory
+      </div>
+      <PanelSectionRow>
+        <ToggleField
+          checked={get_value(THP_ENABLED_MEM) === 'always'}
+          label="Transparent Hugepages"
+          description={`Reduce TLB misses at the cost of memory usage. ${describeTransparentHugePagesEnabled(get_value(THP_ENABLED_MEM))}`}
+          onChange={(value: boolean) => {
+            if (value) {
+              backend.resolve(backend.setMemoryTransparentHugepagesEnabled("always"), (val: string) => {
+                set_value(THP_ENABLED_MEM, val);
+                reloadGUI("MEMThpEnableAlways");
+              });
+            } else {
+              backend.resolve(backend.unsetMemoryTransparentHugepagesEnabled(), (val: string) => {
+                set_value(THP_ENABLED_MEM, val);
+                reloadGUI("MEMThpEnableDefault");
+              });
+            }
+          }}
+        />
+      </PanelSectionRow>
       {/* Battery */}
       <div className={staticClasses.PanelSectionTitle}>
         Battery
@@ -635,6 +663,14 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
     </PanelSection>
   );
 };
+
+function describeTransparentHugePagesEnabled(status: 'always' | 'madvise' | 'never'): string {
+  switch (status) {
+    case 'always': return "Enabled system-wide.";
+    case 'madvise': return "Enabled for supported processes.";
+    case 'never': return "Disabled system-wide.";
+  }
+}
 
 export default definePlugin((serverApi: ServerAPI) => {
   return {

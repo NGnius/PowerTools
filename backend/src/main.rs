@@ -144,6 +144,19 @@ fn main() -> Result<(), ()> {
             "GPU_get_slow_memory",
             api::gpu::get_slow_memory(loaded_settings.gpu.clone())
         )
+        // memory API functions
+        .register(
+            "MEMORY_get_transparent_hugepages_enabled",
+            api::memory::get_transparent_hugepages_enabled(loaded_settings.memory.clone()),
+        )
+        .register(
+            "MEMORY_set_transparent_hugepages_enabled",
+            api::memory::set_transparent_hugepages_enabled(loaded_settings.memory.clone(), save_sender.clone()),
+        )
+        .register(
+            "MEMORY_unset_transparent_hugepages_enabled",
+            api::memory::unset_transparent_hugepages_enabled(loaded_settings.memory.clone(), save_sender.clone()),
+        )
         // general API functions
         .register(
             "GENERAL_set_persistent",
