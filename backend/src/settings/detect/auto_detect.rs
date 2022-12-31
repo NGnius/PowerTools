@@ -98,6 +98,7 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
                                 CpuLimit::SteamDeck => Box::new(crate::settings::steam_deck::Cpus::from_json(settings.cpus.clone(), settings.version)),
                                 CpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck::Cpus::from_json(settings.cpus.clone(), settings.version)),
                                 CpuLimit::Generic(x) => Box::new(crate::settings::generic::Cpus::from_json_and_limits(settings.cpus.clone(), settings.version, x)),
+                                CpuLimit::GenericAMD(x) => Box::new(crate::settings::generic_amd::Cpus::from_json_and_limits(settings.cpus.clone(), settings.version, x)),
                                 CpuLimit::Unknown => Box::new(crate::settings::unknown::Cpus::from_json(settings.cpus.clone(), settings.version)),
                             };
                             builder.cpus = Some(cpu_driver);
@@ -107,6 +108,7 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
                                 GpuLimit::SteamDeck => Box::new(crate::settings::steam_deck::Gpu::from_json(settings.gpu.clone(), settings.version)),
                                 GpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck::Gpu::from_json(settings.gpu.clone(), settings.version)),
                                 GpuLimit::Generic(x) => Box::new(crate::settings::generic::Gpu::from_json_and_limits(settings.gpu.clone(), settings.version, x)),
+                                GpuLimit::GenericAMD(x) => Box::new(crate::settings::generic_amd::Gpu::from_json_and_limits(settings.gpu.clone(), settings.version, x)),
                                 GpuLimit::Unknown => Box::new(crate::settings::unknown::Gpu::from_json(settings.gpu.clone(), settings.version)),
                             };
                             builder.gpu = Some(driver);
@@ -130,6 +132,7 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
                                 CpuLimit::SteamDeck => Box::new(crate::settings::steam_deck::Cpus::system_default()),
                                 CpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck::Cpus::system_default()),
                                 CpuLimit::Generic(x) => Box::new(crate::settings::generic::Cpus::from_limits(x)),
+                                CpuLimit::GenericAMD(x) => Box::new(crate::settings::generic_amd::Cpus::from_limits(x)),
                                 CpuLimit::Unknown => Box::new(crate::settings::unknown::Cpus::system_default()),
                             };
                             builder.cpus = Some(cpu_driver);
@@ -139,6 +142,7 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
                                 GpuLimit::SteamDeck => Box::new(crate::settings::steam_deck::Gpu::system_default()),
                                 GpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck::Gpu::system_default()),
                                 GpuLimit::Generic(x) => Box::new(crate::settings::generic::Gpu::from_limits(x)),
+                                GpuLimit::GenericAMD(x) => Box::new(crate::settings::generic_amd::Gpu::from_limits(x)),
                                 GpuLimit::Unknown => Box::new(crate::settings::unknown::Gpu::system_default()),
                             };
                             builder.gpu = Some(driver);

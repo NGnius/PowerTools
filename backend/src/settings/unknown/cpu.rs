@@ -105,6 +105,7 @@ impl Cpus {
         let (_, can_smt) = Self::system_smt_capabilities();
         let mut result = Vec::with_capacity(other.len());
         let max_cpus = Self::cpu_count();
+        let mut smt_disabled = false;
         for (i, cpu) in other.drain(..).enumerate() {
             // prevent having more CPUs than available
             if let Some(max_cpus) = max_cpus {
@@ -112,7 +113,9 @@ impl Cpus {
                     break;
                 }
             }
-            result.push(Cpu::from_json(cpu, version, i));
+            let new_cpu = Cpu::from_json(cpu, version, i);
+            smt_disabled &= new_cpu.online as usize != i % 2;
+            result.push(new_cpu);
         }
         if let Some(max_cpus) = max_cpus {
             if result.len() != max_cpus {
@@ -124,7 +127,7 @@ impl Cpus {
         }
         Self {
             cpus: result,
-            smt: true,
+            smt: !smt_disabled,
             smt_capable: can_smt,
         }
     }

@@ -1,7 +1,7 @@
 use std::convert::Into;
 
 use crate::api::RangeLimit;
-use crate::settings::MinMax;
+use crate::settings::{MinMax, min_max_from_json};
 use crate::settings::{OnResume, OnSet, SettingError};
 use crate::settings::{TCpus, TCpu};
 use crate::persist::CpuJson;
@@ -90,10 +90,10 @@ impl Cpus {
             for i in 0..max_cpu {
                 sys_cpus.push(Cpu::from_sys(i, oc_limits.cpus.get(i).map(|x| x.to_owned()).unwrap_or_default()));
             }
-            let (smt_status, can_smt) = Self::system_smt_capabilities();
+            let (_, can_smt) = Self::system_smt_capabilities();
             Self {
                 cpus: sys_cpus,
-                smt: smt_status,
+                smt: true,
                 smt_capable: can_smt,
                 limits: oc_limits,
             }
@@ -113,6 +113,7 @@ impl Cpus {
         let (_, can_smt) = Self::system_smt_capabilities();
         let mut result = Vec::with_capacity(other.len());
         let max_cpus = Self::cpu_count();
+        let mut smt_disabled = false;
         for (i, cpu) in other.drain(..).enumerate() {
             // prevent having more CPUs than available
             if let Some(max_cpus) = max_cpus {
@@ -120,7 +121,9 @@ impl Cpus {
                     break;
                 }
             }
-            result.push(Cpu::from_json(cpu, version, i, oc_limits.cpus.get(i).map(|x| x.to_owned()).unwrap_or_default()));
+            let new_cpu = Cpu::from_json(cpu, version, i, oc_limits.cpus.get(i).map(|x| x.to_owned()).unwrap_or_default());
+            smt_disabled &= new_cpu.online as usize != i % 2;
+            result.push(new_cpu);
         }
         if let Some(max_cpus) = max_cpus {
             if result.len() != max_cpus {
@@ -132,7 +135,7 @@ impl Cpus {
         }
         Self {
             cpus: result,
-            smt: true,
+            smt: !smt_disabled,
             smt_capable: can_smt,
             limits: oc_limits,
         }
@@ -188,7 +191,7 @@ impl Cpu {
         match version {
             0 => Self {
                 online: other.online,
-                clock_limits: other.clock_limits.map(|x| MinMax::from_json(x, version)),
+                clock_limits: other.clock_limits.map(|x| min_max_from_json(x, version)),
                 governor: other.governor,
                 limits: oc_limits,
                 index: i,
@@ -196,7 +199,7 @@ impl Cpu {
             },
             _ => Self {
                 online: other.online,
-                clock_limits: other.clock_limits.map(|x| MinMax::from_json(x, version)),
+                clock_limits: other.clock_limits.map(|x| min_max_from_json(x, version)),
                 governor: other.governor,
                 limits: oc_limits,
                 index: i,

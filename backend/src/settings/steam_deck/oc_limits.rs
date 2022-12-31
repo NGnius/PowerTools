@@ -1,10 +1,5 @@
 use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub(super) struct MinMaxLimits<T> {
-    pub min: T,
-    pub max: T,
-}
+use crate::settings::MinMax;
 
 const OC_LIMITS_FILEPATH: &str = "./pt_oc.json";
 
@@ -56,13 +51,13 @@ impl OverclockLimits {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(super) struct BatteryLimits {
-    pub charge_rate: MinMaxLimits<u64>,
+    pub charge_rate: MinMax<u64>,
 }
 
 impl Default for BatteryLimits {
     fn default() -> Self {
         Self {
-            charge_rate: MinMaxLimits { min: 250, max: 2500 },
+            charge_rate: MinMax { min: 250, max: 2500 },
         }
     }
 }
@@ -82,34 +77,34 @@ impl Default for CpusLimits {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(super) struct CpuLimits {
-    pub clock_min: MinMaxLimits<u64>,
-    pub clock_max: MinMaxLimits<u64>,
+    pub clock_min: MinMax<u64>,
+    pub clock_max: MinMax<u64>,
 }
 
 impl Default for CpuLimits {
     fn default() -> Self {
         Self {
-            clock_min: MinMaxLimits { min: 1400, max: 3500 },
-            clock_max: MinMaxLimits { min: 500, max: 3500 }
+            clock_min: MinMax { min: 1400, max: 3500 },
+            clock_max: MinMax { min: 500, max: 3500 }
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(super) struct GpuLimits {
-    pub fast_ppt: MinMaxLimits<u64>,
-    pub slow_ppt: MinMaxLimits<u64>,
-    pub clock_min: MinMaxLimits<u64>,
-    pub clock_max: MinMaxLimits<u64>,
+    pub fast_ppt: MinMax<u64>,
+    pub slow_ppt: MinMax<u64>,
+    pub clock_min: MinMax<u64>,
+    pub clock_max: MinMax<u64>,
 }
 
 impl Default for GpuLimits {
     fn default() -> Self {
         Self {
-            fast_ppt: MinMaxLimits { min: 1000000, max: 30_000_000 },
-            slow_ppt: MinMaxLimits { min: 1000000, max: 29_000_000 },
-            clock_min: MinMaxLimits { min: 200, max: 1600 },
-            clock_max: MinMaxLimits { min: 200, max: 1600 }
+            fast_ppt: MinMax { min: 1000000, max: 30_000_000 },
+            slow_ppt: MinMax { min: 1000000, max: 29_000_000 },
+            clock_min: MinMax { min: 200, max: 1600 },
+            clock_max: MinMax { min: 200, max: 1600 }
         }
     }
 }

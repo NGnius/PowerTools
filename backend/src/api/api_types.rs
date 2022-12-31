@@ -6,6 +6,13 @@ pub struct RangeLimit<T> {
     pub max: T,
 }
 
+impl<T> From<limits_core::json::RangeLimit<T>> for RangeLimit<T> {
+    #[inline]
+    fn from(other: limits_core::json::RangeLimit<T>) -> Self {
+        RangeLimit { min: other.min, max: other.max }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct SettingsLimits {
     pub battery: BatteryLimits,

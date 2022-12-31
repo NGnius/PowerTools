@@ -17,6 +17,10 @@ pub struct Conditions {
 
 impl Conditions {
     pub fn is_empty(&self) -> bool {
-        self.dmi.is_none() && self.cpuinfo.is_none() && self.os.is_none() && self.command.is_none()
+        self.dmi.is_none()
+            && self.cpuinfo.is_none()
+            && self.os.is_none()
+            && self.command.is_none()
+            && self.file_exists.is_none()
     }
 }

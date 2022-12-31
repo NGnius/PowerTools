@@ -1,11 +1,16 @@
 use std::convert::Into;
 
+use limits_core::json::GenericBatteryLimit;
+
 use crate::settings::{OnResume, OnSet, SettingError};
 use crate::settings::TBattery;
 use crate::persist::BatteryJson;
 
 #[derive(Debug, Clone)]
-pub struct Battery;
+pub struct Battery {
+    #[allow(dead_code)]
+    limits: GenericBatteryLimit,
+}
 
 impl Into<BatteryJson> for Battery {
     #[inline]
@@ -39,14 +44,18 @@ impl Battery {
         }
     }
 
-    pub fn from_limits(_limits: limits_core::json::GenericBatteryLimit) -> Self {
+    pub fn from_limits(limits: limits_core::json::GenericBatteryLimit) -> Self {
         // TODO
-        Self
+        Self {
+            limits
+        }
     }
 
-    pub fn from_json_and_limits(_other: BatteryJson, _version: u64, _limits: limits_core::json::GenericBatteryLimit) -> Self {
+    pub fn from_json_and_limits(_other: BatteryJson, _version: u64, limits: limits_core::json::GenericBatteryLimit) -> Self {
         // TODO
-        Self
+        Self {
+            limits
+        }
     }
 }
 

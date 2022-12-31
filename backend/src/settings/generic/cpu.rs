@@ -1,5 +1,7 @@
 use std::convert::Into;
 
+use limits_core::json::GenericCpuLimit;
+
 use crate::settings::MinMax;
 use crate::settings::{OnResume, OnSet, SettingError};
 use crate::settings::{TCpus, TCpu};
@@ -42,7 +44,7 @@ impl OnSet for Cpus {
             }
         }
         for (i, cpu) in self.cpus.as_mut_slice().iter_mut().enumerate() {
-            cpu.state.do_set_online = self.smt || i % 2 == 0;
+            cpu.state.do_set_online = self.smt || i % 2 == 0 || !self.smt_capable;
             cpu.on_set()?;
         }
         Ok(())
@@ -79,69 +81,26 @@ impl Cpus {
         }
     }
 
-    pub fn system_default() -> Self {
-        if let Some(max_cpu) = Self::cpu_count() {
-            let mut sys_cpus = Vec::with_capacity(max_cpu);
-            for i in 0..max_cpu {
-                sys_cpus.push(Cpu::from_sys(i));
-            }
-            let (smt_status, can_smt) = Self::system_smt_capabilities();
-            Self {
-                cpus: sys_cpus,
-                smt: smt_status,
-                smt_capable: can_smt,
-            }
-        } else {
-            Self {
-                cpus: vec![],
-                smt: false,
-                smt_capable: false,
-            }
-        }
-    }
-
-    #[inline]
-    pub fn from_json(mut other: Vec<CpuJson>, version: u64) -> Self {
+    pub fn from_limits(limits: limits_core::json::GenericCpuLimit) -> Self {
+        let cpu_count = Self::cpu_count().unwrap_or(8);
         let (_, can_smt) = Self::system_smt_capabilities();
-        let mut result = Vec::with_capacity(other.len());
-        let max_cpus = Self::cpu_count();
-        for (i, cpu) in other.drain(..).enumerate() {
-            // prevent having more CPUs than available
-            if let Some(max_cpus) = max_cpus {
-                if i == max_cpus {
-                    break;
-                }
-            }
-            result.push(Cpu::from_json(cpu, version, i));
-        }
-        if let Some(max_cpus) = max_cpus {
-            if result.len() != max_cpus {
-                let mut sys_cpus = Cpus::system_default();
-                for i in result.len()..sys_cpus.cpus.len() {
-                    result.push(sys_cpus.cpus.remove(i));
-                }
-            }
+        let mut new_cpus = Vec::with_capacity(cpu_count);
+        for i in 0..cpu_count {
+            let new_cpu = Cpu::from_limits(i, limits.clone());
+            new_cpus.push(new_cpu);
         }
         Self {
-            cpus: result,
+            cpus: new_cpus,
             smt: true,
             smt_capable: can_smt,
         }
     }
 
-    pub fn from_limits(_limits: limits_core::json::GenericCpuLimit) -> Self {
-        // TODO
-        Self {
-            cpus: vec![],
-            smt: false,
-            smt_capable: false,
-        }
-    }
-
-    pub fn from_json_and_limits(mut other: Vec<CpuJson>, version: u64, _limits: limits_core::json::GenericCpuLimit) -> Self {
+    pub fn from_json_and_limits(mut other: Vec<CpuJson>, version: u64, limits: limits_core::json::GenericCpuLimit) -> Self {
         let (_, can_smt) = Self::system_smt_capabilities();
         let mut result = Vec::with_capacity(other.len());
         let max_cpus = Self::cpu_count();
+        let mut smt_disabled = false;
         for (i, cpu) in other.drain(..).enumerate() {
             // prevent having more CPUs than available
             if let Some(max_cpus) = max_cpus {
@@ -149,11 +108,13 @@ impl Cpus {
                     break;
                 }
             }
-            result.push(Cpu::from_json(cpu, version, i));
+            let new_cpu = Cpu::from_json_and_limits(cpu, version, i, limits.clone());
+            smt_disabled &= new_cpu.online as usize != i % 2;
+            result.push(new_cpu);
         }
         if let Some(max_cpus) = max_cpus {
             if result.len() != max_cpus {
-                let mut sys_cpus = Cpus::system_default();
+                let mut sys_cpus = Cpus::from_limits(limits.clone());
                 for i in result.len()..sys_cpus.cpus.len() {
                     result.push(sys_cpus.cpus.remove(i));
                 }
@@ -161,7 +122,7 @@ impl Cpus {
         }
         Self {
             cpus: result,
-            smt: true,
+            smt: !smt_disabled,
             smt_capable: can_smt,
         }
     }
@@ -201,6 +162,7 @@ impl TCpus for Cpus {
 pub struct Cpu {
     pub online: bool,
     pub governor: String,
+    limits: GenericCpuLimit,
     index: usize,
     state: crate::state::steam_deck::Cpu,
 }
@@ -208,17 +170,30 @@ pub struct Cpu {
 
 impl Cpu {
     #[inline]
-    pub fn from_json(other: CpuJson, version: u64, i: usize) -> Self {
+    pub fn from_limits(cpu_index: usize, limits: GenericCpuLimit) -> Self {
+        Self {
+            online: true,
+            governor: "schedutil".to_owned(),
+            limits,
+            index: cpu_index,
+            state: crate::state::steam_deck::Cpu::default(),
+        }
+    }
+
+    #[inline]
+    pub fn from_json_and_limits(other: CpuJson, version: u64, i: usize, limits: GenericCpuLimit) -> Self {
         match version {
             0 => Self {
                 online: other.online,
                 governor: other.governor,
+                limits,
                 index: i,
                 state: crate::state::steam_deck::Cpu::default(),
             },
             _ => Self {
                 online: other.online,
                 governor: other.governor,
+                limits,
                 index: i,
                 state: crate::state::steam_deck::Cpu::default(),
             },
@@ -253,7 +228,7 @@ impl Cpu {
         Ok(())
     }
 
-    fn from_sys(cpu_index: usize) -> Self {
+    /*fn from_sys(cpu_index: usize) -> Self {
         Self {
             online: usdpl_back::api::files::read_single(cpu_online_path(cpu_index)).unwrap_or(1u8) != 0,
             governor: usdpl_back::api::files::read_single(cpu_governor_path(cpu_index))
@@ -261,14 +236,31 @@ impl Cpu {
             index: cpu_index,
             state: crate::state::steam_deck::Cpu::default(),
         }
+    }*/
+
+    fn governors(&self) -> Vec<String> {
+        // NOTE: this eats errors
+        let gov_str: String = match usdpl_back::api::files::read_single(cpu_available_governors_path(self.index)) {
+            Ok(s) => s,
+            Err((Some(e), None)) => {
+                log::warn!("Error getting available CPU governors: {}", e);
+                return vec![];
+            },
+            Err((None, Some(e))) => {
+                log::warn!("Error getting available CPU governors: {}", e);
+                return vec![];
+            },
+            Err(_) => return vec![],
+        };
+        gov_str.split(' ').map(|s| s.to_owned()).collect()
     }
 
     fn limits(&self) -> crate::api::CpuLimits {
         crate::api::CpuLimits {
-            clock_min_limits: None,
-            clock_max_limits: None,
-            clock_step: 100,
-            governors: vec![], // TODO
+            clock_min_limits: self.limits.clock_min.clone().map(|x| x.into()),
+            clock_max_limits: self.limits.clock_max.clone().map(|x| x.into()),
+            clock_step: self.limits.clock_step,
+            governors: self.governors(),
         }
     }
 }
@@ -312,11 +304,13 @@ impl TCpu for Cpu {
         &self.governor
     }
 
-    fn clock_limits(&mut self, _limits: Option<MinMax<u64>>) {
+    fn clock_limits(&mut self, limits: Option<MinMax<u64>>) {
+        self.limits.clock_min = limits.clone();
+        self.limits.clock_max = limits.clone();
     }
 
     fn get_clock_limits(&self) -> Option<&MinMax<u64>> {
-        None
+        self.limits.clock_max.as_ref()
     }
 }
 
@@ -329,6 +323,14 @@ fn cpu_online_path(index: usize) -> String {
 fn cpu_governor_path(index: usize) -> String {
     format!(
         "/sys/devices/system/cpu/cpu{}/cpufreq/scaling_governor",
+        index
+    )
+}
+
+#[inline]
+fn cpu_available_governors_path(index: usize) -> String {
+    format!(
+        "/sys/devices/system/cpu/cpu{}/cpufreq/scaling_available_governors",
         index
     )
 }

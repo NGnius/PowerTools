@@ -1,7 +1,7 @@
 use std::convert::Into;
 
 use crate::api::RangeLimit;
-use crate::settings::MinMax;
+use crate::settings::{MinMax, min_max_from_json};
 use crate::settings::{OnResume, OnSet, SettingError};
 use crate::settings::TGpu;
 use crate::persist::GpuJson;
@@ -33,7 +33,7 @@ impl Gpu {
             0 => Self {
                 fast_ppt: other.fast_ppt,
                 slow_ppt: other.slow_ppt,
-                clock_limits: other.clock_limits.map(|x| MinMax::from_json(x, version)),
+                clock_limits: other.clock_limits.map(|x| min_max_from_json(x, version)),
                 slow_memory: other.slow_memory,
                 limits: oc_limits,
                 state: crate::state::steam_deck::Gpu::default(),
@@ -41,7 +41,7 @@ impl Gpu {
             _ => Self {
                 fast_ppt: other.fast_ppt,
                 slow_ppt: other.slow_ppt,
-                clock_limits: other.clock_limits.map(|x| MinMax::from_json(x, version)),
+                clock_limits: other.clock_limits.map(|x| min_max_from_json(x, version)),
                 slow_memory: other.slow_memory,
                 limits: oc_limits,
                 state: crate::state::steam_deck::Gpu::default(),

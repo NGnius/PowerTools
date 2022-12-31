@@ -10,6 +10,8 @@ pub enum DriverJson {
     SteamDeckAdvance,
     #[serde(rename = "generic")]
     Generic,
+    #[serde(rename = "generic-amd")]
+    GenericAMD,
     #[serde(rename = "unknown")]
     Unknown,
     #[default]

@@ -1,5 +1,7 @@
 use std::convert::Into;
 
+use limits_core::json::GenericGpuLimit;
+
 use crate::settings::MinMax;
 use crate::settings::{OnResume, OnSet, SettingError};
 use crate::settings::TGpu;
@@ -8,15 +10,16 @@ use crate::persist::GpuJson;
 #[derive(Debug, Clone)]
 pub struct Gpu {
     slow_memory: bool, // ignored
+    limits: GenericGpuLimit,
 }
 
 impl Gpu {
-    #[inline]
+    /*#[inline]
     pub fn from_json(_other: GpuJson, _version: u64) -> Self {
         Self {
             slow_memory: false,
         }
-    }
+    }*/
 
     /*pub fn system_default() -> Self {
         Self {
@@ -24,16 +27,17 @@ impl Gpu {
         }
     }*/
 
-    pub fn from_limits(_limits: limits_core::json::GenericGpuLimit) -> Self {
-        // TODO
+    pub fn from_limits(limits: limits_core::json::GenericGpuLimit) -> Self {
         Self {
             slow_memory: false,
+            limits,
         }
     }
 
-    pub fn from_json_and_limits(_other: GpuJson, _version: u64, _limits: limits_core::json::GenericGpuLimit) -> Self {
+    pub fn from_json_and_limits(_other: GpuJson, _version: u64, limits: limits_core::json::GenericGpuLimit) -> Self {
         Self {
             slow_memory: false,
+            limits,
         }
     }
 }
@@ -65,15 +69,15 @@ impl OnResume for Gpu {
 impl TGpu for Gpu {
     fn limits(&self) -> crate::api::GpuLimits {
         crate::api::GpuLimits {
-            fast_ppt_limits: None,
-            slow_ppt_limits: None,
-            ppt_step: 1_000_000,
-            tdp_limits: None,
-            tdp_boost_limits: None,
-            tdp_step: 42,
-            clock_min_limits: None,
-            clock_max_limits: None,
-            clock_step: 100,
+            fast_ppt_limits: self.limits.fast_ppt.clone().map(|x| x.into()),
+            slow_ppt_limits: self.limits.slow_ppt.clone().map(|x| x.into()),
+            ppt_step: self.limits.ppt_step.unwrap_or(1_000_000),
+            tdp_limits: self.limits.tdp.clone().map(|x| x.into()),
+            tdp_boost_limits: self.limits.tdp_boost.clone().map(|x| x.into()),
+            tdp_step: self.limits.tdp_step.unwrap_or(42),
+            clock_min_limits: self.limits.clock_min.clone().map(|x| x.into()),
+            clock_max_limits: self.limits.clock_max.clone().map(|x| x.into()),
+            clock_step: self.limits.clock_step.unwrap_or(100),
             memory_control_capable: false,
         }
     }

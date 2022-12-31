@@ -52,17 +52,7 @@ impl Driver {
                     gpu: Box::new(super::steam_deck::Gpu::from_json(settings.gpu, settings.version)),
                     battery: Box::new(super::steam_deck::Battery::from_json(settings.battery, settings.version)),
                 }),
-                DriverJson::Generic => Ok(Self {
-                    general: Box::new(General {
-                        persistent: settings.persistent,
-                        path: json_path,
-                        name: settings.name,
-                        driver: DriverJson::Unknown,
-                    }),
-                    cpus: Box::new(super::generic::Cpus::from_json(settings.cpus, settings.version)),
-                    gpu: Box::new(super::generic::Gpu::from_json(settings.gpu, settings.version)),
-                    battery: Box::new(super::generic::Battery),
-                }),
+                DriverJson::Generic | DriverJson::GenericAMD => Ok(super::detect::auto_detect0(Some(settings), json_path)),
                 DriverJson::Unknown => Ok(super::detect::auto_detect0(Some(settings), json_path)),
                 DriverJson::AutoDetect => Ok(super::detect::auto_detect0(Some(settings), json_path)),
             }
@@ -83,7 +73,7 @@ pub fn maybe_do_button() {
         DriverJson::SteamDeck | DriverJson::SteamDeckAdvance => {
             crate::settings::steam_deck::flash_led();
         },
-        DriverJson::Generic => log::warn!("You need to come up with something fun on generic"),
+        DriverJson::Generic | DriverJson::GenericAMD => log::warn!("You need to come up with something fun on generic"),
         DriverJson::Unknown => log::warn!("Can't do button activities on unknown platform"),
         DriverJson::AutoDetect => log::warn!("WTF, why is auto_detect detecting AutoDetect???")
     }
