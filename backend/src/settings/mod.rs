@@ -7,7 +7,6 @@ mod traits;
 
 pub mod generic;
 pub mod steam_deck;
-pub mod steam_deck_adv;
 pub mod unknown;
 
 pub use detect::{auto_detect0, auto_detect_provider, limits_worker::spawn as limits_worker_spawn};

@@ -2,9 +2,10 @@ use std::convert::Into;
 
 use crate::api::RangeLimit;
 use crate::settings::MinMax;
-use crate::settings::{OnResume, OnSet, SettingError, SettingsRange};
+use crate::settings::{OnResume, OnSet, SettingError};
 use crate::settings::{TCpus, TCpu};
 use crate::persist::CpuJson;
+use super::oc_limits::{OverclockLimits, CpusLimits, CpuLimits};
 
 const CPU_PRESENT_PATH: &str = "/sys/devices/system/cpu/present";
 const CPU_SMT_PATH: &str = "/sys/devices/system/cpu/smt/control";
@@ -14,6 +15,8 @@ pub struct Cpus {
     pub cpus: Vec<Cpu>,
     pub smt: bool,
     pub smt_capable: bool,
+    #[allow(dead_code)] // in case this may be useful in the future
+    pub(super) limits: CpusLimits,
 }
 
 impl OnSet for Cpus {
@@ -81,28 +84,32 @@ impl Cpus {
     }
 
     pub fn system_default() -> Self {
+        let oc_limits = OverclockLimits::load_or_default().cpus;
         if let Some(max_cpu) = Self::cpu_count() {
             let mut sys_cpus = Vec::with_capacity(max_cpu);
             for i in 0..max_cpu {
-                sys_cpus.push(Cpu::from_sys(i));
+                sys_cpus.push(Cpu::from_sys(i, oc_limits.cpus.get(i).map(|x| x.to_owned()).unwrap_or_default()));
             }
             let (smt_status, can_smt) = Self::system_smt_capabilities();
             Self {
                 cpus: sys_cpus,
                 smt: smt_status,
                 smt_capable: can_smt,
+                limits: oc_limits,
             }
         } else {
             Self {
                 cpus: vec![],
                 smt: false,
                 smt_capable: false,
+                limits: oc_limits,
             }
         }
     }
 
     #[inline]
     pub fn from_json(mut other: Vec<CpuJson>, version: u64) -> Self {
+        let oc_limits = OverclockLimits::load_or_default().cpus;
         let (_, can_smt) = Self::system_smt_capabilities();
         let mut result = Vec::with_capacity(other.len());
         let max_cpus = Self::cpu_count();
@@ -113,7 +120,7 @@ impl Cpus {
                     break;
                 }
             }
-            result.push(Cpu::from_json(cpu, version, i));
+            result.push(Cpu::from_json(cpu, version, i, oc_limits.cpus.get(i).map(|x| x.to_owned()).unwrap_or_default()));
         }
         if let Some(max_cpus) = max_cpus {
             if result.len() != max_cpus {
@@ -127,6 +134,7 @@ impl Cpus {
             cpus: result,
             smt: true,
             smt_capable: can_smt,
+            limits: oc_limits,
         }
     }
 }
@@ -166,6 +174,7 @@ pub struct Cpu {
     pub online: bool,
     pub clock_limits: Option<MinMax<u64>>,
     pub governor: String,
+    limits: CpuLimits,
     index: usize,
     state: crate::state::steam_deck::Cpu,
 }
@@ -175,12 +184,13 @@ const CPU_FORCE_LIMITS_PATH: &str = "/sys/class/drm/card0/device/power_dpm_force
 
 impl Cpu {
     #[inline]
-    pub fn from_json(other: CpuJson, version: u64, i: usize) -> Self {
+    fn from_json(other: CpuJson, version: u64, i: usize, oc_limits: CpuLimits) -> Self {
         match version {
             0 => Self {
                 online: other.online,
                 clock_limits: other.clock_limits.map(|x| MinMax::from_json(x, version)),
                 governor: other.governor,
+                limits: oc_limits,
                 index: i,
                 state: crate::state::steam_deck::Cpu::default(),
             },
@@ -188,6 +198,7 @@ impl Cpu {
                 online: other.online,
                 clock_limits: other.clock_limits.map(|x| MinMax::from_json(x, version)),
                 governor: other.governor,
+                limits: oc_limits,
                 index: i,
                 state: crate::state::steam_deck::Cpu::default(),
             },
@@ -250,7 +261,7 @@ impl Cpu {
             // disable manual clock limits
             log::debug!("Setting CPU {} to default clockspeed", self.index);
             // max clock
-            let payload_max = format!("p {} 1 {}\n", self.index / 2, Self::max().clock_limits.unwrap().max);
+            let payload_max = format!("p {} 1 {}\n", self.index / 2, self.limits.clock_max.max);
             usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_max).map_err(
                 |e| SettingError {
                     msg: format!(
@@ -261,7 +272,7 @@ impl Cpu {
                 },
             )?;
             // min clock
-            let payload_min = format!("p {} 0 {}\n", self.index / 2, Self::min().clock_limits.unwrap().min);
+            let payload_min = format!("p {} 0 {}\n", self.index / 2, self.limits.clock_min.min);
             usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
                 |e| SettingError {
                     msg: format!(
@@ -297,41 +308,33 @@ impl Cpu {
     }
 
     fn clamp_all(&mut self) {
-        let min = Self::min();
-        let max = Self::max();
         if let Some(clock_limits) = &mut self.clock_limits {
-            let max_boost = max.clock_limits.as_ref().unwrap();
-            let min_boost = min.clock_limits.as_ref().unwrap();
-            clock_limits.min = clock_limits.min.clamp(min_boost.min, max_boost.min);
-            clock_limits.max = clock_limits.max.clamp(min_boost.max, max_boost.max);
+            clock_limits.min = clock_limits.min.clamp(self.limits.clock_min.min, self.limits.clock_min.max);
+            clock_limits.max = clock_limits.max.clamp(self.limits.clock_max.min, self.limits.clock_max.max);
         }
     }
 
-    fn from_sys(cpu_index: usize) -> Self {
+    fn from_sys(cpu_index: usize, oc_limits: CpuLimits) -> Self {
         Self {
             online: usdpl_back::api::files::read_single(cpu_online_path(cpu_index)).unwrap_or(1u8) != 0,
             clock_limits: None,
             governor: usdpl_back::api::files::read_single(cpu_governor_path(cpu_index))
                 .unwrap_or("schedutil".to_owned()),
+            limits: oc_limits,
             index: cpu_index,
             state: crate::state::steam_deck::Cpu::default(),
         }
     }
 
     fn limits(&self) -> crate::api::CpuLimits {
-        let max = Self::max();
-        let max_clocks = max.clock_limits.unwrap();
-
-        let min = Self::min();
-        let min_clocks = min.clock_limits.unwrap();
         crate::api::CpuLimits {
             clock_min_limits: Some(RangeLimit {
-                min: min_clocks.min,
-                max: max_clocks.min
+                min: self.limits.clock_min.min,
+                max: self.limits.clock_min.max
             }),
             clock_max_limits: Some(RangeLimit {
-                min: min_clocks.max,
-                max: max_clocks.max
+                min: self.limits.clock_max.min,
+                max: self.limits.clock_max.max
             }),
             clock_step: 100,
             governors: self.governors(),
@@ -401,33 +404,6 @@ impl TCpu for Cpu {
 
     fn get_clock_limits(&self) -> Option<&MinMax<u64>> {
         self.clock_limits.as_ref()
-    }
-}
-
-impl SettingsRange for Cpu {
-    #[inline]
-    fn max() -> Self {
-        Self {
-            online: true,
-            clock_limits: Some(MinMax {
-                max: 3500,
-                min: 3500,
-            }),
-            governor: "schedutil".to_owned(),
-            index: usize::MAX,
-            state: crate::state::steam_deck::Cpu::default(),
-        }
-    }
-
-    #[inline]
-    fn min() -> Self {
-        Self {
-            online: false,
-            clock_limits: Some(MinMax { max: 500, min: 1400 }),
-            governor: "schedutil".to_owned(),
-            index: usize::MIN,
-            state: crate::state::steam_deck::Cpu::default(),
-        }
     }
 }
 

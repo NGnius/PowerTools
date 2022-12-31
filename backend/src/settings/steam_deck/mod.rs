@@ -1,6 +1,7 @@
 mod battery;
 mod cpu;
 mod gpu;
+mod oc_limits;
 mod util;
 
 pub use battery::Battery;

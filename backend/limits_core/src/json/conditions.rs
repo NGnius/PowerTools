@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// Conditions under which a config applies
+/// Conditions under which a config applies (ANDed together)
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Conditions {
     /// Regex pattern for dmidecode output
@@ -11,6 +11,8 @@ pub struct Conditions {
     pub os: Option<String>,
     /// Custom command to run, where an exit code of 0 means a successful match
     pub command: Option<String>,
+    /// Check if file exists
+    pub file_exists: Option<String>,
 }
 
 impl Conditions {

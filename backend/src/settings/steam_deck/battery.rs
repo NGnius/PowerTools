@@ -1,15 +1,17 @@
 use std::convert::Into;
 
 use crate::api::RangeLimit;
-use crate::settings::{OnResume, OnSet, SettingError, SettingsRange};
+use crate::settings::{OnResume, OnSet, SettingError};
 use crate::settings::TBattery;
 use crate::persist::BatteryJson;
 use super::util::ChargeMode;
+use super::oc_limits::{BatteryLimits, OverclockLimits};
 
 #[derive(Debug, Clone)]
 pub struct Battery {
     pub charge_rate: Option<u64>,
     pub charge_mode: Option<ChargeMode>,
+    limits: BatteryLimits,
     state: crate::state::steam_deck::Battery,
 }
 
@@ -24,15 +26,18 @@ const BATTERY_CHARGE_DESIGN_PATH: &str = "/sys/class/hwmon/hwmon2/device/charge_
 impl Battery {
     #[inline]
     pub fn from_json(other: BatteryJson, version: u64) -> Self {
+        let oc_limits = OverclockLimits::load_or_default().battery;
         match version {
             0 => Self {
                 charge_rate: other.charge_rate,
                 charge_mode: other.charge_mode.map(|x| Self::str_to_charge_mode(&x)).flatten(),
+                limits: oc_limits,
                 state: crate::state::steam_deck::Battery::default(),
             },
             _ => Self {
                 charge_rate: other.charge_rate,
                 charge_mode: other.charge_mode.map(|x| Self::str_to_charge_mode(&x)).flatten(),
+                limits: oc_limits,
                 state: crate::state::steam_deck::Battery::default(),
             },
         }
@@ -68,7 +73,7 @@ impl Battery {
             )?;
         } else if self.state.charge_rate_set {
             self.state.charge_rate_set = false;
-            usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, Self::max().charge_rate.unwrap()).map_err(
+            usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, self.limits.charge_rate.max).map_err(
                 |e| SettingError {
                     msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
                     setting: crate::settings::SettingVariant::Battery,
@@ -96,10 +101,8 @@ impl Battery {
     }
 
     fn clamp_all(&mut self) {
-        let min = Self::min();
-        let max = Self::max();
         if let Some(charge_rate) = &mut self.charge_rate {
-            *charge_rate = (*charge_rate).clamp(min.charge_rate.unwrap(), max.charge_rate.unwrap());
+            *charge_rate = (*charge_rate).clamp(self.limits.charge_rate.min, self.limits.charge_rate.max);
         }
     }
 
@@ -181,9 +184,11 @@ impl Battery {
     }
 
     pub fn system_default() -> Self {
+        let oc_limits = OverclockLimits::load_or_default().battery;
         Self {
             charge_rate: None,
             charge_mode: None,
+            limits: oc_limits,
             state: crate::state::steam_deck::Battery::default(),
         }
     }
@@ -212,34 +217,12 @@ impl OnResume for Battery {
     }
 }
 
-impl SettingsRange for Battery {
-    #[inline]
-    fn max() -> Self {
-        Self {
-            charge_rate: Some(2500),
-            charge_mode: None,
-            state: crate::state::steam_deck::Battery::default(),
-        }
-    }
-
-    #[inline]
-    fn min() -> Self {
-        Self {
-            charge_rate: Some(250),
-            charge_mode: None,
-            state: crate::state::steam_deck::Battery::default(),
-        }
-    }
-}
-
 impl TBattery for Battery {
     fn limits(&self) -> crate::api::BatteryLimits {
-        let max = Self::max();
-        let min = Self::min();
         crate::api::BatteryLimits {
             charge_current: Some(RangeLimit{
-                min: min.charge_rate.unwrap(),
-                max: max.charge_rate.unwrap(),
+                min: self.limits.charge_rate.min,
+                max: self.limits.charge_rate.max
             }),
             charge_current_step: 50,
             charge_modes: vec!["normal".to_owned(), "discharge".to_owned(), "idle".to_owned()],

@@ -15,12 +15,28 @@ impl Default for Base {
         Base {
             configs: vec![
                 super::Config {
+                    name: "Steam Deck Custom".to_owned(),
+                    conditions: super::Conditions {
+                        dmi: None,
+                        cpuinfo: Some("model name\t: AMD Custom APU 0405\n".to_owned()),
+                        os: None,
+                        command: None,
+                        file_exists: Some("./pt_oc.json".into()),
+                    },
+                    limits: vec![
+                        super::Limits::Cpu(super::CpuLimit::SteamDeckAdvance),
+                        super::Limits::Gpu(super::GpuLimit::SteamDeckAdvance),
+                        super::Limits::Battery(super::BatteryLimit::SteamDeckAdvance),
+                    ]
+                },
+                super::Config {
                     name: "Steam Deck".to_owned(),
                     conditions: super::Conditions {
                         dmi: None,
                         cpuinfo: Some("model name\t: AMD Custom APU 0405\n".to_owned()),
                         os: None,
                         command: None,
+                        file_exists: None,
                     },
                     limits: vec![
                         super::Limits::Cpu(super::CpuLimit::SteamDeck),
@@ -35,6 +51,7 @@ impl Default for Base {
                         cpuinfo: None,
                         os: None,
                         command: None,
+                        file_exists: None,
                     },
                     limits: vec![
                         super::Limits::Cpu(super::CpuLimit::Unknown),

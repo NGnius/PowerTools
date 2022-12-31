@@ -40,6 +40,7 @@ impl Driver {
                     gpu: Box::new(super::steam_deck::Gpu::from_json(settings.gpu, settings.version)),
                     battery: Box::new(super::steam_deck::Battery::from_json(settings.battery, settings.version)),
                 }),
+                // There's nothing special about SteamDeckAdvance, it just appears different
                 DriverJson::SteamDeckAdvance => Ok(Self {
                     general: Box::new(General {
                         persistent: settings.persistent,
@@ -47,8 +48,8 @@ impl Driver {
                         name: settings.name,
                         driver: DriverJson::SteamDeckAdvance,
                     }),
-                    cpus: Box::new(super::steam_deck_adv::Cpus::from_json(settings.cpus, settings.version)),
-                    gpu: Box::new(super::steam_deck_adv::Gpu::from_json(settings.gpu, settings.version)),
+                    cpus: Box::new(super::steam_deck::Cpus::from_json(settings.cpus, settings.version)),
+                    gpu: Box::new(super::steam_deck::Gpu::from_json(settings.gpu, settings.version)),
                     battery: Box::new(super::steam_deck::Battery::from_json(settings.battery, settings.version)),
                 }),
                 DriverJson::Generic => Ok(Self {

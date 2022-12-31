@@ -1,6 +1,27 @@
 {
     "configs": [
         {
+            "name": "Steam Deck Custom",
+            "conditions": {
+                "cpuinfo": "model name\t: AMD Custom APU 0405\n",
+                "file_exists": "./pt_oc.json"
+            },
+            "limits": [
+                {
+                    "limits": "Cpu",
+                    "target": "SteamDeck"
+                },
+                {
+                    "limits": "Gpu",
+                    "target": "SteamDeck"
+                },
+                {
+                    "limits": "Battery",
+                    "target": "SteamDeck"
+                }
+            ]
+        },
+        {
             "name": "Steam Deck",
             "conditions": {
                 "cpuinfo": "model name\t: AMD Custom APU 0405\n"

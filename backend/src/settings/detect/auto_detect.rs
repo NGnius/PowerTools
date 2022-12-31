@@ -84,6 +84,10 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
                     Err(e) => log::warn!("Ignoring bash limits error: {}", e),
                 }
             }
+            if let Some(file_exists) = &conditions.file_exists {
+                let exists = std::path::Path::new(file_exists).exists();
+                matches &= exists;
+            }
         }
         if matches {
             if let Some(settings) = &settings_opt {
@@ -92,7 +96,7 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
                         Limits::Cpu(cpus) => {
                             let cpu_driver: Box<dyn TCpus> = match cpus {
                                 CpuLimit::SteamDeck => Box::new(crate::settings::steam_deck::Cpus::from_json(settings.cpus.clone(), settings.version)),
-                                CpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck_adv::Cpus::from_json(settings.cpus.clone(), settings.version)),
+                                CpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck::Cpus::from_json(settings.cpus.clone(), settings.version)),
                                 CpuLimit::Generic(x) => Box::new(crate::settings::generic::Cpus::from_json_and_limits(settings.cpus.clone(), settings.version, x)),
                                 CpuLimit::Unknown => Box::new(crate::settings::unknown::Cpus::from_json(settings.cpus.clone(), settings.version)),
                             };
@@ -101,7 +105,7 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
                         Limits::Gpu(gpu) => {
                             let driver: Box<dyn TGpu> = match gpu {
                                 GpuLimit::SteamDeck => Box::new(crate::settings::steam_deck::Gpu::from_json(settings.gpu.clone(), settings.version)),
-                                GpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck_adv::Gpu::from_json(settings.gpu.clone(), settings.version)),
+                                GpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck::Gpu::from_json(settings.gpu.clone(), settings.version)),
                                 GpuLimit::Generic(x) => Box::new(crate::settings::generic::Gpu::from_json_and_limits(settings.gpu.clone(), settings.version, x)),
                                 GpuLimit::Unknown => Box::new(crate::settings::unknown::Gpu::from_json(settings.gpu.clone(), settings.version)),
                             };
@@ -124,7 +128,7 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
                         Limits::Cpu(cpus) => {
                             let cpu_driver: Box<dyn TCpus> = match cpus {
                                 CpuLimit::SteamDeck => Box::new(crate::settings::steam_deck::Cpus::system_default()),
-                                CpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck_adv::Cpus::system_default()),
+                                CpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck::Cpus::system_default()),
                                 CpuLimit::Generic(x) => Box::new(crate::settings::generic::Cpus::from_limits(x)),
                                 CpuLimit::Unknown => Box::new(crate::settings::unknown::Cpus::system_default()),
                             };
@@ -133,7 +137,7 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
                         Limits::Gpu(gpu) => {
                             let driver: Box<dyn TGpu> = match gpu {
                                 GpuLimit::SteamDeck => Box::new(crate::settings::steam_deck::Gpu::system_default()),
-                                GpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck_adv::Gpu::system_default()),
+                                GpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck::Gpu::system_default()),
                                 GpuLimit::Generic(x) => Box::new(crate::settings::generic::Gpu::from_limits(x)),
                                 GpuLimit::Unknown => Box::new(crate::settings::unknown::Gpu::system_default()),
                             };
