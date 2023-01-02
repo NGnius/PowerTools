@@ -1,0 +1,39 @@
+name: Feature Request
+description: Suggest a tool to add
+labels: "enhancement"
+body:
+    - type: checkboxes
+      id: low-effort-checks
+      attributes:
+          label: Please confirm
+          description: Issues without all checks may be ignored/closed.
+          options:
+              - label: I have searched existing issues
+              - label: This issue is not a duplicate of an existing one
+              - label: I am doing something good
+      validations:
+          required: true
+    - type: textarea
+      id: described
+      attributes:
+          label: Describe what you'd like to be able to do
+          description: A clear and concise description of what you want.
+          placeholder: I'd like to be able to ...
+      validations:
+          required: true
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: Describe alternatives you've considered
+          description: A clear and concise description of any alternatives you've considered.
+          placeholder: This can also be done by ... but ...
+      validations:
+          required: true
+    - type: textarea
+      id: extras
+      attributes:
+          label: Anything else?
+          description: Description of how this can be achieved, or other additional context
+          placeholder: This can be accomplished by doing ...
+      validations:
+          required: false
