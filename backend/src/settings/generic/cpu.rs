@@ -1,23 +1,24 @@
-use std::convert::Into;
+use std::convert::{Into, AsMut, AsRef};
 
 use limits_core::json::GenericCpuLimit;
 
-use crate::settings::MinMax;
+use crate::settings::{MinMax, min_max_from_json};
 use crate::settings::{OnResume, OnSet, SettingError};
 use crate::settings::{TCpus, TCpu};
 use crate::persist::CpuJson;
+use super::FromGenericCpuInfo;
 
 const CPU_PRESENT_PATH: &str = "/sys/devices/system/cpu/present";
 const CPU_SMT_PATH: &str = "/sys/devices/system/cpu/smt/control";
 
 #[derive(Debug, Clone)]
-pub struct Cpus {
-    pub cpus: Vec<Cpu>,
+pub struct Cpus<C: AsMut<Cpu> + AsRef<Cpu> + TCpu> {
+    pub cpus: Vec<C>,
     pub smt: bool,
     pub smt_capable: bool,
 }
 
-impl OnSet for Cpus {
+impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + OnSet> OnSet for Cpus<C> {
     fn on_set(&mut self) -> Result<(), SettingError> {
         if self.smt_capable {
             // toggle SMT
@@ -44,14 +45,14 @@ impl OnSet for Cpus {
             }
         }
         for (i, cpu) in self.cpus.as_mut_slice().iter_mut().enumerate() {
-            cpu.state.do_set_online = self.smt || i % 2 == 0 || !self.smt_capable;
+            cpu.as_mut().state.do_set_online = self.smt || i % 2 == 0 || !self.smt_capable;
             cpu.on_set()?;
         }
         Ok(())
     }
 }
 
-impl OnResume for Cpus {
+impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + OnResume> OnResume for Cpus<C> {
     fn on_resume(&self) -> Result<(), SettingError> {
         for cpu in &self.cpus {
             cpu.on_resume()?;
@@ -60,7 +61,7 @@ impl OnResume for Cpus {
     }
 }
 
-impl Cpus {
+impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + FromGenericCpuInfo> Cpus<C> {
     pub fn cpu_count() -> Option<usize> {
         let mut data: String = usdpl_back::api::files::read_single(CPU_PRESENT_PATH)
             .unwrap_or_else(|_| "0-7".to_string() /* Steam Deck's default */);
@@ -86,7 +87,7 @@ impl Cpus {
         let (_, can_smt) = Self::system_smt_capabilities();
         let mut new_cpus = Vec::with_capacity(cpu_count);
         for i in 0..cpu_count {
-            let new_cpu = Cpu::from_limits(i, limits.clone());
+            let new_cpu = C::from_limits(i, limits.clone());
             new_cpus.push(new_cpu);
         }
         Self {
@@ -108,8 +109,8 @@ impl Cpus {
                     break;
                 }
             }
-            let new_cpu = Cpu::from_json_and_limits(cpu, version, i, limits.clone());
-            smt_disabled &= new_cpu.online as usize != i % 2;
+            let mut new_cpu = C::from_json_and_limits(cpu, version, i, limits.clone());
+            smt_disabled &= *new_cpu.online() as usize != i % 2;
             result.push(new_cpu);
         }
         if let Some(max_cpus) = max_cpus {
@@ -128,17 +129,17 @@ impl Cpus {
     }
 }
 
-impl TCpus for Cpus {
+impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + OnResume + OnSet> TCpus for Cpus<C> {
     fn limits(&self) -> crate::api::CpusLimits {
         crate::api::CpusLimits {
-            cpus: self.cpus.iter().map(|x| x.limits()).collect(),
+            cpus: self.cpus.iter().map(|x| x.as_ref().limits()).collect(),
             count: self.cpus.len(),
             smt_capable: self.smt_capable,
         }
     }
 
     fn json(&self) -> Vec<crate::persist::CpuJson> {
-        self.cpus.iter().map(|x| x.to_owned().into()).collect()
+        self.cpus.iter().map(|x| x.as_ref().to_owned().into()).collect()
     }
 
     fn cpus(&mut self) -> Vec<&mut dyn TCpu> {
@@ -162,18 +163,40 @@ impl TCpus for Cpus {
 pub struct Cpu {
     pub online: bool,
     pub governor: String,
+    pub clock_limits: Option<MinMax<u64>>,
     limits: GenericCpuLimit,
     index: usize,
     state: crate::state::steam_deck::Cpu,
 }
 
-
 impl Cpu {
     #[inline]
-    pub fn from_limits(cpu_index: usize, limits: GenericCpuLimit) -> Self {
+    pub fn index(&self) -> usize {
+        self.index
+    }
+}
+
+impl AsRef<Cpu> for Cpu {
+    #[inline]
+    fn as_ref(&self) -> &Cpu {
+        self
+    }
+}
+
+impl AsMut<Cpu> for Cpu {
+    #[inline]
+    fn as_mut(&mut self) -> &mut Cpu {
+        self
+    }
+}
+
+impl FromGenericCpuInfo for Cpu {
+    #[inline]
+    fn from_limits(cpu_index: usize, limits: GenericCpuLimit) -> Self {
         Self {
             online: true,
             governor: "schedutil".to_owned(),
+            clock_limits: None,
             limits,
             index: cpu_index,
             state: crate::state::steam_deck::Cpu::default(),
@@ -181,11 +204,17 @@ impl Cpu {
     }
 
     #[inline]
-    pub fn from_json_and_limits(other: CpuJson, version: u64, i: usize, limits: GenericCpuLimit) -> Self {
+    fn from_json_and_limits(other: CpuJson, version: u64, i: usize, limits: GenericCpuLimit) -> Self {
+        let clock_lims = if limits.clock_min.is_some() && limits.clock_max.is_some() {
+            other.clock_limits.map(|x| min_max_from_json(x, version))
+        } else {
+            None
+        };
         match version {
             0 => Self {
                 online: other.online,
                 governor: other.governor,
+                clock_limits: clock_lims,
                 limits,
                 index: i,
                 state: crate::state::steam_deck::Cpu::default(),
@@ -193,13 +222,16 @@ impl Cpu {
             _ => Self {
                 online: other.online,
                 governor: other.governor,
+                clock_limits: clock_lims,
                 limits,
                 index: i,
                 state: crate::state::steam_deck::Cpu::default(),
             },
         }
     }
+}
 
+impl Cpu {
     fn set_all(&mut self) -> Result<(), SettingError> {
         // set cpu online/offline
         if self.index != 0 && self.state.do_set_online { // cpu0 cannot be disabled
@@ -270,7 +302,7 @@ impl Into<CpuJson> for Cpu {
     fn into(self) -> CpuJson {
         CpuJson {
             online: self.online,
-            clock_limits: None,
+            clock_limits: self.clock_limits.map(|x| x.into()),
             governor: self.governor,
         }
     }
@@ -305,12 +337,13 @@ impl TCpu for Cpu {
     }
 
     fn clock_limits(&mut self, limits: Option<MinMax<u64>>) {
-        self.limits.clock_min = limits.clone();
-        self.limits.clock_max = limits.clone();
+        if self.limits.clock_min.is_some() && self.limits.clock_max.is_some() {
+            self.clock_limits = limits;
+        }
     }
 
     fn get_clock_limits(&self) -> Option<&MinMax<u64>> {
-        self.limits.clock_max.as_ref()
+        self.clock_limits.as_ref()
     }
 }
 

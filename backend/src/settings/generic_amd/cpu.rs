@@ -1,12 +1,12 @@
 use crate::persist::CpuJson;
 use crate::settings::MinMax;
-use crate::settings::generic::{Cpu as GenericCpu, Cpus as GenericCpus};
+use crate::settings::generic::{Cpu as GenericCpu, Cpus as GenericCpus, FromGenericCpuInfo};
 use crate::settings::{OnResume, OnSet, SettingError};
 use crate::settings::{TCpus, TCpu};
 
 #[derive(Debug)]
 pub struct Cpus {
-    generic: GenericCpus,
+    generic: GenericCpus<Cpu>,
 }
 
 impl Cpus {
@@ -68,6 +68,48 @@ pub struct Cpu {
     generic: GenericCpu,
 }
 
+impl FromGenericCpuInfo for Cpu {
+    fn from_limits(cpu_index: usize, limits: limits_core::json::GenericCpuLimit) -> Self {
+        let gen = GenericCpu::from_limits(cpu_index, limits.clone());
+        Self {
+            generic: gen,
+        }
+    }
+
+    fn from_json_and_limits(other: CpuJson, version: u64, cpu_index: usize, limits: limits_core::json::GenericCpuLimit) -> Self {
+        let gen = GenericCpu::from_json_and_limits(other, version, cpu_index, limits);
+        Self {
+            generic: gen,
+        }
+    }
+}
+
+impl AsRef<GenericCpu> for Cpu {
+    fn as_ref(&self) -> &GenericCpu {
+        &self.generic
+    }
+}
+
+impl AsMut<GenericCpu> for Cpu {
+    fn as_mut(&mut self) -> &mut GenericCpu {
+        &mut self.generic
+    }
+}
+
+impl OnResume for Cpu {
+    fn on_resume(&self) -> Result<(), SettingError> {
+        self.generic.on_resume()
+        // TODO
+    }
+}
+
+impl OnSet for Cpu {
+    fn on_set(&mut self) -> Result<(), SettingError> {
+        self.generic.on_set()
+        // TODO
+    }
+}
+
 impl TCpu for Cpu {
     fn online(&mut self) -> &mut bool {
         self.generic.online()
@@ -82,10 +124,10 @@ impl TCpu for Cpu {
     }
 
     fn clock_limits(&mut self, limits: Option<MinMax<u64>>) {
-        self.generic.clock_limits(limits) // TODO
+        self.generic.clock_limits(limits)
     }
 
     fn get_clock_limits(&self) -> Option<&MinMax<u64>> {
-        self.generic.get_clock_limits() // TODO
+        self.generic.get_clock_limits()
     }
 }

@@ -97,7 +97,7 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
                             let cpu_driver: Box<dyn TCpus> = match cpus {
                                 CpuLimit::SteamDeck => Box::new(crate::settings::steam_deck::Cpus::from_json(settings.cpus.clone(), settings.version)),
                                 CpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck::Cpus::from_json(settings.cpus.clone(), settings.version)),
-                                CpuLimit::Generic(x) => Box::new(crate::settings::generic::Cpus::from_json_and_limits(settings.cpus.clone(), settings.version, x)),
+                                CpuLimit::Generic(x) => Box::new(crate::settings::generic::Cpus::<crate::settings::generic::Cpu>::from_json_and_limits(settings.cpus.clone(), settings.version, x)),
                                 CpuLimit::GenericAMD(x) => Box::new(crate::settings::generic_amd::Cpus::from_json_and_limits(settings.cpus.clone(), settings.version, x)),
                                 CpuLimit::Unknown => Box::new(crate::settings::unknown::Cpus::from_json(settings.cpus.clone(), settings.version)),
                             };
@@ -131,7 +131,7 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
                             let cpu_driver: Box<dyn TCpus> = match cpus {
                                 CpuLimit::SteamDeck => Box::new(crate::settings::steam_deck::Cpus::system_default()),
                                 CpuLimit::SteamDeckAdvance => Box::new(crate::settings::steam_deck::Cpus::system_default()),
-                                CpuLimit::Generic(x) => Box::new(crate::settings::generic::Cpus::from_limits(x)),
+                                CpuLimit::Generic(x) => Box::new(crate::settings::generic::Cpus::<crate::settings::generic::Cpu>::from_limits(x)),
                                 CpuLimit::GenericAMD(x) => Box::new(crate::settings::generic_amd::Cpus::from_limits(x)),
                                 CpuLimit::Unknown => Box::new(crate::settings::unknown::Cpus::system_default()),
                             };

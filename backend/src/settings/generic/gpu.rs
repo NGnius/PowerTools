@@ -2,14 +2,17 @@ use std::convert::Into;
 
 use limits_core::json::GenericGpuLimit;
 
-use crate::settings::MinMax;
+use crate::settings::{MinMax, min_max_from_json};
 use crate::settings::{OnResume, OnSet, SettingError};
 use crate::settings::TGpu;
 use crate::persist::GpuJson;
 
 #[derive(Debug, Clone)]
 pub struct Gpu {
-    slow_memory: bool, // ignored
+    slow_memory: bool,
+    fast_ppt: Option<u64>,
+    slow_ppt: Option<u64>,
+    clock_limits: Option<MinMax<u64>>,
     limits: GenericGpuLimit,
 }
 
@@ -30,13 +33,24 @@ impl Gpu {
     pub fn from_limits(limits: limits_core::json::GenericGpuLimit) -> Self {
         Self {
             slow_memory: false,
+            fast_ppt: None,
+            slow_ppt: None,
+            clock_limits: None,
             limits,
         }
     }
 
-    pub fn from_json_and_limits(_other: GpuJson, _version: u64, limits: limits_core::json::GenericGpuLimit) -> Self {
+    pub fn from_json_and_limits(other: GpuJson, version: u64, limits: limits_core::json::GenericGpuLimit) -> Self {
+        let clock_lims = if limits.clock_min.is_some() && limits.clock_max.is_some() {
+            other.clock_limits.map(|x| min_max_from_json(x, version))
+        } else {
+            None
+        };
         Self {
             slow_memory: false,
+            fast_ppt: if limits.fast_ppt.is_some() {other.fast_ppt} else {None},
+            slow_ppt: if limits.slow_ppt.is_some() {other.slow_ppt} else {None},
+            clock_limits: clock_lims,
             limits,
         }
     }
@@ -46,9 +60,9 @@ impl Into<GpuJson> for Gpu {
     #[inline]
     fn into(self) -> GpuJson {
         GpuJson {
-            fast_ppt: None,
-            slow_ppt: None,
-            clock_limits: None,
+            fast_ppt: self.fast_ppt,
+            slow_ppt: self.slow_ppt,
+            clock_limits: self.clock_limits.map(|x| x.into()),
             slow_memory: false,
         }
     }
@@ -86,18 +100,27 @@ impl TGpu for Gpu {
         self.clone().into()
     }
 
-    fn ppt(&mut self, _fast: Option<u64>, _slow: Option<u64>) {
+    fn ppt(&mut self, fast: Option<u64>, slow: Option<u64>) {
+        if self.limits.fast_ppt.is_some() {
+            self.fast_ppt = fast;
+        }
+        if self.limits.slow_ppt.is_some() {
+            self.slow_ppt = slow;
+        }
     }
 
     fn get_ppt(&self) -> (Option<u64>, Option<u64>) {
-        (None, None)
+        (self.fast_ppt, self.slow_ppt)
     }
 
-    fn clock_limits(&mut self, _limits: Option<MinMax<u64>>) {
+    fn clock_limits(&mut self, limits: Option<MinMax<u64>>) {
+        if self.limits.clock_min.is_some() && self.limits.clock_max.is_some() {
+            self.clock_limits = limits;
+        }
     }
 
     fn get_clock_limits(&self) -> Option<&MinMax<u64>> {
-        None
+        self.clock_limits.as_ref()
     }
 
     fn slow_memory(&mut self) -> &mut bool {

@@ -47,15 +47,15 @@ impl TGpu for Gpu {
     }
 
     fn ppt(&mut self, fast: Option<u64>, slow: Option<u64>) {
-        // TODO
+        self.generic.ppt(fast, slow)
     }
 
     fn get_ppt(&self) -> (Option<u64>, Option<u64>) {
-        self.generic.get_ppt() // TODO
+        self.generic.get_ppt()
     }
 
     fn clock_limits(&mut self, limits: Option<MinMax<u64>>) {
-        // TODO
+        self.generic.clock_limits(limits)
     }
 
     fn get_clock_limits(&self) -> Option<&MinMax<u64>> {
