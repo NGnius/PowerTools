@@ -9,10 +9,10 @@ use crate::persist::GpuJson;
 
 #[derive(Debug, Clone)]
 pub struct Gpu {
-    slow_memory: bool,
-    fast_ppt: Option<u64>,
-    slow_ppt: Option<u64>,
-    clock_limits: Option<MinMax<u64>>,
+    pub slow_memory: bool,
+    pub fast_ppt: Option<u64>,
+    pub slow_ppt: Option<u64>,
+    pub clock_limits: Option<MinMax<u64>>,
     limits: GenericGpuLimit,
 }
 
@@ -101,11 +101,11 @@ impl TGpu for Gpu {
     }
 
     fn ppt(&mut self, fast: Option<u64>, slow: Option<u64>) {
-        if self.limits.fast_ppt.is_some() {
-            self.fast_ppt = fast;
+        if let Some(fast_lims) = &self.limits.fast_ppt {
+            self.fast_ppt = fast.map(|x| x.clamp(fast_lims.min, fast_lims.max));
         }
-        if self.limits.slow_ppt.is_some() {
-            self.slow_ppt = slow;
+        if let Some(slow_lims) = &self.limits.slow_ppt {
+            self.slow_ppt = slow.map(|x| x.clamp(slow_lims.min, slow_lims.max));
         }
     }
 
@@ -114,8 +114,14 @@ impl TGpu for Gpu {
     }
 
     fn clock_limits(&mut self, limits: Option<MinMax<u64>>) {
-        if self.limits.clock_min.is_some() && self.limits.clock_max.is_some() {
-            self.clock_limits = limits;
+        if let Some(clock_min) = &self.limits.clock_min {
+            if let Some(clock_max) = &self.limits.clock_max {
+                self.clock_limits = limits.map(|mut x| {
+                    x.min = x.min.clamp(clock_min.min, clock_min.max);
+                    x.max = x.max.clamp(clock_max.max, clock_max.max);
+                    x
+                });
+            }
         }
     }
 

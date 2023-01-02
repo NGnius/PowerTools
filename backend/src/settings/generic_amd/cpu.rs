@@ -123,8 +123,9 @@ impl TCpu for Cpu {
         self.generic.get_governor()
     }
 
-    fn clock_limits(&mut self, limits: Option<MinMax<u64>>) {
-        self.generic.clock_limits(limits)
+    fn clock_limits(&mut self, _limits: Option<MinMax<u64>>) {
+        //self.generic.clock_limits(limits)
+        // TODO: support this
     }
 
     fn get_clock_limits(&self) -> Option<&MinMax<u64>> {

@@ -169,12 +169,12 @@ pub struct Cpu {
     state: crate::state::steam_deck::Cpu,
 }
 
-impl Cpu {
+/*impl Cpu {
     #[inline]
     pub fn index(&self) -> usize {
         self.index
     }
-}
+}*/
 
 impl AsRef<Cpu> for Cpu {
     #[inline]
