@@ -21,7 +21,7 @@ simplelog = "0.12"
 # limits & driver functionality
 limits_core = { version = "0.1.0", path = "./limits_core" }
 regex = "1"
-ryzenadj-rs = { version = "0.1", path = "../../ryzenadj-rs" }
+ryzenadj-rs = { version = "0.1" }
 # ureq's tls feature does not like musl targets
 ureq = { version = "2.5", features = ["json", "gzip", "brotli", "charset"], default-features = false, optional = true }
 

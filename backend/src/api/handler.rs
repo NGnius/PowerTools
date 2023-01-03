@@ -17,6 +17,7 @@ pub enum ApiMessage {
     LoadMainSettings,
     LoadSystemSettings,
     GetLimits(Callback<super::SettingsLimits>),
+    GetProvider(String, Callback<crate::persist::DriverJson>),
 }
 
 pub enum BatteryMessage {
@@ -221,6 +222,14 @@ impl ApiMessageHandler {
                     gpu: settings.gpu.limits(),
                     general: settings.general.limits(),
                 });
+            },
+            ApiMessage::GetProvider(name, cb) => {
+                cb(match &name as &str {
+                    "battery" => settings.battery.provider(),
+                    "cpu" | "cpus" => settings.cpus.provider(),
+                    "gpu" => settings.gpu.provider(),
+                    _ => settings.general.provider(),
+                })
             }
         }
     }

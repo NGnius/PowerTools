@@ -886,6 +886,8 @@ checksum = "4501abdff3ae82a1c1b477a17252eb69cee9e66eb915c1abaa4f44d873df9f09"
 [[package]]
 name = "ryzenadj-rs"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc77f2824d9c46759ba4907c8d3c3ca7131593a41fc389335bcdfda339a866bd"
 dependencies = [
  "bindgen",
 ]

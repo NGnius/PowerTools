@@ -178,6 +178,35 @@ pub fn get_limits(
     }
 }
 
+/// Generate get current driver name
+pub fn get_provider(
+    sender: Sender<ApiMessage>,
+) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move |provider_name: String| {
+            let (tx, rx) = mpsc::channel();
+            let callback = move |name: crate::persist::DriverJson| tx.send(name).expect("get_provider callback send failed");
+            sender2.lock().unwrap().send(ApiMessage::GetProvider(provider_name, Box::new(callback))).expect("get_provider send failed");
+            rx.recv().expect("get_provider callback recv failed")
+        }
+    };
+    super::async_utils::AsyncIsh {
+        trans_setter: |mut params| {
+            if let Some(Primitive::String(name)) = params.pop() {
+                Ok(name.to_owned())
+            } else {
+                Err(format!("Invalid/missing single param in get_provider"))
+            }
+        },
+        set_get: getter,
+        trans_getter: |result| {
+            vec![format!("{:?}", result).into()]
+        }
+    }
+}
+
 pub fn gunter(_: super::ApiParameterType) -> super::ApiParameterType {
     std::thread::spawn(|| {
         log::info!("Zhu Li, do the thing!");

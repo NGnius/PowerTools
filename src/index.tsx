@@ -46,6 +46,7 @@ type MinMax = {
 // usdpl persistent store keys
 
 const BACKEND_INFO = "VINFO";
+const DRIVER_INFO = "GENERAL_provider";
 
 const LIMITS_INFO = "LIMITS_all";
 
@@ -144,6 +145,7 @@ const reload = function() {
   backend.resolve(backend.getGeneralSettingsName(), (name: string) => { set_value(NAME_GEN, name) });
 
   backend.resolve(backend.getInfo(), (info: string) => { set_value(BACKEND_INFO, info) });
+  backend.resolve(backend.getDriverProviderName("gpu"), (driver: string) => { set_value(DRIVER_INFO, driver) });
 };
 
 // init USDPL WASM and connection to back-end
@@ -840,6 +842,13 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           label="Framework"
           onClick={()=> eggCount++}>
           {eggCount % 10 == 9 ? "<3 <3 <3" : target_usdpl()}
+        </Field>
+      </PanelSectionRow>
+      <PanelSectionRow>
+        <Field
+          label="Driver"
+          onClick={()=> eggCount++}>
+          {eggCount % 10 == 9 ? "Tracy Chapman" : get_value(DRIVER_INFO)}
         </Field>
       </PanelSectionRow>
       <PanelSectionRow>

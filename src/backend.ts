@@ -227,6 +227,10 @@ export async function getLimits(): Promise<SettingsLimits> {
     return (await call_backend("GENERAL_get_limits", []))[0];
 }
 
+export async function getDriverProviderName(name: string): Promise<string> {
+    return (await call_backend("GENERAL_get_provider", [name]))[0];
+}
+
 export async function idk(): Promise<boolean> {
     return (await call_backend("GENERAL_idk", []))[0];
 }

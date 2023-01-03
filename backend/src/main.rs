@@ -212,6 +212,10 @@ fn main() -> Result<(), ()> {
             "GENERAL_get_limits",
             api::general::get_limits(api_sender.clone())
         )
+        .register_async(
+            "GENERAL_get_provider",
+            api::general::get_provider(api_sender.clone())
+        )
         .register("GENERAL_idk", api::general::gunter);
 
     api_worker::spawn(loaded_settings, api_handler);
