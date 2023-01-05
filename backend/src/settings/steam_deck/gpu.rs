@@ -18,6 +18,7 @@ pub struct Gpu {
     pub slow_memory: bool,
     limits: GpuLimits,
     state: crate::state::steam_deck::Gpu,
+    driver_mode: crate::persist::DriverJson,
 }
 
 // same as CPU
@@ -28,23 +29,26 @@ const GPU_MEMORY_DOWNCLOCK_PATH: &str = "/sys/class/drm/card0/device/pp_dpm_fclk
 impl Gpu {
     #[inline]
     pub fn from_json(other: GpuJson, version: u64) -> Self {
-        let oc_limits = OverclockLimits::load_or_default().gpu;
+        let (oc_limits, is_default) = OverclockLimits::load_or_default();
+        let driver = if is_default { crate::persist::DriverJson::SteamDeck } else { crate::persist::DriverJson::SteamDeckAdvance };
         match version {
             0 => Self {
                 fast_ppt: other.fast_ppt,
                 slow_ppt: other.slow_ppt,
                 clock_limits: other.clock_limits.map(|x| min_max_from_json(x, version)),
                 slow_memory: other.slow_memory,
-                limits: oc_limits,
+                limits: oc_limits.gpu,
                 state: crate::state::steam_deck::Gpu::default(),
+                driver_mode: driver,
             },
             _ => Self {
                 fast_ppt: other.fast_ppt,
                 slow_ppt: other.slow_ppt,
                 clock_limits: other.clock_limits.map(|x| min_max_from_json(x, version)),
                 slow_memory: other.slow_memory,
-                limits: oc_limits,
+                limits: oc_limits.gpu,
                 state: crate::state::steam_deck::Gpu::default(),
+                driver_mode: driver,
             },
         }
     }
@@ -178,14 +182,15 @@ impl Gpu {
     }
 
     pub fn system_default() -> Self {
-        let oc_limits = OverclockLimits::load_or_default().gpu;
+        let (oc_limits, is_default) = OverclockLimits::load_or_default();
         Self {
             fast_ppt: None,
             slow_ppt: None,
             clock_limits: None,
             slow_memory: false,
-            limits: oc_limits,
+            limits: oc_limits.gpu,
             state: crate::state::steam_deck::Gpu::default(),
+            driver_mode: if is_default { crate::persist::DriverJson::SteamDeck } else { crate::persist::DriverJson::SteamDeckAdvance },
         }
     }
 }
@@ -273,7 +278,7 @@ impl TGpu for Gpu {
     }
 
     fn provider(&self) -> crate::persist::DriverJson {
-        crate::persist::DriverJson::SteamDeck
+        self.driver_mode.clone()
     }
 }
 

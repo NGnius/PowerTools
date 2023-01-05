@@ -13,6 +13,7 @@ pub struct Battery {
     pub charge_mode: Option<ChargeMode>,
     limits: BatteryLimits,
     state: crate::state::steam_deck::Battery,
+    driver_mode: crate::persist::DriverJson,
 }
 
 const BATTERY_VOLTAGE: f64 = 7.7;
@@ -26,19 +27,23 @@ const BATTERY_CHARGE_DESIGN_PATH: &str = "/sys/class/hwmon/hwmon2/device/charge_
 impl Battery {
     #[inline]
     pub fn from_json(other: BatteryJson, version: u64) -> Self {
-        let oc_limits = OverclockLimits::load_or_default().battery;
+        let (oc_limits, is_default) = OverclockLimits::load_or_default();
+        let oc_limits = oc_limits.battery;
+        let driver = if is_default { crate::persist::DriverJson::SteamDeck } else { crate::persist::DriverJson::SteamDeckAdvance };
         match version {
             0 => Self {
                 charge_rate: other.charge_rate,
                 charge_mode: other.charge_mode.map(|x| Self::str_to_charge_mode(&x)).flatten(),
                 limits: oc_limits,
                 state: crate::state::steam_deck::Battery::default(),
+                driver_mode: driver,
             },
             _ => Self {
                 charge_rate: other.charge_rate,
                 charge_mode: other.charge_mode.map(|x| Self::str_to_charge_mode(&x)).flatten(),
                 limits: oc_limits,
                 state: crate::state::steam_deck::Battery::default(),
+                driver_mode: driver,
             },
         }
     }
@@ -184,12 +189,15 @@ impl Battery {
     }
 
     pub fn system_default() -> Self {
-        let oc_limits = OverclockLimits::load_or_default().battery;
+        let (oc_limits, is_default) = OverclockLimits::load_or_default();
+        let oc_limits = oc_limits.battery;
+        let driver = if is_default { crate::persist::DriverJson::SteamDeck } else { crate::persist::DriverJson::SteamDeckAdvance };
         Self {
             charge_rate: None,
             charge_mode: None,
             limits: oc_limits,
             state: crate::state::steam_deck::Battery::default(),
+            driver_mode: driver,
         }
     }
 }
@@ -290,6 +298,6 @@ impl TBattery for Battery {
     }
 
     fn provider(&self) -> crate::persist::DriverJson {
-        crate::persist::DriverJson::SteamDeck
+        self.driver_mode.clone()
     }
 }

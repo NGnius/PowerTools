@@ -12,6 +12,7 @@ export function resolve<T>(promise: Promise<T>, setter: (t: T) => void) {
             setter(data);
         } else {
             console.warn("Resolve failed:", data);
+            log(LogLevel.Warn, "");
         }
     })();
 }
@@ -229,6 +230,18 @@ export async function getLimits(): Promise<SettingsLimits> {
 
 export async function getDriverProviderName(name: string): Promise<string> {
     return (await call_backend("GENERAL_get_provider", [name]))[0];
+}
+
+export enum LogLevel {
+    Trace = 1,
+    Debug = 2,
+    Info = 3,
+    Warn = 4,
+    Error = 5,
+}
+
+export async function log(level: LogLevel, msg: string): Promise<boolean> {
+    return (await call_backend("LOG", [level, msg]))[0];
 }
 
 export async function idk(): Promise<boolean> {

@@ -104,7 +104,7 @@ const reload = function() {
 
   backend.resolve(backend.getLimits(), (limits) => {
     set_value(LIMITS_INFO, limits);
-    console.debug("POWERTOOLS: got limits", limits);
+    console.debug("POWERTOOLS: got limits ", limits);
   });
 
   backend.resolve(backend.getBatteryCurrent(), (rate: number) => { set_value(CURRENT_BATT, rate) });
@@ -128,7 +128,7 @@ const reload = function() {
   });
   backend.resolve(backend.getCpusGovernor(), (governors: string[]) => {
     set_value(GOVERNOR_CPU, governors);
-    console.log("POWERTOOLS: Governors from backend", governors);
+    backend.log(backend.LogLevel.Info, "POWERTOOLS: Governors from backend " + governors.toString());
   });
 
   backend.resolve(backend.getGpuPpt(), (ppts: number[]) => {
@@ -159,12 +159,12 @@ const reload = function() {
   //@ts-ignore
   lifetimeHook = SteamClient.GameSessions.RegisterForAppLifetimeNotifications((update) => {
       if (update.bRunning) {
-          //console.debug("AppID " + update.unAppID.toString() + " is now running");
+          //backend.log(backend.LogLevel.Debug, "AppID " + update.unAppID.toString() + " is now running");
       } else {
-          //console.debug("AppID " + update.unAppID.toString() + " is no longer running");
+          //backend.log(backend.LogLevel.Debug, "AppID " + update.unAppID.toString() + " is no longer running");
           backend.resolve(
             backend.loadGeneralDefaultSettings(),
-            (ok: boolean) => {console.debug("Loading default settings ok? " + ok)}
+            (ok: boolean) => {backend.log(backend.LogLevel.Debug, "Loading default settings ok? " + ok)}
           );
       }
   });
@@ -175,11 +175,11 @@ const reload = function() {
       // don't use gameInfo.appid, haha
       backend.resolve(
         backend.loadGeneralSettings(id.toString() + ".json", gameInfo.display_name),
-        (ok: boolean) => {console.debug("Loading settings ok? " + ok)}
+        (ok: boolean) => {backend.log(backend.LogLevel.Debug, "Loading settings ok? " + ok)}
       );
   });
 
-  console.debug("Registered PowerTools callbacks, hello!");
+  backend.log(backend.LogLevel.Debug, "Registered PowerTools callbacks, hello!");
 })();
 
 const periodicals = function() {
@@ -250,7 +250,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           label="SMT"
           description="Enables odd-numbered CPUs"
           onChange={(smt: boolean) => {
-            console.debug("SMT is now " + smt.toString());
+            backend.log(backend.LogLevel.Debug, "SMT is now " + smt.toString());
             const cpus = get_value(ONLINE_CPUS);
             const smtNow = smt && smtAllowed;
             backend.resolve(backend.setCpuSmt(smtNow), (newVal: boolean) => {
@@ -280,7 +280,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           min={1}
           showValue={true}
           onChange={(cpus: number) => {
-            console.debug("CPU slider is now " + cpus.toString());
+            backend.log(backend.LogLevel.Debug, "CPU slider is now " + cpus.toString());
             const onlines = get_value(ONLINE_CPUS);
             if (cpus != onlines) {
               set_value(ONLINE_CPUS, cpus);
@@ -340,7 +340,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           showValue={true}
           disabled={get_value(CLOCK_MIN_CPU) == null}
           onChange={(freq: number) => {
-            console.debug("Min freq slider is now " + freq.toString());
+            backend.log(backend.LogLevel.Debug, "Min freq slider is now " + freq.toString());
             const freqNow = get_value(CLOCK_MIN_CPU);
             if (freq != freqNow) {
               set_value(CLOCK_MIN_CPU, freq);
@@ -370,7 +370,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           showValue={true}
           disabled={get_value(CLOCK_MAX_CPU) == null}
           onChange={(freq: number) => {
-            console.debug("Max freq slider is now " + freq.toString());
+            backend.log(backend.LogLevel.Debug, "Max freq slider is now " + freq.toString());
             const freqNow = get_value(CLOCK_MAX_CPU);
             if (freq != freqNow) {
               set_value(CLOCK_MAX_CPU, freq);
@@ -410,7 +410,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           label="Online"
           description="Allow the CPU thread to do work"
           onChange={(status: boolean) => {
-            console.debug("CPU " + advancedCpu.toString() + " is now " + status.toString());
+            backend.log(backend.LogLevel.Debug, "CPU " + advancedCpu.toString() + " is now " + status.toString());
             if (get_value(SMT_CPU)) {
               backend.resolve(backend.setCpuSmt(false), (newVal: boolean) => {
                 set_value(SMT_CPU, newVal);
@@ -463,7 +463,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           showValue={true}
           disabled={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].min == null}
           onChange={(freq: number) => {
-            console.debug("Min freq slider for " + advancedCpu.toString() + " is now " + freq.toString());
+            backend.log(backend.LogLevel.Debug, "Min freq slider for " + advancedCpu.toString() + " is now " + freq.toString());
             const freqNow = get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex] as MinMax;
             if (freq != freqNow.min) {
               backend.resolve(backend.setCpuClockLimits(advancedCpuIndex, freq, freqNow.max!),
@@ -488,7 +488,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           showValue={true}
           disabled={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].max == null}
           onChange={(freq: number) => {
-            console.debug("Max freq slider for " + advancedCpu.toString() + " is now " + freq.toString());
+            backend.log(backend.LogLevel.Debug, "Max freq slider for " + advancedCpu.toString() + " is now " + freq.toString());
             const freqNow = get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex] as MinMax;
             if (freq != freqNow.max) {
               backend.resolve(backend.setCpuClockLimits(advancedCpuIndex, freqNow.min!, freq),
@@ -511,13 +511,13 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             menuLabel="Governor"
             rgOptions={governorOptions}
             selectedOption={governorOptions.find((val: SingleDropdownOption, _index, _arr) => {
-              console.debug("POWERTOOLS: array item", val);
-              console.debug("POWERTOOLS: looking for data", get_value(GOVERNOR_CPU)[advancedCpuIndex]);
+              backend.log(backend.LogLevel.Debug, "POWERTOOLS: array item " +  val.toString());
+              backend.log(backend.LogLevel.Debug, "POWERTOOLS: looking for data " + get_value(GOVERNOR_CPU)[advancedCpuIndex].toString());
               return val.data == get_value(GOVERNOR_CPU)[advancedCpuIndex];
             })}
             strDefaultLabel={get_value(GOVERNOR_CPU)[advancedCpuIndex]}
             onChange={(elem: SingleDropdownOption) => {
-              console.debug("Governor dropdown selected", elem);
+              backend.log(backend.LogLevel.Debug, "Governor dropdown selected " + elem.data.toString());
               backend.resolve(backend.setCpuGovernor(advancedCpuIndex, elem.data as string), (gov: string) => {
                 const governors = get_value(GOVERNOR_CPU);
                 governors[advancedCpuIndex] = gov;
@@ -567,7 +567,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           showValue={true}
           disabled={get_value(SLOW_PPT_GPU) == null}
           onChange={(ppt: number) => {
-            console.debug("SlowPPT is now " + ppt.toString());
+            backend.log(backend.LogLevel.Debug, "SlowPPT is now " + ppt.toString());
             const pptNow = get_value(SLOW_PPT_GPU);
             const realPpt = ppt;
             if (realPpt != pptNow) {
@@ -591,7 +591,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           showValue={true}
           disabled={get_value(FAST_PPT_GPU) == null}
           onChange={(ppt: number) => {
-            console.debug("FastPPT is now " + ppt.toString());
+            backend.log(backend.LogLevel.Debug, "FastPPT is now " + ppt.toString());
             const pptNow = get_value(FAST_PPT_GPU);
             const realPpt = ppt;
             if (realPpt != pptNow) {
@@ -641,7 +641,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           showValue={true}
           disabled={get_value(CLOCK_MIN_GPU) == null}
           onChange={(val: number) => {
-            console.debug("GPU Clock Min is now " + val.toString());
+            backend.log(backend.LogLevel.Debug, "GPU Clock Min is now " + val.toString());
             const valNow = get_value(CLOCK_MIN_GPU);
             if (val != valNow) {
               backend.resolve(backend.setGpuClockLimits(val, get_value(CLOCK_MAX_GPU)),
@@ -664,7 +664,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           showValue={true}
           disabled={get_value(CLOCK_MAX_GPU) == null}
           onChange={(val: number) => {
-            console.debug("GPU Clock Max is now " + val.toString());
+            backend.log(backend.LogLevel.Debug, "GPU Clock Max is now " + val.toString());
             const valNow = get_value(CLOCK_MAX_GPU);
             if (val != valNow) {
               backend.resolve(backend.setGpuClockLimits(get_value(CLOCK_MIN_GPU), val),
@@ -736,7 +736,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           showValue={true}
           disabled={get_value(CHARGE_RATE_BATT) == null}
           onChange={(val: number) => {
-            console.debug("Charge rate is now " + val.toString());
+            backend.log(backend.LogLevel.Debug, "Charge rate is now " + val.toString());
             const rateNow = get_value(CHARGE_RATE_BATT);
             if (val != rateNow) {
               backend.resolve(backend.setBatteryChargeRate(val),
@@ -776,7 +776,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             })}
             strDefaultLabel={get_value(CHARGE_MODE_BATT)}
             onChange={(elem: SingleDropdownOption) => {
-              console.debug("Charge mode dropdown selected", elem);
+              backend.log(backend.LogLevel.Debug, "Charge mode dropdown selected " + elem.data.toString());
               backend.resolve(backend.setBatteryChargeMode(elem.data as string), (mode: string) => {
                 set_value(CHARGE_MODE_BATT, mode);
                 reloadGUI("BATTChargeMode");
@@ -803,7 +803,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           label="Persistent"
           description="Save profile and load it next time"
           onChange={(persist: boolean) => {
-            console.debug("Persist is now " + persist.toString());
+            backend.log(backend.LogLevel.Debug, "Persist is now " + persist.toString());
             backend.resolve(
               backend.setGeneralPersistent(persist),
               (val: boolean) => {set_value(PERSISTENT_GEN, val)}
@@ -879,7 +879,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
         <ButtonItem
           layout="below"
           onClick={(_: MouseEvent) => {
-            console.debug("Loading default PowerTools settings");
+            backend.log(backend.LogLevel.Debug, "Loading default PowerTools settings");
             backend.resolve(
               backend.setGeneralPersistent(false),
               (val: boolean) => {
@@ -905,13 +905,13 @@ export default definePlugin((serverApi: ServerAPI) => {
     content: <Content serverAPI={serverApi} />,
     icon: <GiDrill />,
     onDismount() {
-      console.debug("PowerTools shutting down");
+      backend.log(backend.LogLevel.Debug, "PowerTools shutting down");
       clearInterval(periodicHook!);
       periodicHook = null;
       lifetimeHook!.unregister();
       startHook!.unregister();
       serverApi.routerHook.removeRoute("/decky-plugin-test");
-      console.debug("Unregistered PowerTools callbacks, goodbye.");
+      backend.log(backend.LogLevel.Debug, "Unregistered PowerTools callbacks, goodbye.");
     },
   };
 });

@@ -17,6 +17,7 @@ pub struct Cpus {
     pub smt_capable: bool,
     #[allow(dead_code)] // in case this may be useful in the future
     pub(super) limits: CpusLimits,
+    driver_mode: crate::persist::DriverJson,
 }
 
 impl OnSet for Cpus {
@@ -84,7 +85,9 @@ impl Cpus {
     }
 
     pub fn system_default() -> Self {
-        let oc_limits = OverclockLimits::load_or_default().cpus;
+        let (oc_limits, is_default) = OverclockLimits::load_or_default();
+        let oc_limits = oc_limits.cpus;
+        let driver = if is_default { crate::persist::DriverJson::SteamDeck } else { crate::persist::DriverJson::SteamDeckAdvance };
         if let Some(max_cpu) = Self::cpu_count() {
             let mut sys_cpus = Vec::with_capacity(max_cpu);
             for i in 0..max_cpu {
@@ -96,6 +99,7 @@ impl Cpus {
                 smt: true,
                 smt_capable: can_smt,
                 limits: oc_limits,
+                driver_mode: driver,
             }
         } else {
             Self {
@@ -103,13 +107,16 @@ impl Cpus {
                 smt: false,
                 smt_capable: false,
                 limits: oc_limits,
+                driver_mode: driver,
             }
         }
     }
 
     #[inline]
     pub fn from_json(mut other: Vec<CpuJson>, version: u64) -> Self {
-        let oc_limits = OverclockLimits::load_or_default().cpus;
+        let (oc_limits, is_default) = OverclockLimits::load_or_default();
+        let oc_limits = oc_limits.cpus;
+        let driver = if is_default { crate::persist::DriverJson::SteamDeck } else { crate::persist::DriverJson::SteamDeckAdvance };
         let (_, can_smt) = Self::system_smt_capabilities();
         let mut result = Vec::with_capacity(other.len());
         let max_cpus = Self::cpu_count();
@@ -138,6 +145,7 @@ impl Cpus {
             smt: !smt_disabled,
             smt_capable: can_smt,
             limits: oc_limits,
+            driver_mode: driver,
         }
     }
 }
@@ -168,7 +176,7 @@ impl TCpus for Cpus {
     }
 
     fn provider(&self) -> crate::persist::DriverJson {
-        crate::persist::DriverJson::SteamDeck
+        self.driver_mode.clone()
     }
 }
 

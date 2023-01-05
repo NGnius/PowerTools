@@ -21,7 +21,8 @@ impl Default for OverclockLimits {
 }
 
 impl OverclockLimits {
-    pub fn load_or_default() -> Self {
+    /// (Self, is_default)
+    pub fn load_or_default() -> (Self, bool) {
         let path = std::path::Path::new(OC_LIMITS_FILEPATH);
         if path.exists() {
             log::info!("Steam Deck limits file {} found", path.display());
@@ -29,22 +30,22 @@ impl OverclockLimits {
                 Ok(f) => f,
                 Err(e) => {
                     log::warn!("Steam Deck limits file {} err: {} (using default fallback)", path.display(), e);
-                    return Self::default();
+                    return (Self::default(), true);
                 },
             };
             match serde_json::from_reader(&mut file) {
                 Ok(result) => {
                     log::debug!("Steam Deck limits file {} successfully loaded", path.display());
-                    result
+                    (result, false)
                 },
                 Err(e) => {
                     log::warn!("Steam Deck limits file {} json err: {} (using default fallback)", path.display(), e);
-                    Self::default()
+                    (Self::default(), true)
                 }
             }
         } else {
             log::info!("Steam Deck limits file {} not found (using default fallback)", path.display());
-            Self::default()
+            (Self::default(), true)
         }
     }
 }

@@ -75,6 +75,7 @@ fn main() -> Result<(), ()> {
         .register("V_INFO", |_: Vec<Primitive>| {
             vec![format!("{} v{}", PACKAGE_NAME, PACKAGE_VERSION).into()]
         })
+        .register("LOG", api::general::log_it())
         // battery API functions
         .register_async("BATTERY_current_now", api::battery::current_now(api_sender.clone()))
         .register_async("BATTERY_charge_now", api::battery::charge_now(api_sender.clone()))
