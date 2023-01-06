@@ -60,6 +60,8 @@ pub enum CpuMessage {
 
 impl CpuMessage {
     fn process(self, settings: &mut dyn TCpus) {
+        // NOTE: "cpu" refers to the Linux kernel definition of a CPU, which is actually a hardware thread
+        // not to be confused with a CPU chip, which usually has multiple hardware threads (cpu cores/threads) in the chip
         match self {
             Self::SetCpuOnline(index, status) => {settings.cpus().get_mut(index).map(|c| *c.online() = status);},
             Self::SetCpusOnline(cpus) => {
@@ -68,10 +70,38 @@ impl CpuMessage {
                 }
             },
             Self::SetSmt(status, cb) => {
-                *settings.smt() = status;
+                if *settings.smt() == status {
+                    // already set, do nothing
+                } else if status {
+                    // set SMT on
+                    *settings.smt() = true;
+                    let mut should_be_online = false;
+                    let cpu_count = settings.len();
+                    for i in (0..cpu_count).rev() {
+                        if *settings.cpus()[i].online() && !should_be_online {
+                            should_be_online = true;
+                            // enable the odd-numbered thread right before
+                            // for 1c:2t configs (i.e. anything with SMT2), the highest cpu core is always odd
+                            // (e.g. 4c8t has CPUs 0-7, inclusive)
+                            // this enables the """fake""" (i.e. odd) cpu which is disabled when SMT is set off
+                            if i % 2 == 0 && i+1 != cpu_count {
+                                *(settings.cpus()[i+1].online()) = true;
+                            }
+                        } else {
+                            *settings.cpus()[i].online() = should_be_online;
+                        }
+                    }
+                } else {
+                    // set SMT off
+                    *settings.smt() = false;
+                    for i in 0..settings.len() {
+                        // this disables the """fake""" (odd) cpu for appearances' sake
+                        // the kernel will automatically disable that same cpu when SMT is changed
+                        *settings.cpus()[i].online() = *settings.cpus()[i].online() && (status || i % 2 == 0);
+                    }
+                }
                 let mut result = Vec::with_capacity(settings.len());
                 for i in 0..settings.len() {
-                    *settings.cpus()[i].online() = *settings.cpus()[i].online() && (status || i % 2 == 0);
                     result.push(*settings.cpus()[i].online());
                 }
                 cb(result);

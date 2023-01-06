@@ -120,8 +120,8 @@ export async function unsetBatteryChargeMode(): Promise<any[]> {
 
 // CPU
 
-export async function setCpuSmt(status: boolean): Promise<boolean> {
-    return (await call_backend("CPU_set_smt", [status]))[0];
+export async function setCpuSmt(status: boolean): Promise<boolean[]> {
+    return await call_backend("CPU_set_smt", [status]);
 }
 
 /*export async function getCpuCount(): Promise<number> {

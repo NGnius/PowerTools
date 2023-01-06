@@ -251,18 +251,10 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           description="Enables odd-numbered CPUs"
           onChange={(smt: boolean) => {
             backend.log(backend.LogLevel.Debug, "SMT is now " + smt.toString());
-            const cpus = get_value(ONLINE_CPUS);
+            //const cpus = get_value(ONLINE_CPUS);
             const smtNow = smt && smtAllowed;
-            backend.resolve(backend.setCpuSmt(smtNow), (newVal: boolean) => {
-              set_value(SMT_CPU, newVal);
-            });
-            let onlines: boolean[] = [];
-            for (let i = 0; i < total_cpus; i++) {
-              const online = (smtNow? i < cpus : (i % 2 == 0) && (i < cpus * 2))
-                || (!smtNow && cpus == 4);
-              onlines.push(online);
-            }
-            backend.resolve(backend.setCpuOnlines(onlines), (statii: boolean[]) => {
+            backend.resolve(backend.setCpuSmt(smtNow), (statii: boolean[]) => {
+              set_value(SMT_CPU, smtNow);
               set_value(ONLINE_STATUS_CPUS, statii);
               const count = countCpus(statii);
               set_value(ONLINE_CPUS, count);
@@ -276,7 +268,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           label="Threads"
           value={get_value(ONLINE_CPUS)}
           step={1}
-          max={get_value(SMT_CPU) || !smtAllowed ? total_cpus : total_cpus/2}
+          max={(get_value(SMT_CPU) || !smtAllowed) ? total_cpus : total_cpus/2}
           min={1}
           showValue={true}
           onChange={(cpus: number) => {
@@ -411,9 +403,9 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           description="Allow the CPU thread to do work"
           onChange={(status: boolean) => {
             backend.log(backend.LogLevel.Debug, "CPU " + advancedCpu.toString() + " is now " + status.toString());
-            if (get_value(SMT_CPU)) {
-              backend.resolve(backend.setCpuSmt(false), (newVal: boolean) => {
-                set_value(SMT_CPU, newVal);
+            if (!get_value(SMT_CPU)) {
+              backend.resolve(backend.setCpuSmt(true), (_newVal: boolean[]) => {
+                set_value(SMT_CPU, true);
               });
             }
             backend.resolve(backend.setCpuOnline(advancedCpuIndex, status), (newVal: boolean) => {
