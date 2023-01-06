@@ -101,7 +101,7 @@ impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + FromGenericCpuInfo> Cpus<C> {
         let (_, can_smt) = Self::system_smt_capabilities();
         let mut result = Vec::with_capacity(other.len());
         let max_cpus = Self::cpu_count();
-        let mut smt_disabled = false;
+        let smt_guess = crate::settings::util::guess_smt(&other) && can_smt;
         for (i, cpu) in other.drain(..).enumerate() {
             // prevent having more CPUs than available
             if let Some(max_cpus) = max_cpus {
@@ -109,8 +109,7 @@ impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + FromGenericCpuInfo> Cpus<C> {
                     break;
                 }
             }
-            let mut new_cpu = C::from_json_and_limits(cpu, version, i, limits.clone());
-            smt_disabled &= *new_cpu.online() as usize != i % 2;
+            let new_cpu = C::from_json_and_limits(cpu, version, i, limits.clone());
             result.push(new_cpu);
         }
         if let Some(max_cpus) = max_cpus {
@@ -123,7 +122,7 @@ impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + FromGenericCpuInfo> Cpus<C> {
         }
         Self {
             cpus: result,
-            smt: !smt_disabled,
+            smt: smt_guess,
             smt_capable: can_smt,
         }
     }

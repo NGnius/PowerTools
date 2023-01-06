@@ -4,6 +4,7 @@ mod error;
 mod general;
 mod min_max;
 mod traits;
+mod util;
 
 pub mod generic;
 pub mod generic_amd;
