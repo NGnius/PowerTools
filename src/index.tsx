@@ -6,7 +6,6 @@ import {
   //MenuItem,
   PanelSection,
   PanelSectionRow,
-  Router,
   ServerAPI,
   //showContextMenu,
   staticClasses,
@@ -25,7 +24,39 @@ import { GiDrill } from "react-icons/gi";
 
 //import * as python from "./python";
 import * as backend from "./backend";
-import {set_value, get_value, target_usdpl, version_usdpl} from "usdpl-front";
+import {
+  BACKEND_INFO,
+  DRIVER_INFO,
+
+  LIMITS_INFO,
+
+  CURRENT_BATT,
+  CHARGE_RATE_BATT,
+  CHARGE_MODE_BATT,
+  CHARGE_NOW_BATT,
+  CHARGE_FULL_BATT,
+  CHARGE_DESIGN_BATT,
+
+  ONLINE_CPUS,
+  ONLINE_STATUS_CPUS,
+  SMT_CPU,
+  CLOCK_MIN_CPU,
+  CLOCK_MAX_CPU,
+  CLOCK_MIN_MAX_CPU,
+  GOVERNOR_CPU,
+
+  FAST_PPT_GPU,
+  SLOW_PPT_GPU,
+  CLOCK_MIN_GPU,
+  CLOCK_MAX_GPU,
+  SLOW_MEMORY_GPU,
+
+  PERSISTENT_GEN,
+  NAME_GEN,
+} from "./consts";
+import {set_value, get_value} from "usdpl-front";
+import {Debug} from "./components/debug";
+import {Gpu} from "./components/gpu";
 
 var periodicHook: NodeJS.Timer | null = null;
 var lifetimeHook: any = null;
@@ -44,36 +75,6 @@ type MinMax = {
 }
 
 // usdpl persistent store keys
-
-const BACKEND_INFO = "VINFO";
-const DRIVER_INFO = "GENERAL_provider";
-
-const LIMITS_INFO = "LIMITS_all";
-
-const CURRENT_BATT = "BATTERY_current_now";
-const CHARGE_RATE_BATT = "BATTERY_charge_rate";
-const CHARGE_MODE_BATT = "BATTERY_charge_mode";
-const CHARGE_NOW_BATT = "BATTERY_charge_now";
-const CHARGE_FULL_BATT = "BATTERY_charge_full";
-const CHARGE_DESIGN_BATT = "BATTERY_charge_design"
-
-//const TOTAL_CPUS = "CPUs_total";
-const ONLINE_CPUS = "CPUs_online";
-const ONLINE_STATUS_CPUS = "CPUs_status_online";
-const SMT_CPU = "CPUs_SMT";
-const CLOCK_MIN_CPU = "CPUs_min_clock";
-const CLOCK_MAX_CPU = "CPUs_max_clock";
-const CLOCK_MIN_MAX_CPU = "CPUs_minmax_clocks";
-const GOVERNOR_CPU = "CPUs_governor";
-
-const FAST_PPT_GPU = "GPU_fastPPT";
-const SLOW_PPT_GPU = "GPU_slowPPT";
-const CLOCK_MIN_GPU = "GPU_min_clock";
-const CLOCK_MAX_GPU = "GPU_max_clock";
-const SLOW_MEMORY_GPU = "GPU_slow_memory";
-
-const PERSISTENT_GEN = "GENERAL_persistent";
-const NAME_GEN = "GENERAL_name";
 
 function countCpus(statii: boolean[]): number {
   let count = 0;
@@ -520,168 +521,9 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           />
         </Field>
       </PanelSectionRow>}
-      {/* GPU */}
-      <div className={staticClasses.PanelSectionTitle}>
-        GPU
-      </div>
-      { ((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits != null ||(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits != null) && <PanelSectionRow>
-        <ToggleField
-          checked={get_value(SLOW_PPT_GPU) != null || get_value(FAST_PPT_GPU) != null}
-          label="PowerPlay Limits"
-          description="Override APU TDP settings"
-          onChange={(value: boolean) => {
-            if (value) {
-              if ((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits != null) {
-                set_value(SLOW_PPT_GPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits!.max);
-              }
 
-              if ((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits != null) {
-                set_value(FAST_PPT_GPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits!.max);
-              }
-              reloadGUI("GPUPPTToggle");
-            } else {
-              set_value(SLOW_PPT_GPU, null);
-              set_value(FAST_PPT_GPU, null);
-              backend.resolve(backend.unsetGpuPpt(), (_: any[]) => {
-                reloadGUI("GPUUnsetPPT");
-              });
-            }
-          }}
-        />
-      </PanelSectionRow>}
-      <PanelSectionRow>
-        { get_value(SLOW_PPT_GPU) != null && <SliderField
-          label="SlowPPT (W)"
-          value={get_value(SLOW_PPT_GPU)}
-          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits!.max}
-          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits!.min}
-          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.ppt_step}
-          showValue={true}
-          disabled={get_value(SLOW_PPT_GPU) == null}
-          onChange={(ppt: number) => {
-            backend.log(backend.LogLevel.Debug, "SlowPPT is now " + ppt.toString());
-            const pptNow = get_value(SLOW_PPT_GPU);
-            const realPpt = ppt;
-            if (realPpt != pptNow) {
-              backend.resolve(backend.setGpuPpt(get_value(FAST_PPT_GPU), realPpt),
-                              (limits: number[]) => {
-                set_value(FAST_PPT_GPU, limits[0]);
-                set_value(SLOW_PPT_GPU, limits[1]);
-                reloadGUI("GPUSlowPPT");
-              });
-            }
-          }}
-        />}
-      </PanelSectionRow>
-      <PanelSectionRow>
-        {get_value(FAST_PPT_GPU) != null && <SliderField
-          label="FastPPT (W)"
-          value={get_value(FAST_PPT_GPU)}
-          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits!.max}
-          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits!.min}
-          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.ppt_step}
-          showValue={true}
-          disabled={get_value(FAST_PPT_GPU) == null}
-          onChange={(ppt: number) => {
-            backend.log(backend.LogLevel.Debug, "FastPPT is now " + ppt.toString());
-            const pptNow = get_value(FAST_PPT_GPU);
-            const realPpt = ppt;
-            if (realPpt != pptNow) {
-              backend.resolve(backend.setGpuPpt(realPpt, get_value(SLOW_PPT_GPU)),
-                              (limits: number[]) => {
-                set_value(FAST_PPT_GPU, limits[0]);
-                set_value(SLOW_PPT_GPU, limits[1]);
-                reloadGUI("GPUFastPPT");
-              });
-            }
-          }}
-        />}
-      </PanelSectionRow>
-      {((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits != null || (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_max_limits != null) && <PanelSectionRow>
-        <ToggleField
-          checked={get_value(CLOCK_MIN_GPU) != null || get_value(CLOCK_MAX_GPU) != null}
-          label="Frequency Limits"
-          description="Override bounds on gpu clock"
-          onChange={(value: boolean) => {
-            if (value) {
-              let clock_min_limits = (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits;
-              let clock_max_limits = (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_max_limits;
-              if (clock_min_limits != null) {
-                set_value(CLOCK_MIN_GPU, clock_min_limits.min);
-              }
-              if (clock_max_limits != null) {
-                set_value(CLOCK_MAX_GPU, clock_max_limits.max);
-              }
-              reloadGUI("GPUFreqToggle");
-            } else {
-              set_value(CLOCK_MIN_GPU, null);
-              set_value(CLOCK_MAX_GPU, null);
-              backend.resolve(backend.unsetGpuClockLimits(), (_: any[]) => {
-                reloadGUI("GPUUnsetFreq");
-              });
-            }
-          }}
-        />
-      </PanelSectionRow>}
-      <PanelSectionRow>
-        { get_value(CLOCK_MIN_GPU) != null && <SliderField
-          label="Minimum (MHz)"
-          value={get_value(CLOCK_MIN_GPU)}
-          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits!.max}
-          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits!.min}
-          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_step}
-          showValue={true}
-          disabled={get_value(CLOCK_MIN_GPU) == null}
-          onChange={(val: number) => {
-            backend.log(backend.LogLevel.Debug, "GPU Clock Min is now " + val.toString());
-            const valNow = get_value(CLOCK_MIN_GPU);
-            if (val != valNow) {
-              backend.resolve(backend.setGpuClockLimits(val, get_value(CLOCK_MAX_GPU)),
-                              (limits: number[]) => {
-                set_value(CLOCK_MIN_GPU, limits[0]);
-                set_value(CLOCK_MAX_GPU, limits[1]);
-                reloadGUI("GPUMinClock");
-              });
-            }
-          }}
-        />}
-      </PanelSectionRow>
-      <PanelSectionRow>
-        {get_value(CLOCK_MAX_GPU) != null && <SliderField
-          label="Maximum (MHz)"
-          value={get_value(CLOCK_MAX_GPU)}
-          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_max_limits!.max}
-          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_max_limits!.min}
-          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_step}
-          showValue={true}
-          disabled={get_value(CLOCK_MAX_GPU) == null}
-          onChange={(val: number) => {
-            backend.log(backend.LogLevel.Debug, "GPU Clock Max is now " + val.toString());
-            const valNow = get_value(CLOCK_MAX_GPU);
-            if (val != valNow) {
-              backend.resolve(backend.setGpuClockLimits(get_value(CLOCK_MIN_GPU), val),
-                              (limits: number[]) => {
-                set_value(CLOCK_MIN_GPU, limits[0]);
-                set_value(CLOCK_MAX_GPU, limits[1]);
-                reloadGUI("GPUMaxClock");
-              });
-            }
-          }}
-        />}
-      </PanelSectionRow>
-      {(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.memory_control_capable && <PanelSectionRow>
-        <ToggleField
-          checked={get_value(SLOW_MEMORY_GPU)}
-          label="Downclock Memory"
-          description="Force RAM into low-power mode"
-          onChange={(value: boolean) => {
-            backend.resolve(backend.setGpuSlowMemory(value), (val: boolean) => {
-              set_value(SLOW_MEMORY_GPU, val);
-              reloadGUI("GPUSlowMemory");
-            })
-          }}
-        />
-      </PanelSectionRow>}
+      <Gpu />
+
       {/* Battery */}
       <div className={staticClasses.PanelSectionTitle}>
         Battery
@@ -811,62 +653,9 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
           {get_value(NAME_GEN)}
         </Field>
       </PanelSectionRow>
-      {/* Version Info */}
-      <div className={staticClasses.PanelSectionTitle}>
-        {eggCount % 10 == 9 ? "Ha! Nerd" : "Debug"}
-      </div>
-      <PanelSectionRow>
-        <Field
-          label={eggCount % 10 == 9 ? "PowerTools" : "Native"}
-          onClick={()=> {
-            if (eggCount % 10 == 9) {
-              // you know you're bored and/or conceited when you spend time adding an easter egg
-              // that just sends people to your own project's repo
-              Router.NavigateToExternalWeb("https://github.com/NGnius/PowerTools");
-            }
-            eggCount++;
-          }}>
-          {eggCount % 10 == 9 ? "by NGnius" : get_value(BACKEND_INFO)}
-        </Field>
-      </PanelSectionRow>
-      <PanelSectionRow>
-        <Field
-          label="Framework"
-          onClick={()=> eggCount++}>
-          {eggCount % 10 == 9 ? "<3 <3 <3" : target_usdpl()}
-        </Field>
-      </PanelSectionRow>
-      <PanelSectionRow>
-        <Field
-          label="Driver"
-          onClick={()=> eggCount++}>
-          {eggCount % 10 == 9 ? "Tracy Chapman" : get_value(DRIVER_INFO)}
-        </Field>
-      </PanelSectionRow>
-      <PanelSectionRow>
-        <Field
-          label="USDPL"
-          onClick={()=> {
-            if (eggCount % 10 == 9) {
-              // you know you're bored and/or conceited when you spend time adding an easter egg
-              // that just sends people to your own project's repo
-              Router.NavigateToExternalWeb("https://github.com/NGnius/usdpl-rs");
-            }
-            eggCount++;
-          }}>
-          v{version_usdpl()}
-        </Field>
-      </PanelSectionRow>
-      {eggCount % 10 == 9 && <PanelSectionRow>
-        <ButtonItem
-          layout="below"
-          onClick={(_: MouseEvent) => {
-            backend.idk();
-          }}
-        >
-        ???
-        </ButtonItem>
-      </PanelSectionRow>}
+
+      <Debug/>
+
       <PanelSectionRow>
         <ButtonItem
           layout="below"
