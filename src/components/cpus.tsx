@@ -10,6 +10,7 @@ import {
   staticClasses,
 } from "decky-frontend-lib";
 import * as backend from "../backend";
+import { tr } from "usdpl-front";
 import {
     LIMITS_INFO,
     SMT_CPU,
@@ -61,13 +62,13 @@ export class Cpus extends Component<{}, CpuState> {
         return (<Fragment>
             {/* CPU */}
                 <div className={staticClasses.PanelSectionTitle}>
-                    CPU
+                    {tr("CPU")}
                 </div>
                 <PanelSectionRow>
                     <ToggleField
                     checked={advancedMode}
-                    label="Advanced"
-                    description="Enables per-thread configuration"
+                    label={tr("Advanced")}
+                    description={tr("Enables per-thread configuration")}
                     onChange={(advanced: boolean) => {
                         //advancedMode = advanced;
                         this.setState((state) => {
@@ -84,8 +85,8 @@ export class Cpus extends Component<{}, CpuState> {
                 {!advancedMode && smtAllowed && <PanelSectionRow>
                     <ToggleField
                     checked={get_value(SMT_CPU)}
-                    label="SMT"
-                    description="Enables odd-numbered CPUs"
+                    label={tr("SMT")}
+                    description={tr("Enables odd-numbered CPUs")}
                     onChange={(smt: boolean) => {
                         backend.log(backend.LogLevel.Debug, "SMT is now " + smt.toString());
                         //const cpus = get_value(ONLINE_CPUS);
@@ -102,7 +103,7 @@ export class Cpus extends Component<{}, CpuState> {
                 </PanelSectionRow>}
                 {!advancedMode && <PanelSectionRow>
                     <SliderField
-                    label="Threads"
+                    label={tr("Threads")}
                     value={get_value(ONLINE_CPUS)}
                     step={1}
                     max={(get_value(SMT_CPU) || !smtAllowed) ? total_cpus : total_cpus/2}
@@ -133,8 +134,8 @@ export class Cpus extends Component<{}, CpuState> {
                 {!advancedMode && <PanelSectionRow>
                     <ToggleField
                     checked={get_value(CLOCK_MIN_CPU) != null || get_value(CLOCK_MAX_CPU) != null}
-                    label="Frequency Limits"
-                    description="Set bounds on clock speed"
+                    label={tr("Frequency Limits")}
+                    description={tr("Set bounds on clock speed")}
                     onChange={(value: boolean) => {
                         if (value) {
                         if ((get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_min_limits != null) {
@@ -161,7 +162,7 @@ export class Cpus extends Component<{}, CpuState> {
                 </PanelSectionRow>}
                 {!advancedMode && (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_min_limits != null && <PanelSectionRow>
                     {get_value(CLOCK_MIN_CPU) != null && <SliderField
-                    label="Minimum (MHz)"
+                    label={tr("Minimum (MHz)")}
                     value={get_value(CLOCK_MIN_CPU)}
                     max={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_min_limits!.max}
                     min={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_min_limits!.min}
@@ -191,7 +192,7 @@ export class Cpus extends Component<{}, CpuState> {
                 </PanelSectionRow>}
                 {!advancedMode && (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_max_limits != null && <PanelSectionRow>
                     {get_value(CLOCK_MAX_CPU) != null && <SliderField
-                    label="Maximum (MHz)"
+                    label={tr("Maximum (MHz)")}
                     value={get_value(CLOCK_MAX_CPU)}
                     max={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_max_limits!.max}
                     min={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_max_limits!.min}
@@ -222,7 +223,7 @@ export class Cpus extends Component<{}, CpuState> {
                 {/* CPU advanced mode */}
                 {advancedMode && <PanelSectionRow>
                     <SliderField
-                    label="Selected CPU"
+                    label={tr("Selected CPU")}
                     value={advancedCpu}
                     step={1}
                     max={total_cpus}
@@ -242,8 +243,8 @@ export class Cpus extends Component<{}, CpuState> {
                 {advancedMode && <PanelSectionRow>
                     <ToggleField
                     checked={get_value(ONLINE_STATUS_CPUS)[advancedCpuIndex]}
-                    label="Online"
-                    description="Allow the CPU thread to do work"
+                    label={tr("Online")}
+                    description={tr("Allow the CPU thread to do work")}
                     onChange={(status: boolean) => {
                         backend.log(backend.LogLevel.Debug, "CPU " + advancedCpu.toString() + " is now " + status.toString());
                         if (!get_value(SMT_CPU)) {
@@ -262,8 +263,8 @@ export class Cpus extends Component<{}, CpuState> {
                 {advancedMode && <PanelSectionRow>
                     <ToggleField
                     checked={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].min != null || get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].max != null}
-                    label="Frequency Limits"
-                    description="Set bounds on clock speed"
+                    label={tr("Frequency Limits")}
+                    description={tr("Set bounds on clock speed")}
                     onChange={(value: boolean) => {
                         if (value) {
                         const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
@@ -290,7 +291,7 @@ export class Cpus extends Component<{}, CpuState> {
                 </PanelSectionRow>}
                 {advancedMode && (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_min_limits != null && <PanelSectionRow>
                     {get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].min != null && <SliderField
-                    label="Minimum (MHz)"
+                    label={tr("Minimum (MHz)")}
                     value={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].min}
                     max={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_min_limits!.max}
                     min={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_min_limits!.min}
@@ -315,7 +316,7 @@ export class Cpus extends Component<{}, CpuState> {
                 </PanelSectionRow>}
                 {advancedMode && (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_max_limits != null && <PanelSectionRow>
                     {get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].max != null && <SliderField
-                    label="Maximum (MHz)"
+                    label={tr("Maximum (MHz)")}
                     value={get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex].max}
                     max={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_max_limits!.max}
                     min={(get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_max_limits!.min}
@@ -340,10 +341,10 @@ export class Cpus extends Component<{}, CpuState> {
                 </PanelSectionRow>}
                 {advancedMode && governorOptions.length != 0 && <PanelSectionRow>
                     <Field
-                    label="Governor"
+                    label={tr("Governor")}
                     >
                     <Dropdown
-                        menuLabel="Governor"
+                        menuLabel={tr("Governor")}
                         rgOptions={governorOptions}
                         selectedOption={governorOptions.find((val: SingleDropdownOption, _index, _arr) => {
                         backend.log(backend.LogLevel.Debug, "POWERTOOLS: array item " +  val.toString());

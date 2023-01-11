@@ -26,18 +26,10 @@ impl Battery {
     fn read_f64<P: AsRef<std::path::Path>>(path: P) -> Result<f64, SettingError> {
         let path = path.as_ref();
         match usdpl_back::api::files::read_single::<_, f64, _>(path) {
-            Err((Some(e), None)) => Err(SettingError {
+            Err(e) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", path.display(), e),
                 setting: crate::settings::SettingVariant::Battery,
             }),
-            Err((None, Some(e))) => Err(SettingError {
-                msg: format!("Failed to read from `{}`: {}", path.display(), e),
-                setting: crate::settings::SettingVariant::Battery,
-            }),
-            Err(_) => panic!(
-                "Invalid error while reading from `{}`",
-                path.display()
-            ),
             // this value is in uA, while it's set in mA
             // so convert this to mA for consistency
             Ok(val) => Ok(val / 1000.0),

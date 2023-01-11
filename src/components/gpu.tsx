@@ -7,6 +7,7 @@ import {
   staticClasses,
 } from "decky-frontend-lib";
 import * as backend from "../backend";
+import { tr } from "usdpl-front";
 import {
     LIMITS_INFO,
     SLOW_PPT_GPU,
@@ -30,13 +31,13 @@ export class Gpu extends Component<{}> {
         return (<Fragment>
                 {/* GPU */}
             <div className={staticClasses.PanelSectionTitle}>
-                GPU
+                {tr("GPU")}
             </div>
             { ((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits != null ||(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits != null) && <PanelSectionRow>
                 <ToggleField
                 checked={get_value(SLOW_PPT_GPU) != null || get_value(FAST_PPT_GPU) != null}
-                label="PowerPlay Limits"
-                description="Override APU TDP settings"
+                label={tr("PowerPlay Limits")}
+                description={tr("Override APU TDP settings")}
                 onChange={(value: boolean) => {
                     if (value) {
                     if ((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits != null) {
@@ -59,7 +60,7 @@ export class Gpu extends Component<{}> {
             </PanelSectionRow>}
             <PanelSectionRow>
                 { get_value(SLOW_PPT_GPU) != null && <SliderField
-                label="SlowPPT (W)"
+                label={tr("SlowPPT (W)")}
                 value={get_value(SLOW_PPT_GPU)}
                 max={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits!.max}
                 min={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits!.min}
@@ -83,7 +84,7 @@ export class Gpu extends Component<{}> {
             </PanelSectionRow>
             <PanelSectionRow>
                 {get_value(FAST_PPT_GPU) != null && <SliderField
-                label="FastPPT (W)"
+                label={tr("FastPPT (W)")}
                 value={get_value(FAST_PPT_GPU)}
                 max={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits!.max}
                 min={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits!.min}
@@ -108,8 +109,8 @@ export class Gpu extends Component<{}> {
             {((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits != null || (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_max_limits != null) && <PanelSectionRow>
                 <ToggleField
                 checked={get_value(CLOCK_MIN_GPU) != null || get_value(CLOCK_MAX_GPU) != null}
-                label="Frequency Limits"
-                description="Override bounds on gpu clock"
+                label={tr("Frequency Limits")}
+                description={tr("Set bounds on clock speed")}
                 onChange={(value: boolean) => {
                     if (value) {
                     let clock_min_limits = (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits;
@@ -133,7 +134,7 @@ export class Gpu extends Component<{}> {
             </PanelSectionRow>}
             <PanelSectionRow>
                 { get_value(CLOCK_MIN_GPU) != null && <SliderField
-                label="Minimum (MHz)"
+                label={tr("Minimum (MHz)")}
                 value={get_value(CLOCK_MIN_GPU)}
                 max={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits!.max}
                 min={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits!.min}
@@ -156,7 +157,7 @@ export class Gpu extends Component<{}> {
             </PanelSectionRow>
             <PanelSectionRow>
                 {get_value(CLOCK_MAX_GPU) != null && <SliderField
-                label="Maximum (MHz)"
+                label={tr("Maximum (MHz)")}
                 value={get_value(CLOCK_MAX_GPU)}
                 max={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_max_limits!.max}
                 min={(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_max_limits!.min}
@@ -180,8 +181,8 @@ export class Gpu extends Component<{}> {
             {(get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.memory_control_capable && <PanelSectionRow>
                 <ToggleField
                 checked={get_value(SLOW_MEMORY_GPU)}
-                label="Downclock Memory"
-                description="Force RAM into low-power mode"
+                label={tr("Downclock Memory")}
+                description={tr("Force RAM into low-power mode")}
                 onChange={(value: boolean) => {
                     backend.resolve(backend.setGpuSlowMemory(value), (val: boolean) => {
                     set_value(SLOW_MEMORY_GPU, val);

@@ -1,4 +1,4 @@
-import {init_usdpl, target_usdpl, init_embedded, call_backend} from "usdpl-front";
+import {init_usdpl, target_usdpl, init_embedded, call_backend, init_tr} from "usdpl-front";
 
 const USDPL_PORT: number = 44443;
 
@@ -22,6 +22,14 @@ export async function initBackend() {
     await init_embedded();
     init_usdpl(USDPL_PORT);
     console.log("USDPL started for framework: " + target_usdpl());
+    const user_locale =
+        navigator.languages && navigator.languages.length
+            ? navigator.languages[0]
+            : navigator.language;
+    console.log("POWERTOOLS: locale", user_locale);
+    let mo_path = "../plugins/PowerTools/translations/" + user_locale.toString() + ".mo";
+    await init_tr(mo_path);
+    //await init_tr("../plugins/PowerTools/translations/test.mo");
     //setReady(true);
 }
 

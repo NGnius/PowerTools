@@ -273,15 +273,10 @@ impl Cpu {
         // NOTE: this eats errors
         let gov_str: String = match usdpl_back::api::files::read_single(cpu_available_governors_path(self.index)) {
             Ok(s) => s,
-            Err((Some(e), None)) => {
+            Err(e) => {
                 log::warn!("Error getting available CPU governors: {}", e);
                 return vec![];
             },
-            Err((None, Some(e))) => {
-                log::warn!("Error getting available CPU governors: {}", e);
-                return vec![];
-            },
-            Err(_) => return vec![],
         };
         gov_str.split(' ').map(|s| s.to_owned()).collect()
     }

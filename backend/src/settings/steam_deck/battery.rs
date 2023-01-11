@@ -113,18 +113,10 @@ impl Battery {
 
     pub fn read_current_now() -> Result<u64, SettingError> {
         match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CURRENT_NOW_PATH) {
-            Err((Some(e), None)) => Err(SettingError {
+            Err(e) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", BATTERY_CURRENT_NOW_PATH, e),
                 setting: crate::settings::SettingVariant::Battery,
             }),
-            Err((None, Some(e))) => Err(SettingError {
-                msg: format!("Failed to read from `{}`: {}", BATTERY_CURRENT_NOW_PATH, e),
-                setting: crate::settings::SettingVariant::Battery,
-            }),
-            Err(_) => panic!(
-                "Invalid error while reading from `{}`",
-                BATTERY_CURRENT_NOW_PATH
-            ),
             // this value is in uA, while it's set in mA
             // so convert this to mA for consistency
             Ok(val) => Ok(val / 1000),
@@ -133,18 +125,10 @@ impl Battery {
 
     pub fn read_charge_now() -> Result<f64, SettingError> {
         match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_NOW_PATH) {
-            Err((Some(e), None)) => Err(SettingError {
+            Err(e) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_NOW_PATH, e),
                 setting: crate::settings::SettingVariant::Battery,
             }),
-            Err((None, Some(e))) => Err(SettingError {
-                msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_NOW_PATH, e),
-                setting: crate::settings::SettingVariant::Battery,
-            }),
-            Err(_) => panic!(
-                "Invalid error while reading from `{}`",
-                BATTERY_CHARGE_NOW_PATH
-            ),
             // convert to Wh
             Ok(val) => Ok((val as f64) / 1000000.0 * BATTERY_VOLTAGE),
         }
@@ -152,18 +136,10 @@ impl Battery {
 
     pub fn read_charge_full() -> Result<f64, SettingError> {
         match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_FULL_PATH) {
-            Err((Some(e), None)) => Err(SettingError {
+            Err(e) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_FULL_PATH, e),
                 setting: crate::settings::SettingVariant::Battery,
             }),
-            Err((None, Some(e))) => Err(SettingError {
-                msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_FULL_PATH, e),
-                setting: crate::settings::SettingVariant::Battery,
-            }),
-            Err(_) => panic!(
-                "Invalid error while reading from `{}`",
-                BATTERY_CHARGE_NOW_PATH
-            ),
             // convert to Wh
             Ok(val) => Ok((val as f64) / 1000000.0 * BATTERY_VOLTAGE),
         }
@@ -171,18 +147,10 @@ impl Battery {
 
     pub fn read_charge_design() -> Result<f64, SettingError> {
         match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_DESIGN_PATH) {
-            Err((Some(e), None)) => Err(SettingError {
+            Err(e) => Err(SettingError {
                 msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_DESIGN_PATH, e),
                 setting: crate::settings::SettingVariant::Battery,
             }),
-            Err((None, Some(e))) => Err(SettingError {
-                msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_DESIGN_PATH, e),
-                setting: crate::settings::SettingVariant::Battery,
-            }),
-            Err(_) => panic!(
-                "Invalid error while reading from `{}`",
-                BATTERY_CHARGE_NOW_PATH
-            ),
             // convert to Wh
             Ok(val) => Ok((val as f64) / 1000000.0 * BATTERY_VOLTAGE),
         }

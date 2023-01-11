@@ -24,6 +24,7 @@ import { GiDrill } from "react-icons/gi";
 
 //import * as python from "./python";
 import * as backend from "./backend";
+import { tr } from "usdpl-front";
 import {
   BACKEND_INFO,
   DRIVER_INFO,
@@ -217,13 +218,13 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
 
       {/* Persistence */}
       <div className={staticClasses.PanelSectionTitle}>
-        Miscellaneous
+        {tr("Miscellaneous")}
       </div>
       <PanelSectionRow>
         <ToggleField
           checked={get_value(PERSISTENT_GEN)}
-          label="Persistent"
-          description="Save profile and load it next time"
+          label={tr("Persistent")}
+          description={tr("Save profile and load it next time")}
           onChange={(persist: boolean) => {
             backend.log(backend.LogLevel.Debug, "Persist is now " + persist.toString());
             backend.resolve(
@@ -235,7 +236,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
       </PanelSectionRow>
       <PanelSectionRow>
         <Field
-          label="Profile">
+          label={tr("Profile")}>
           {get_value(NAME_GEN)}
         </Field>
       </PanelSectionRow>
@@ -278,7 +279,7 @@ export default definePlugin((serverApi: ServerAPI) => {
       lifetimeHook!.unregister();
       startHook!.unregister();
       serverApi.routerHook.removeRoute("/decky-plugin-test");
-      backend.log(backend.LogLevel.Debug, "Unregistered PowerTools callbacks, goodbye.");
+      backend.log(backend.LogLevel.Debug, "Unregistered PowerTools callbacks, so long and thanks for all the fish.");
     },
   };
 });

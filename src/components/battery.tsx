@@ -10,6 +10,7 @@ import {
   staticClasses,
 } from "decky-frontend-lib";
 import * as backend from "../backend";
+import { tr } from "usdpl-front";
 import {
     LIMITS_INFO,
     CHARGE_DESIGN_BATT,
@@ -38,25 +39,25 @@ export class Battery extends Component<{}> {
         return (<Fragment>
             {/* Battery */}
       <div className={staticClasses.PanelSectionTitle}>
-        Battery
+        {tr("Battery")}
       </div>
       {get_value(CHARGE_NOW_BATT) != null && get_value(CHARGE_FULL_BATT) != null && <PanelSectionRow>
         <Field
-          label="Now (Charge)">
+          label={tr("Now (Charge)")}>
           {get_value(CHARGE_NOW_BATT).toFixed(1)} Wh ({(100 * get_value(CHARGE_NOW_BATT) / get_value(CHARGE_FULL_BATT)).toFixed(1)}%)
         </Field>
       </PanelSectionRow>}
       {get_value(CHARGE_FULL_BATT) != null && get_value(CHARGE_DESIGN_BATT) != null && <PanelSectionRow>
         <Field
-          label="Max (Design)">
+          label={tr("Max (Design)")}>
           {get_value(CHARGE_FULL_BATT).toFixed(1)} Wh ({(100 * get_value(CHARGE_FULL_BATT) / get_value(CHARGE_DESIGN_BATT)).toFixed(1)}%)
         </Field>
       </PanelSectionRow>}
       {(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_current != null && <PanelSectionRow>
         <ToggleField
           checked={get_value(CHARGE_RATE_BATT) != null}
-          label="Charge Current Limits"
-          description="Control battery charge rate when awake"
+          label={tr("Charge Current Limits")}
+          description={tr("Control battery charge rate when awake")}
           onChange={(value: boolean) => {
             if (value) {
               set_value(CHARGE_RATE_BATT, 2500);
@@ -70,7 +71,7 @@ export class Battery extends Component<{}> {
           }}
         />
         { get_value(CHARGE_RATE_BATT) != null && <SliderField
-          label="Maximum (mA)"
+          label={tr("Maximum (mA)")}
           value={get_value(CHARGE_RATE_BATT)}
           max={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_current!.max}
           min={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_current!.min}
@@ -93,8 +94,8 @@ export class Battery extends Component<{}> {
       {chargeModeOptions.length != 0 && <PanelSectionRow>
         <ToggleField
           checked={get_value(CHARGE_MODE_BATT) != null}
-          label="Charge Mode"
-          description="Force battery charge mode"
+          label={tr("Charge Mode")}
+          description={tr("Force battery charge mode")}
           onChange={(value: boolean) => {
             if (value) {
               set_value(CHARGE_MODE_BATT, chargeModeOptions[0].data as string);
@@ -108,10 +109,10 @@ export class Battery extends Component<{}> {
           }}
         />
         {get_value(CHARGE_MODE_BATT) != null && <Field
-          label="Mode"
+          label={tr("Mode")}
         >
           <Dropdown
-            menuLabel="Charge Mode"
+            menuLabel={tr("Charge Mode")}
             rgOptions={chargeModeOptions}
             selectedOption={chargeModeOptions.find((val: SingleDropdownOption, _index, _arr) => {
               return val.data == get_value(CHARGE_MODE_BATT);
@@ -129,7 +130,7 @@ export class Battery extends Component<{}> {
       </PanelSectionRow>}
       <PanelSectionRow>
         <Field
-          label="Current">
+          label={tr("Current")}>
           {get_value(CURRENT_BATT)} mA
         </Field>
       </PanelSectionRow>

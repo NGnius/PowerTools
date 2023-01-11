@@ -52,6 +52,8 @@ fn main() -> Result<(), ()> {
     println!("Logging to: {:?}", log_filepath);
     log::info!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
     println!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
+    log::info!("Current dir `{}`", std::env::current_dir().unwrap().display());
+    println!("Current dir `{}`", std::env::current_dir().unwrap().display());
 
     let _limits_handle = crate::settings::limits_worker_spawn();
     log::info!("Detected device automatically, starting with driver: {:?} (This can be overriden)", crate::settings::auto_detect_provider());

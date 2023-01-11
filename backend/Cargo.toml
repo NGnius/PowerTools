@@ -2,11 +2,17 @@
 name = "powertools-rs"
 version = "1.1.0"
 edition = "2021"
+authors = ["NGnius (Graham) <ngniusness@gmail.com>"]
+description = "Backend (superuser) functionality for PowerTools"
+license = "GPL-3.0-only"
+repository = "https://github.com/NGnius/PowerTools"
+keywords = ["utility", "power-management", "root", "decky"]
+readme = "../README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-usdpl-back = { version = "0.7.2", features = ["blocking"]}
+usdpl-back = { version = "0.9.0", features = ["blocking"] }#, path = "../../usdpl-rs/usdpl-back"}
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 

@@ -36,6 +36,25 @@ export function get_value(key: string): any;
 * @returns {Promise<any>}
 */
 export function call_backend(name: string, parameters: any[]): Promise<any>;
+/**
+* Initialize translation strings for the front-end
+* @param {string} locale
+* @returns {Promise<void>}
+*/
+export function init_tr(locale: string): Promise<void>;
+/**
+* Translate a phrase, equivalent to tr_n(msg_id, 0)
+* @param {string} msg_id
+* @returns {string}
+*/
+export function tr(msg_id: string): string;
+/**
+* Translate a phrase, retrieving the plural form for `n` items
+* @param {string} msg_id
+* @param {number} n
+* @returns {string}
+*/
+export function tr_n(msg_id: string, n: number): string;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
@@ -47,6 +66,9 @@ export interface InitOutput {
   readonly set_value: (a: number, b: number, c: number) => number;
   readonly get_value: (a: number, b: number) => number;
   readonly call_backend: (a: number, b: number, c: number, d: number) => number;
+  readonly init_tr: (a: number, b: number) => number;
+  readonly tr: (a: number, b: number, c: number) => void;
+  readonly tr_n: (a: number, b: number, c: number, d: number) => void;
   readonly __wbindgen_export_0: (a: number) => number;
   readonly __wbindgen_export_1: (a: number, b: number, c: number) => number;
   readonly __wbindgen_export_2: WebAssembly.Table;

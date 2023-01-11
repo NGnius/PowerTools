@@ -8,6 +8,7 @@ import {
   Router,
 } from "decky-frontend-lib";
 import * as backend from "../backend";
+import { tr } from "usdpl-front";
 import {
   BACKEND_INFO,
   DRIVER_INFO,
@@ -25,11 +26,11 @@ export class Debug extends Component<{}> {
 function buildDebug() {
   return (<Fragment>{/* Version Info */}
       <div className={staticClasses.PanelSectionTitle}>
-        {eggCount % 10 == 9 ? "Ha! Nerd" : "Debug"}
+        {eggCount % 10 == 9 ? "Ha! Nerd" : tr("Debug")}
       </div>
       <PanelSectionRow>
         <Field
-          label={eggCount % 10 == 9 ? "PowerTools" : "Native"}
+          label={eggCount % 10 == 9 ? "PowerTools" : tr("Native")}
           onClick={()=> {
             if (eggCount % 10 == 9) {
               // you know you're bored and/or conceited when you spend time adding an easter egg
@@ -43,14 +44,14 @@ function buildDebug() {
       </PanelSectionRow>
       <PanelSectionRow>
         <Field
-          label="Framework"
+          label={tr("Framework")}
           onClick={()=> eggCount++}>
           {eggCount % 10 == 9 ? "<3 <3 <3" : target_usdpl()}
         </Field>
       </PanelSectionRow>
       <PanelSectionRow>
         <Field
-          label="Driver"
+          label={tr("Driver")}
           onClick={()=> eggCount++}>
           {eggCount % 10 == 9 ? "Tracy Chapman" : get_value(DRIVER_INFO)}
         </Field>
