@@ -126,14 +126,14 @@ msgstr "线程数"
 #: components/cpus.tsx:137
 #: components/gpu.tsx:112
 # (Clock speed override toggle)
-msgid "频率限制"
-msgstr "test123"
+msgid "Frequency Limits"
+msgstr "频率限制"
 
 #: components/cpus.tsx:138
 #: components/gpu.tsx:113
 # (Clock speed override toggle description)
-msgid "设置频率"
-msgstr "test123"
+msgid "Set bounds on clock speed"
+msgstr "设置频率"
 
 #: components/cpus.tsx:165
 #: components/gpu.tsx:137
@@ -220,8 +220,8 @@ msgstr "FastPPT (W)"
 
 #: components/gpu.tsx:112
 # (Reduce memory clock speed toggle)
-msgid "降低内存频率"
-msgstr "test123"
+msgid "Downclock Memory"
+msgstr "降低内存频率"
 
 #: components/gpu.tsx:112
 # (Reduce memory clock speed toggle description)
