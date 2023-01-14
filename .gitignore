@@ -45,3 +45,7 @@ yalc.lock
 /bin
 /backend/out
 /**/target
+
+# packaging
+/PowerTools
+**.zip

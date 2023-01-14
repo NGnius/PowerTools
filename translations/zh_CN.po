@@ -3,7 +3,6 @@
 # This file is distributed under the same license as the PowerTools package.
 # NGnius (Graham) <ngniusness@gmail.com>, 2023.
 #
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: v1.1\n"
