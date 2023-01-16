@@ -70,12 +70,26 @@ body:
       id: platform
       attributes:
           label: Platform
-          description: What platform/driver are you using PowerTools on?
+          description: What driver is PowerTools using?
           options:
               - _
               - Steam Deck
-              - Holoiso
               - RyzenAdj
+              - Generic
+              - Unknown
+              - Not listed
+      validations:
+          required: true
+    - type: dropdown
+      id: operating-system
+      attributes:
+          label: OS
+          description: On which operating system are you running PowerTools?
+          options:
+              - _
+              - SteamOS 3 (Stable)
+              - SteamOS 3 (Preview/Beta)
+              - Holoiso
               - Not listed
       validations:
           required: true
