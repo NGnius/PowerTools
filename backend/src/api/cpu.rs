@@ -159,8 +159,18 @@ pub fn set_clock_limits(
         if let Some(&Primitive::F64(index)) = params_in.get(0) {
             if let Some(&Primitive::F64(min)) = params_in.get(1) {
                 if let Some(&Primitive::F64(max)) = params_in.get(2) {
-                    setter(index as usize, MinMax {min: min as u64, max: max as u64});
-                    vec![min.into(), max.into()]
+                    let safe_max = if max < min {
+                        min
+                    } else {
+                        max
+                    };
+                    let safe_min = if min > max {
+                        max
+                    } else {
+                        min
+                    };
+                    setter(index as usize, MinMax {min: safe_min as u64, max: safe_max as u64});
+                    vec![safe_min.into(), safe_max.into()]
                 } else {
                     vec!["set_clock_limits missing parameter 2".into()]
                 }

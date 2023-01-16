@@ -138,24 +138,24 @@ export class Cpus extends Component<{}, CpuState> {
                     description={tr("Set bounds on clock speed")}
                     onChange={(value: boolean) => {
                         if (value) {
-                        if ((get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_min_limits != null) {
-                            set_value(CLOCK_MIN_CPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_min_limits!.min);
-                        }
-                        if ((get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_max_limits != null) {
-                            set_value(CLOCK_MAX_CPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_max_limits!.max);
-                        }
-                        syncPlebClockToAdvanced();
-                        reloadGUI("CPUFreqToggle");
+                            if ((get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_min_limits != null) {
+                                set_value(CLOCK_MIN_CPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_min_limits!.min);
+                            }
+                            if ((get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_max_limits != null) {
+                                set_value(CLOCK_MAX_CPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[0].clock_max_limits!.max);
+                            }
+                            syncPlebClockToAdvanced();
+                            reloadGUI("CPUFreqToggle");
                         } else {
-                        set_value(CLOCK_MIN_CPU, null);
-                        set_value(CLOCK_MAX_CPU, null);
-                        for (let i = 0; i < total_cpus; i++) {
-                            backend.resolve(backend.unsetCpuClockLimits(i), (_idc: any[]) => {});
-                        }
-                        backend.resolve(backend.waitForComplete(), (_: boolean) => {
-                            reloadGUI("CPUUnsetFreq");
-                        });
-                        syncPlebClockToAdvanced();
+                            set_value(CLOCK_MIN_CPU, null);
+                            set_value(CLOCK_MAX_CPU, null);
+                            for (let i = 0; i < total_cpus; i++) {
+                                backend.resolve(backend.unsetCpuClockLimits(i), (_idc: any[]) => {});
+                            }
+                            backend.resolve(backend.waitForComplete(), (_: boolean) => {
+                                reloadGUI("CPUUnsetFreq");
+                            });
+                            syncPlebClockToAdvanced();
                         }
                     }}
                     />
@@ -172,20 +172,21 @@ export class Cpus extends Component<{}, CpuState> {
                     onChange={(freq: number) => {
                         backend.log(backend.LogLevel.Debug, "Min freq slider is now " + freq.toString());
                         const freqNow = get_value(CLOCK_MIN_CPU);
-                        if (freq != freqNow) {
-                        set_value(CLOCK_MIN_CPU, freq);
-                        for (let i = 0; i < total_cpus; i++) {
-                            backend.resolve(backend.setCpuClockLimits(i, freq, get_value(CLOCK_MAX_CPU)),
-                                            (limits: number[]) => {
-                            set_value(CLOCK_MIN_CPU, limits[0]);
-                            set_value(CLOCK_MAX_CPU, limits[1]);
-                            syncPlebClockToAdvanced();
+                        const maxNow = get_value(CLOCK_MAX_CPU);
+                        if (freq != freqNow && ((maxNow != null && freq > maxNow) || maxNow == null)) {
+                            set_value(CLOCK_MIN_CPU, freq);
+                            for (let i = 0; i < total_cpus; i++) {
+                                backend.resolve(backend.setCpuClockLimits(i, freq, get_value(CLOCK_MAX_CPU)),
+                                                (limits: number[]) => {
+                                set_value(CLOCK_MIN_CPU, limits[0]);
+                                set_value(CLOCK_MAX_CPU, limits[1]);
+                                syncPlebClockToAdvanced();
+                                });
+                            }
+                            backend.resolve(backend.waitForComplete(), (_: boolean) => {
+                                reloadGUI("CPUMinFreq");
                             });
-                        }
-                        backend.resolve(backend.waitForComplete(), (_: boolean) => {
-                            reloadGUI("CPUMinFreq");
-                        });
-                        reloadGUI("CPUMinFreqImmediate");
+                            reloadGUI("CPUMinFreqImmediate");
                         }
                     }}
                     />}
@@ -202,20 +203,21 @@ export class Cpus extends Component<{}, CpuState> {
                     onChange={(freq: number) => {
                         backend.log(backend.LogLevel.Debug, "Max freq slider is now " + freq.toString());
                         const freqNow = get_value(CLOCK_MAX_CPU);
-                        if (freq != freqNow) {
-                        set_value(CLOCK_MAX_CPU, freq);
-                        for (let i = 0; i < total_cpus; i++) {
-                            backend.resolve(backend.setCpuClockLimits(i, get_value(CLOCK_MIN_CPU), freq),
-                                            (limits: number[]) => {
-                            set_value(CLOCK_MIN_CPU, limits[0]);
-                            set_value(CLOCK_MAX_CPU, limits[1]);
-                            syncPlebClockToAdvanced();
+                        const minNow = get_value(CLOCK_MIN_CPU);
+                        if (freq != freqNow && ((minNow != null && freq > minNow) || minNow == null)) {
+                            set_value(CLOCK_MAX_CPU, freq);
+                            for (let i = 0; i < total_cpus; i++) {
+                                backend.resolve(backend.setCpuClockLimits(i, get_value(CLOCK_MIN_CPU), freq),
+                                                (limits: number[]) => {
+                                set_value(CLOCK_MIN_CPU, limits[0]);
+                                set_value(CLOCK_MAX_CPU, limits[1]);
+                                syncPlebClockToAdvanced();
+                                });
+                            }
+                            backend.resolve(backend.waitForComplete(), (_: boolean) => {
+                                reloadGUI("CPUMaxFreq");
                             });
-                        }
-                        backend.resolve(backend.waitForComplete(), (_: boolean) => {
-                            reloadGUI("CPUMaxFreq");
-                        });
-                        reloadGUI("CPUMaxFreqImmediate");
+                            reloadGUI("CPUMaxFreqImmediate");
                         }
                     }}
                     />}
@@ -301,15 +303,15 @@ export class Cpus extends Component<{}, CpuState> {
                     onChange={(freq: number) => {
                         backend.log(backend.LogLevel.Debug, "Min freq slider for " + advancedCpu.toString() + " is now " + freq.toString());
                         const freqNow = get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex] as MinMax;
-                        if (freq != freqNow.min) {
-                        backend.resolve(backend.setCpuClockLimits(advancedCpuIndex, freq, freqNow.max!),
-                                            (limits: number[]) => {
-                            const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
-                            clocks[advancedCpuIndex].min = limits[0];
-                            clocks[advancedCpuIndex].max = limits[1];
-                            set_value(CLOCK_MIN_MAX_CPU, clocks);
-                            reloadGUI("CPUMinFreq");
-                        });
+                        if (freq != freqNow.min && ((freqNow.max != null && freqNow.max > freq) || freqNow.max == null)) {
+                            backend.resolve(backend.setCpuClockLimits(advancedCpuIndex, freq, freqNow.max!),
+                                                (limits: number[]) => {
+                                const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
+                                clocks[advancedCpuIndex].min = limits[0];
+                                clocks[advancedCpuIndex].max = limits[1];
+                                set_value(CLOCK_MIN_MAX_CPU, clocks);
+                                reloadGUI("CPUMinFreq");
+                            });
                         }
                     }}
                     />}
@@ -326,15 +328,15 @@ export class Cpus extends Component<{}, CpuState> {
                     onChange={(freq: number) => {
                         backend.log(backend.LogLevel.Debug, "Max freq slider for " + advancedCpu.toString() + " is now " + freq.toString());
                         const freqNow = get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex] as MinMax;
-                        if (freq != freqNow.max) {
-                        backend.resolve(backend.setCpuClockLimits(advancedCpuIndex, freqNow.min!, freq),
-                                        (limits: number[]) => {
-                            const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
-                            clocks[advancedCpuIndex].min = limits[0];
-                            clocks[advancedCpuIndex].max = limits[1];
-                            set_value(CLOCK_MIN_MAX_CPU, clocks);
-                            reloadGUI("CPUMaxFreq");
-                        });
+                        if (freq != freqNow.max && ((freqNow.min != null && freq > freqNow.min) || freqNow.min == null)) {
+                            backend.resolve(backend.setCpuClockLimits(advancedCpuIndex, freqNow.min!, freq),
+                                            (limits: number[]) => {
+                                const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
+                                clocks[advancedCpuIndex].min = limits[0];
+                                clocks[advancedCpuIndex].max = limits[1];
+                                set_value(CLOCK_MIN_MAX_CPU, clocks);
+                                reloadGUI("CPUMaxFreq");
+                            });
                         }
                     }}
                     />}

@@ -123,11 +123,11 @@ export class Gpu extends Component<{}> {
                     }
                     reloadGUI("GPUFreqToggle");
                     } else {
-                    set_value(CLOCK_MIN_GPU, null);
-                    set_value(CLOCK_MAX_GPU, null);
-                    backend.resolve(backend.unsetGpuClockLimits(), (_: any[]) => {
-                        reloadGUI("GPUUnsetFreq");
-                    });
+                        set_value(CLOCK_MIN_GPU, null);
+                        set_value(CLOCK_MAX_GPU, null);
+                        backend.resolve(backend.unsetGpuClockLimits(), (_: any[]) => {
+                            reloadGUI("GPUUnsetFreq");
+                        });
                     }
                 }}
                 />
@@ -144,13 +144,14 @@ export class Gpu extends Component<{}> {
                 onChange={(val: number) => {
                     backend.log(backend.LogLevel.Debug, "GPU Clock Min is now " + val.toString());
                     const valNow = get_value(CLOCK_MIN_GPU);
-                    if (val != valNow) {
-                    backend.resolve(backend.setGpuClockLimits(val, get_value(CLOCK_MAX_GPU)),
-                                    (limits: number[]) => {
-                        set_value(CLOCK_MIN_GPU, limits[0]);
-                        set_value(CLOCK_MAX_GPU, limits[1]);
-                        reloadGUI("GPUMinClock");
-                    });
+                    const maxNow = get_value(CLOCK_MAX_GPU);
+                    if (val != valNow && ((maxNow != null && val < maxNow) || maxNow == null)) {
+                        backend.resolve(backend.setGpuClockLimits(val, get_value(CLOCK_MAX_GPU)),
+                                        (limits: number[]) => {
+                            set_value(CLOCK_MIN_GPU, limits[0]);
+                            set_value(CLOCK_MAX_GPU, limits[1]);
+                            reloadGUI("GPUMinClock");
+                        });
                     }
                 }}
                 />}
@@ -167,13 +168,14 @@ export class Gpu extends Component<{}> {
                 onChange={(val: number) => {
                     backend.log(backend.LogLevel.Debug, "GPU Clock Max is now " + val.toString());
                     const valNow = get_value(CLOCK_MAX_GPU);
-                    if (val != valNow) {
-                    backend.resolve(backend.setGpuClockLimits(get_value(CLOCK_MIN_GPU), val),
-                                    (limits: number[]) => {
-                        set_value(CLOCK_MIN_GPU, limits[0]);
-                        set_value(CLOCK_MAX_GPU, limits[1]);
-                        reloadGUI("GPUMaxClock");
-                    });
+                    const minNow = get_value(CLOCK_MIN_GPU);
+                    if (val != valNow && ((minNow != null && val > minNow) || minNow == null)) {
+                        backend.resolve(backend.setGpuClockLimits(get_value(CLOCK_MIN_GPU), val),
+                                        (limits: number[]) => {
+                            set_value(CLOCK_MIN_GPU, limits[0]);
+                            set_value(CLOCK_MAX_GPU, limits[1]);
+                            reloadGUI("GPUMaxClock");
+                        });
                     }
                 }}
                 />}

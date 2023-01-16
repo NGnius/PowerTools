@@ -32,7 +32,8 @@ pub enum BatteryMessage {
 }
 
 impl BatteryMessage {
-    fn process(self, settings: &mut dyn TBattery) {
+    fn process(self, settings: &mut dyn TBattery) -> bool {
+        let dirty = self.is_modify();
         match self {
             Self::SetChargeRate(rate) => settings.charge_rate(rate),
             Self::GetChargeRate(cb) => cb(settings.get_charge_rate()),
@@ -43,6 +44,12 @@ impl BatteryMessage {
             Self::ReadChargeDesign(cb) => cb(settings.read_charge_design()),
             Self::ReadCurrentNow(cb) => cb(settings.read_current_now()),
         }
+        dirty
+    }
+
+    /// Message instructs the driver to modify settings
+    fn is_modify(&self) -> bool {
+        matches!(self, Self::SetChargeRate(_) | Self::SetChargeMode(_))
     }
 }
 
@@ -59,7 +66,8 @@ pub enum CpuMessage {
 }
 
 impl CpuMessage {
-    fn process(self, settings: &mut dyn TCpus) {
+    fn process(self, settings: &mut dyn TCpus) -> bool {
+        let dirty = self.is_modify();
         // NOTE: "cpu" refers to the Linux kernel definition of a CPU, which is actually a hardware thread
         // not to be confused with a CPU chip, which usually has multiple hardware threads (cpu cores/threads) in the chip
         match self {
@@ -129,6 +137,18 @@ impl CpuMessage {
                 cb(result);
             }
         }
+        dirty
+    }
+
+    /// Message instructs the driver to modify settings
+    fn is_modify(&self) -> bool {
+        matches!(self,
+            Self::SetCpuOnline(_, _)
+            | Self::SetCpusOnline(_)
+            | Self::SetClockLimits(_, _)
+            | Self::SetCpuGovernor(_, _)
+            | Self::SetCpusGovernor(_)
+        )
     }
 }
 
@@ -142,7 +162,8 @@ pub enum GpuMessage {
 }
 
 impl GpuMessage {
-    fn process(self, settings: &mut dyn TGpu) {
+    fn process(self, settings: &mut dyn TGpu) -> bool {
+        let dirty = self.is_modify();
         match self {
             Self::SetPpt(fast, slow) => settings.ppt(fast, slow),
             Self::GetPpt(cb) => cb(settings.get_ppt()),
@@ -151,6 +172,15 @@ impl GpuMessage {
             Self::SetSlowMemory(val) => *settings.slow_memory() = val,
             Self::GetSlowMemory(cb) => cb(*settings.slow_memory()),
         }
+        dirty
+    }
+
+    fn is_modify(&self) -> bool {
+        matches!(self,
+            Self::SetPpt(_, _)
+            | Self::SetClockLimits(_)
+            | Self::SetSlowMemory(_)
+        )
     }
 }
 
@@ -161,12 +191,18 @@ pub enum GeneralMessage {
 }
 
 impl GeneralMessage {
-    fn process(self, settings: &mut dyn TGeneral) {
+    fn process(self, settings: &mut dyn TGeneral) -> bool {
+        let dirty = self.is_modify();
         match self {
             Self::SetPersistent(val) => *settings.persistent() = val,
             Self::GetPersistent(cb) => cb(*settings.persistent()),
             Self::GetCurrentProfileName(cb) => cb(settings.get_name().to_owned()),
         }
+        dirty
+    }
+
+    fn is_modify(&self) -> bool {
+        matches!(self, Self::SetPersistent(_))
     }
 }
 
@@ -178,43 +214,47 @@ pub struct ApiMessageHandler {
 impl ApiMessageHandler {
     pub fn process_forever(&mut self, settings: &mut Settings) {
         while let Ok(msg) = self.intake.recv() {
-            self.process(settings, msg);
+            let mut dirty = self.process(settings, msg);
             while let Ok(msg) = self.intake.try_recv() {
-                self.process(settings, msg);
+                dirty |= self.process(settings, msg);
             }
-            // run on_set
-            if let Err(e) = settings.on_set() {
-                log::error!("Settings on_set() err: {}", e);
-            }
-            // do callbacks
-            for func in self.on_empty.drain(..) {
-                func(());
-            }
-            // save
-            log::debug!("api_worker is saving...");
-            let is_persistent = *settings.general.persistent();
-            let save_path = crate::utility::settings_dir()
-                .join(settings.general.get_path().clone());
-            if is_persistent {
-                let settings_clone = settings.json();
-                let save_json: SettingsJson = settings_clone.into();
-                unwrap_maybe_fatal(save_json.save(&save_path), "Failed to save settings");
-                log::debug!("Saved settings to {}", save_path.display());
-            } else {
-                if save_path.exists() {
-                    if let Err(e) = std::fs::remove_file(&save_path) {
-                        log::warn!("Failed to delete persistent settings file {}: {}", save_path.display(), e);
-                    } else {
-                        log::debug!("Deleted persistent settings file {}", save_path.display());
-                    }
-                } else {
-                    log::debug!("Ignored save request for non-persistent settings");
+            if dirty {
+                // run on_set
+                if let Err(e) = settings.on_set() {
+                    log::error!("Settings on_set() err: {}", e);
                 }
+                // do callbacks
+                for func in self.on_empty.drain(..) {
+                    func(());
+                }
+                // save
+                log::debug!("api_worker is saving...");
+                let is_persistent = *settings.general.persistent();
+                let save_path = crate::utility::settings_dir()
+                    .join(settings.general.get_path().clone());
+                if is_persistent {
+                    let settings_clone = settings.json();
+                    let save_json: SettingsJson = settings_clone.into();
+                    unwrap_maybe_fatal(save_json.save(&save_path), "Failed to save settings");
+                    log::debug!("Saved settings to {}", save_path.display());
+                } else {
+                    if save_path.exists() {
+                        if let Err(e) = std::fs::remove_file(&save_path) {
+                            log::warn!("Failed to delete persistent settings file {}: {}", save_path.display(), e);
+                        } else {
+                            log::debug!("Deleted persistent settings file {}", save_path.display());
+                        }
+                    } else {
+                        log::debug!("Ignored save request for non-persistent settings");
+                    }
+                }
+            } else {
+                log::debug!("Skipping callbacks for non-modify handled message(s)");
             }
         }
     }
 
-    pub fn process(&mut self, settings: &mut Settings, message: ApiMessage) {
+    pub fn process(&mut self, settings: &mut Settings, message: ApiMessage) -> bool {
         match message {
             ApiMessage::Battery(x) => x.process(settings.battery.as_mut()),
             ApiMessage::Cpu(x) => x.process(settings.cpus.as_mut()),
@@ -224,13 +264,18 @@ impl ApiMessageHandler {
                 if let Err(e) = settings.on_resume() {
                     log::error!("Settings on_resume() err: {}", e);
                 }
+                false
             }
-            ApiMessage::WaitForEmptyQueue(callback) => self.on_empty.push(callback),
+            ApiMessage::WaitForEmptyQueue(callback) => {
+                self.on_empty.push(callback);
+                false
+            },
             ApiMessage::LoadSettings(path, name) => {
                 match settings.load_file(path.into(), name, false) {
                     Ok(success) => log::info!("Loaded settings file? {}", success),
                     Err(e) => log::warn!("Load file err: {}", e),
                 }
+                true
             }
             ApiMessage::LoadMainSettings => {
                 match settings.load_file(
@@ -241,9 +286,11 @@ impl ApiMessageHandler {
                     Ok(success) => log::info!("Loaded main settings file? {}", success),
                     Err(e) => log::warn!("Load file err: {}", e),
                 }
+                true
             }
             ApiMessage::LoadSystemSettings => {
                 settings.load_system_default();
+                true
             },
             ApiMessage::GetLimits(cb) => {
                 cb(super::SettingsLimits {
@@ -252,6 +299,7 @@ impl ApiMessageHandler {
                     gpu: settings.gpu.limits(),
                     general: settings.general.limits(),
                 });
+                false
             },
             ApiMessage::GetProvider(name, cb) => {
                 cb(match &name as &str {
@@ -259,7 +307,8 @@ impl ApiMessageHandler {
                     "cpu" | "cpus" => settings.cpus.provider(),
                     "gpu" => settings.gpu.provider(),
                     _ => settings.general.provider(),
-                })
+                });
+                false
             }
         }
     }

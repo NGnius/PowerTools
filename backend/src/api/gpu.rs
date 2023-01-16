@@ -78,11 +78,21 @@ pub fn set_clock_limits(
     move |params_in: super::ApiParameterType| {
         if let Some(&Primitive::F64(min)) = params_in.get(0) {
             if let Some(&Primitive::F64(max)) = params_in.get(1) {
+                let safe_max = if max < min {
+                    min
+                } else {
+                    max
+                };
+                let safe_min = if min > max {
+                    max
+                } else {
+                    min
+                };
                 setter(MinMax {
-                    min: min as _,
-                    max: max as _,
+                    min: safe_min as _,
+                    max: safe_max as _,
                 });
-                vec![(min as u64).into(), (max as u64).into()]
+                vec![(safe_min as u64).into(), (safe_max as u64).into()]
             } else {
                 vec!["set_clock_limits missing parameter 1".into()]
             }
