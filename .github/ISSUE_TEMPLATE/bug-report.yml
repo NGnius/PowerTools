@@ -10,7 +10,7 @@ body:
           options:
               - label: I have searched existing issues
               - label: This issue is not a duplicate of an existing one
-              - label: I am doing something good
+              - label: I will fill this out to the best of my ability
       validations:
           required: true
     - type: textarea
@@ -58,6 +58,7 @@ body:
           label: Version
           description: What version of PowerTools are you using? This is the version beside `powertools-rs` near the bottom of the plugin's UI.
           options:
+              - _
               - 1.1.0 (Indev)
               - 1.0.5 (Latest stable)
               - 1.0.X (Out of date)
@@ -68,11 +69,13 @@ body:
     - type: dropdown
       id: platform
       attributes:
-          label: Version
-          description: What platform are you using PowerTools on?
+          label: Platform
+          description: What platform/driver are you using PowerTools on?
           options:
+              - _
               - Steam Deck
               - Holoiso
+              - RyzenAdj
               - Not listed
       validations:
           required: true

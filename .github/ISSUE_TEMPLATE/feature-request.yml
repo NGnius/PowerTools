@@ -1,5 +1,5 @@
 name: Feature Request
-description: Suggest a tool to add
+description: Suggest functionality to add
 labels: "enhancement"
 body:
     - type: checkboxes
@@ -10,7 +10,7 @@ body:
           options:
               - label: I have searched existing issues
               - label: This issue is not a duplicate of an existing one
-              - label: I am doing something good
+              - label: I will fill this out to the best of my ability
       validations:
           required: true
     - type: textarea
