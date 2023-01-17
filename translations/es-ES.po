@@ -89,7 +89,7 @@ msgstr "Modo"
 #: components/battery.tsx:133
 # (Battery current display)
 msgid "Current"
-msgstr "Actual"
+msgstr "Corriente"
 
 # -- components/cpus.tsx --
 
