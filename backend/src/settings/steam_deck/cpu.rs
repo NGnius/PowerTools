@@ -256,7 +256,8 @@ impl Cpu {
                 },
             )?;
             // min clock
-            let payload_min = format!("p {} 0 {}\n", self.index / 2, clock_limits.min);
+            let valid_min = if clock_limits.min < self.limits.clock_min.min {self.limits.clock_min.min} else {clock_limits.min};
+            let payload_min = format!("p {} 0 {}\n", self.index / 2, valid_min);
             usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
                 |e| SettingError {
                     msg: format!(
@@ -339,7 +340,7 @@ impl Cpu {
     fn limits(&self) -> crate::api::CpuLimits {
         crate::api::CpuLimits {
             clock_min_limits: Some(RangeLimit {
-                min: self.limits.clock_min.min,
+                min: self.limits.clock_max.min, // allows min to be set by max (it's weird, blame the kernel)
                 max: self.limits.clock_min.max
             }),
             clock_max_limits: Some(RangeLimit {

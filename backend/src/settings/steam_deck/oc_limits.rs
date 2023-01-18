@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use crate::settings::MinMax;
 
-const OC_LIMITS_FILEPATH: &str = "./pt_oc.json";
+const OC_LIMITS_FILEPATH: &str = "pt_oc.json";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(super) struct OverclockLimits {
@@ -23,7 +23,7 @@ impl Default for OverclockLimits {
 impl OverclockLimits {
     /// (Self, is_default)
     pub fn load_or_default() -> (Self, bool) {
-        let path = std::path::Path::new(OC_LIMITS_FILEPATH);
+        let path = oc_limits_filepath();
         if path.exists() {
             log::info!("Steam Deck limits file {} found", path.display());
             let mut file = match std::fs::File::open(&path) {
@@ -86,7 +86,7 @@ impl Default for CpuLimits {
     fn default() -> Self {
         Self {
             clock_min: MinMax { min: 1400, max: 3500 },
-            clock_max: MinMax { min: 500, max: 3500 }
+            clock_max: MinMax { min: 400, max: 3500 }
         }
     }
 }
@@ -108,4 +108,8 @@ impl Default for GpuLimits {
             clock_max: MinMax { min: 200, max: 1600 }
         }
     }
+}
+
+fn oc_limits_filepath() -> std::path::PathBuf {
+    crate::utility::settings_dir().join(OC_LIMITS_FILEPATH)
 }

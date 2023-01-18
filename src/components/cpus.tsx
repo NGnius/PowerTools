@@ -173,7 +173,7 @@ export class Cpus extends Component<{}, CpuState> {
                         backend.log(backend.LogLevel.Debug, "Min freq slider is now " + freq.toString());
                         const freqNow = get_value(CLOCK_MIN_CPU);
                         const maxNow = get_value(CLOCK_MAX_CPU);
-                        if (freq != freqNow && ((maxNow != null && freq > maxNow) || maxNow == null)) {
+                        if (freq != freqNow && ((maxNow != null && freq <= maxNow) || maxNow == null)) {
                             set_value(CLOCK_MIN_CPU, freq);
                             for (let i = 0; i < total_cpus; i++) {
                                 backend.resolve(backend.setCpuClockLimits(i, freq, get_value(CLOCK_MAX_CPU)),
@@ -204,7 +204,7 @@ export class Cpus extends Component<{}, CpuState> {
                         backend.log(backend.LogLevel.Debug, "Max freq slider is now " + freq.toString());
                         const freqNow = get_value(CLOCK_MAX_CPU);
                         const minNow = get_value(CLOCK_MIN_CPU);
-                        if (freq != freqNow && ((minNow != null && freq > minNow) || minNow == null)) {
+                        if (freq != freqNow && ((minNow != null && freq >= minNow) || minNow == null)) {
                             set_value(CLOCK_MAX_CPU, freq);
                             for (let i = 0; i < total_cpus; i++) {
                                 backend.resolve(backend.setCpuClockLimits(i, get_value(CLOCK_MIN_CPU), freq),
@@ -303,7 +303,7 @@ export class Cpus extends Component<{}, CpuState> {
                     onChange={(freq: number) => {
                         backend.log(backend.LogLevel.Debug, "Min freq slider for " + advancedCpu.toString() + " is now " + freq.toString());
                         const freqNow = get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex] as MinMax;
-                        if (freq != freqNow.min && ((freqNow.max != null && freqNow.max > freq) || freqNow.max == null)) {
+                        if (freq != freqNow.min && ((freqNow.max != null && freq <= freqNow.max) || freqNow.max == null)) {
                             backend.resolve(backend.setCpuClockLimits(advancedCpuIndex, freq, freqNow.max!),
                                                 (limits: number[]) => {
                                 const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
@@ -328,7 +328,7 @@ export class Cpus extends Component<{}, CpuState> {
                     onChange={(freq: number) => {
                         backend.log(backend.LogLevel.Debug, "Max freq slider for " + advancedCpu.toString() + " is now " + freq.toString());
                         const freqNow = get_value(CLOCK_MIN_MAX_CPU)[advancedCpuIndex] as MinMax;
-                        if (freq != freqNow.max && ((freqNow.min != null && freq > freqNow.min) || freqNow.min == null)) {
+                        if (freq != freqNow.max && ((freqNow.min != null && freq >= freqNow.min) || freqNow.min == null)) {
                             backend.resolve(backend.setCpuClockLimits(advancedCpuIndex, freqNow.min!, freq),
                                             (limits: number[]) => {
                                 const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];

@@ -145,6 +145,7 @@ impl CpuMessage {
         matches!(self,
             Self::SetCpuOnline(_, _)
             | Self::SetCpusOnline(_)
+            | Self::SetSmt(_, _)
             | Self::SetClockLimits(_, _)
             | Self::SetCpuGovernor(_, _)
             | Self::SetCpusGovernor(_)

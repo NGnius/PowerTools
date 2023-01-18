@@ -145,7 +145,7 @@ export class Gpu extends Component<{}> {
                     backend.log(backend.LogLevel.Debug, "GPU Clock Min is now " + val.toString());
                     const valNow = get_value(CLOCK_MIN_GPU);
                     const maxNow = get_value(CLOCK_MAX_GPU);
-                    if (val != valNow && ((maxNow != null && val < maxNow) || maxNow == null)) {
+                    if (val != valNow && ((maxNow != null && val <= maxNow) || maxNow == null)) {
                         backend.resolve(backend.setGpuClockLimits(val, get_value(CLOCK_MAX_GPU)),
                                         (limits: number[]) => {
                             set_value(CLOCK_MIN_GPU, limits[0]);
@@ -169,7 +169,7 @@ export class Gpu extends Component<{}> {
                     backend.log(backend.LogLevel.Debug, "GPU Clock Max is now " + val.toString());
                     const valNow = get_value(CLOCK_MAX_GPU);
                     const minNow = get_value(CLOCK_MIN_GPU);
-                    if (val != valNow && ((minNow != null && val > minNow) || minNow == null)) {
+                    if (val != valNow && ((minNow != null && val >= minNow) || minNow == null)) {
                         backend.resolve(backend.setGpuClockLimits(get_value(CLOCK_MIN_GPU), val),
                                         (limits: number[]) => {
                             set_value(CLOCK_MIN_GPU, limits[0]);
