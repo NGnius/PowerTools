@@ -117,6 +117,9 @@ const reload = function() {
     set_value(ONLINE_CPUS, count);
     set_value(SMT_CPU, statii.length > 3 && statii[0] == statii[1] && statii[2] == statii[3]);
   });
+  backend.resolve(backend.getCpuSmt(), (smt: boolean) => {
+    set_value(SMT_CPU, smt);
+  });
   backend.resolve(backend.getCpuClockLimits(0), (limits: number[]) => {
     set_value(CLOCK_MIN_CPU, limits[0]);
     set_value(CLOCK_MAX_CPU, limits[1]);

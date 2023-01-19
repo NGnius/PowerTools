@@ -25,33 +25,28 @@ import { set_value, get_value } from "usdpl-front";
 
 interface CpuState {
     reloadThingy: string;
-    advancedCpu: number;
-    advancedMode: boolean;
 }
+
+let advancedMode = false;
+let advancedCpu = 1;
 
 export class Cpus extends Component<{}, CpuState> {
     constructor(props: {}) {
         super(props);
         this.state = {
             reloadThingy: "/shrug",
-            advancedCpu: 1,
-            advancedMode: false,
         };
     }
 
     render() {
-        const reloadGUI = (x: string) => this.setState((state) => {
+        const reloadGUI = (x: string) => this.setState((_state) => {
             return {
                 reloadThingy: x,
-                advancedCpu: state.advancedCpu,
-                advancedMode: state.advancedMode,
             };
         });
 
         const total_cpus = (get_value(LIMITS_INFO) as backend.SettingsLimits | null)?.cpu.count ?? 8;
-        const advancedCpuIndex = this.state.advancedCpu - 1;
-        const advancedCpu = this.state.advancedCpu;
-        const advancedMode = this.state.advancedMode;
+        const advancedCpuIndex = advancedCpu - 1;
         const smtAllowed = (get_value(LIMITS_INFO) as backend.SettingsLimits | null)?.cpu.smt_capable ?? true;
 
         const governorOptions: SingleDropdownOption[] = (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].governors.map((elem) => {return {
@@ -70,12 +65,10 @@ export class Cpus extends Component<{}, CpuState> {
                     label={tr("Advanced")}
                     description={tr("Enables per-thread configuration")}
                     onChange={(advanced: boolean) => {
-                        //advancedMode = advanced;
+                        advancedMode = advanced;
                         this.setState((state) => {
                             return {
                                 reloadThingy: state.reloadThingy,
-                                advancedCpu: state.advancedCpu,
-                                advancedMode: advanced,
                             };
                         });
                     }}
@@ -232,11 +225,10 @@ export class Cpus extends Component<{}, CpuState> {
                     min={1}
                     showValue={true}
                     onChange={(cpuNum: number) => {
+                        advancedCpu = cpuNum;
                         this.setState((state) => {
                             return {
                                 reloadThingy: state.reloadThingy,
-                                advancedCpu: cpuNum,
-                                advancedMode: state.advancedMode,
                             };
                         });
                     }}

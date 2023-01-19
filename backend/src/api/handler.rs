@@ -57,6 +57,7 @@ pub enum CpuMessage {
     SetCpuOnline(usize, bool),
     SetCpusOnline(Vec<bool>),
     SetSmt(bool, Callback<Vec<bool>>),
+    GetSmt(Callback<bool>),
     GetCpusOnline(Callback<Vec<bool>>),
     SetClockLimits(usize, Option<MinMax<u64>>),
     GetClockLimits(usize, Callback<Option<MinMax<u64>>>),
@@ -113,7 +114,10 @@ impl CpuMessage {
                     result.push(*settings.cpus()[i].online());
                 }
                 cb(result);
-            }
+            },
+            Self::GetSmt(cb) => {
+                cb(*settings.smt());
+            },
             Self::GetCpusOnline(cb) => {
                 let mut result = Vec::with_capacity(settings.len());
                 for cpu in settings.cpus() {

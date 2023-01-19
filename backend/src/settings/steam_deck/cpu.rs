@@ -91,7 +91,7 @@ impl Cpus {
         if let Some(max_cpu) = Self::cpu_count() {
             let mut sys_cpus = Vec::with_capacity(max_cpu);
             for i in 0..max_cpu {
-                sys_cpus.push(Cpu::from_sys(i, oc_limits.cpus.get(i).map(|x| x.to_owned()).unwrap_or_default()));
+                sys_cpus.push(Cpu::system_default(i, oc_limits.cpus.get(i).map(|x| x.to_owned()).unwrap_or_default()));
             }
             let (_, can_smt) = Self::system_smt_capabilities();
             Self {
@@ -325,12 +325,23 @@ impl Cpu {
         }
     }
 
-    fn from_sys(cpu_index: usize, oc_limits: CpuLimits) -> Self {
+    /*fn from_sys(cpu_index: usize, oc_limits: CpuLimits) -> Self {
         Self {
             online: usdpl_back::api::files::read_single(cpu_online_path(cpu_index)).unwrap_or(1u8) != 0,
             clock_limits: None,
             governor: usdpl_back::api::files::read_single(cpu_governor_path(cpu_index))
                 .unwrap_or("schedutil".to_owned()),
+            limits: oc_limits,
+            index: cpu_index,
+            state: crate::state::steam_deck::Cpu::default(),
+        }
+    }*/
+
+    fn system_default(cpu_index: usize, oc_limits: CpuLimits) -> Self {
+        Self {
+            online: true,
+            clock_limits: None,
+            governor: "schedutil".to_owned(),
             limits: oc_limits,
             index: cpu_index,
             state: crate::state::steam_deck::Cpu::default(),

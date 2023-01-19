@@ -125,6 +125,10 @@ fn main() -> Result<(), ()> {
             "CPU_set_smt",
             api::cpu::set_smt(api_sender.clone())
         )
+        .register_async(
+            "CPU_get_smt",
+            api::cpu::get_smt(api_sender.clone())
+        )
         .register(
             "CPU_set_clock_limits",
             api::cpu::set_clock_limits(api_sender.clone())

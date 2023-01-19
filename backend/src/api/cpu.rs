@@ -122,6 +122,27 @@ pub fn set_smt(
     }
 }
 
+pub fn get_smt(
+    sender: Sender<ApiMessage>,
+) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move || {
+            let (tx, rx) = mpsc::channel();
+            let callback = move |value: bool| tx.send(value).expect("get_smt callback send failed");
+            sender2.lock().unwrap().send(ApiMessage::Cpu(CpuMessage::GetSmt(Box::new(callback)))).expect("get_smt send failed");
+            rx.recv().expect("get_smt callback recv failed")
+        }
+    };
+    super::async_utils::AsyncIshGetter {
+        set_get: getter,
+        trans_getter: |result| {
+            vec![result.into()]
+        }
+    }
+}
+
 pub fn get_cpus_online(
     sender: Sender<ApiMessage>,
 ) -> impl AsyncCallable {
