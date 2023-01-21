@@ -11,9 +11,17 @@ export function resolve<T>(promise: Promise<T>, setter: (t: T) => void) {
             console.debug("Got resolved", data);
             setter(data);
         } else {
-            console.warn("Resolve failed:", data);
-            log(LogLevel.Warn, "");
+            console.warn("Resolve failed:", data, promise);
+            log(LogLevel.Warn, "A resolve failed");
         }
+    })();
+}
+
+export function resolve_nullable<T>(promise: Promise<T | null>, setter: (t: T | null) => void) {
+    (async function () {
+        let data = await promise;
+        console.debug("Got resolved", data);
+        setter(data);
     })();
 }
 
@@ -102,7 +110,7 @@ export async function getBatteryChargeDesign(): Promise<number> {
     return (await call_backend("BATTERY_charge_design", []))[0];
 }
 
-export async function getBatteryChargeRate(): Promise<number> {
+export async function getBatteryChargeRate(): Promise<number | null> {
     return (await call_backend("BATTERY_get_charge_rate", []))[0];
 }
 
@@ -114,7 +122,7 @@ export async function unsetBatteryChargeRate(): Promise<any[]> {
     return await call_backend("BATTERY_unset_charge_rate", []);
 }
 
-export async function getBatteryChargeMode(): Promise<string> {
+export async function getBatteryChargeMode(): Promise<string | null> {
     return (await call_backend("BATTERY_get_charge_mode", []))[0];
 }
 

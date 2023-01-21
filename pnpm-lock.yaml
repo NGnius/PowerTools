@@ -8,7 +8,7 @@ specifiers:
   '@rollup/plugin-typescript': ^8.5.0
   '@types/react': 16.14.0
   '@types/webpack': ^5.28.0
-  decky-frontend-lib: ~3.18.5
+  decky-frontend-lib: ~3.18.10
   react-icons: ^4.7.1
   rollup: ^2.79.1
   rollup-plugin-import-assets: ^1.1.1
@@ -18,7 +18,7 @@ specifiers:
   usdpl-front: file:src/usdpl_front
 
 dependencies:
-  decky-frontend-lib: 3.18.5
+  decky-frontend-lib: 3.18.10
   react-icons: 4.7.1
   usdpl-front: file:src/usdpl_front
 
@@ -380,7 +380,7 @@ packages:
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
     dependencies:
-      caniuse-lite: 1.0.30001442
+      caniuse-lite: 1.0.30001446
       electron-to-chromium: 1.4.284
       node-releases: 2.0.8
       update-browserslist-db: 1.0.10_browserslist@4.21.4
@@ -395,8 +395,8 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
-  /caniuse-lite/1.0.30001442:
-    resolution: {integrity: sha512-239m03Pqy0hwxYPYR5JwOIxRJfLTWtle9FV8zosfV5pHg+/51uD4nxcUlM8+mWWGfwKtt8lJNHnD3cWw9VZ6ow==}
+  /caniuse-lite/1.0.30001446:
+    resolution: {integrity: sha512-fEoga4PrImGcwUUGEol/PoFCSBnSkA9drgdkxXkJLsUBOnJ8rs3zDv6ApqYXGQFOyMPsjh79naWhF4DAxbF8rw==}
     dev: true
 
   /chrome-trace-event/1.0.3:
@@ -420,8 +420,8 @@ packages:
     resolution: {integrity: sha512-DJR/VvkAvSZW9bTouZue2sSxDwdTN92uHjqeKVm+0dAqdfNykRzQ95tay8aXMBAAPpUiq4Qcug2L7neoRh2Egw==}
     dev: true
 
-  /decky-frontend-lib/3.18.5:
-    resolution: {integrity: sha512-CTIJs61La17spws5IzAbLbZ/Bqe+gYgnO6xOrolK1QZh7ZbZeoQ67dtnI0zqRMMC10J8H7jPdqmQnwGN10/bzw==}
+  /decky-frontend-lib/3.18.10:
+    resolution: {integrity: sha512-2mgbA3sSkuwQR/FnmhXVrcW6LyTS95IuL6muJAmQCruhBvXapDtjk1TcgxqMZxFZwGD1IPnemPYxHZll6IgnZw==}
     dev: false
 
   /deepmerge/4.2.2:
@@ -672,8 +672,8 @@ packages:
     engines: {node: '>=8.6'}
     dev: true
 
-  /punycode/2.2.0:
-    resolution: {integrity: sha512-LN6QV1IJ9ZhxWTNdktaPClrNfp8xdSAYS0Zk2ddX7XsXZAxckMHPCBcHRo0cTcEIgYPRiGEkmji3Idkh2yFtYw==}
+  /punycode/2.3.0:
+    resolution: {integrity: sha512-rRV+zQD8tVFys26lAGR9WUuS4iUAngJScM+ZRSKtvl5tKeZ2t5bvdNFdNHBW9FWR4guGHlgmsZ1G7BSm2wTbuA==}
     engines: {node: '>=6'}
     dev: true
 
@@ -742,8 +742,8 @@ packages:
       ajv-keywords: 3.5.2_ajv@6.12.6
     dev: true
 
-  /serialize-javascript/6.0.0:
-    resolution: {integrity: sha512-Qr3TosvguFt8ePWqsvRfrKyQXIiW+nGbYpy8XK24NQHE83caxWt+mIymTT19DGFbNWNLfEwsrkSmN64lVWB9ag==}
+  /serialize-javascript/6.0.1:
+    resolution: {integrity: sha512-owoXEFjWRllis8/M1Q+Cw5k8ZH40e3zhp/ovX+Xr/vi1qj6QesbyXXViFbpNvWvPNAD62SutwEXavefrLJWj7w==}
     dependencies:
       randombytes: 2.1.0
     dev: true
@@ -820,7 +820,7 @@ packages:
       '@jridgewell/trace-mapping': 0.3.17
       jest-worker: 27.5.1
       schema-utils: 3.1.1
-      serialize-javascript: 6.0.0
+      serialize-javascript: 6.0.1
       terser: 5.16.1
       webpack: 5.75.0
     dev: true
@@ -860,7 +860,7 @@ packages:
   /uri-js/4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
     dependencies:
-      punycode: 2.2.0
+      punycode: 2.3.0
     dev: true
 
   /url-join/4.0.1:
@@ -927,5 +927,5 @@ packages:
   file:src/usdpl_front:
     resolution: {directory: src/usdpl_front, type: directory}
     name: usdpl-front
-    version: 0.9.0
+    version: 0.9.1
     dev: false

@@ -104,8 +104,8 @@ const reload = function() {
   });
 
   backend.resolve(backend.getBatteryCurrent(), (rate: number) => { set_value(CURRENT_BATT, rate) });
-  backend.resolve(backend.getBatteryChargeRate(), (rate: number) => { set_value(CHARGE_RATE_BATT, rate) });
-  backend.resolve(backend.getBatteryChargeMode(), (mode: string) => { set_value(CHARGE_MODE_BATT, mode) });
+  backend.resolve_nullable(backend.getBatteryChargeRate(), (rate: number | null) => { set_value(CHARGE_RATE_BATT, rate) });
+  backend.resolve_nullable(backend.getBatteryChargeMode(), (mode: string | null) => { set_value(CHARGE_MODE_BATT, mode) });
   backend.resolve(backend.getBatteryChargeNow(), (rate: number) => { set_value(CHARGE_NOW_BATT, rate) });
   backend.resolve(backend.getBatteryChargeFull(), (rate: number) => { set_value(CHARGE_FULL_BATT, rate) });
   backend.resolve(backend.getBatteryChargeDesign(), (rate: number) => { set_value(CHARGE_DESIGN_BATT, rate) });
