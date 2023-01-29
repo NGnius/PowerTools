@@ -37,6 +37,11 @@ msgstr ""
 msgid "Profile"
 msgstr ""
 
+#: index.tsx:266
+# (Button to reset everything to system defaults)
+msgid "Defaults"
+msgstr ""
+
 # -- components/battery.tsx --
 
 #: components/battery.tsx:42

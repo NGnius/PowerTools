@@ -1,4 +1,5 @@
 //! Rough Rust port of some BatCtrl functionality
+//! Original: /usr/share/jupiter_controller_fw_updater/RA_bootloader_updater/linux_host_tools/BatCtrl
 //! I do not have access to the source code, so this is my own interpretation of what it does.
 //!
 //! But also Quanta is based in a place with some questionable copyright practices, so...
@@ -95,9 +96,18 @@ pub fn set(setting: Setting, mode: u8) -> Result<usize, Error> {
 #[derive(Copy, Clone)]
 #[repr(u8)]
 pub enum Setting {
+    CycleCount = 0x32,
+    ControlBoard = 0x6C,
     Charge = 0xA6,
     ChargeMode = 0x76,
     LEDStatus = 199,
+}
+
+#[derive(Copy, Clone, Debug)]
+#[repr(u8)]
+pub enum ControlBoard {
+    Enable = 0xAA,
+    Disable = 0xAB,
 }
 
 #[derive(Copy, Clone, Debug)]

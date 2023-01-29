@@ -263,7 +263,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             );
           }}
         >
-        Defaults
+        {tr("Defaults")}
         </ButtonItem>
       </PanelSectionRow>
     </PanelSection>

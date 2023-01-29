@@ -39,6 +39,11 @@ msgstr "Sauvegarder le profile et le charger la prochaine fois"
 msgid "Profile"
 msgstr "Profile"
 
+# (Button to reset everything to system defaults)
+#: index.tsx:266
+msgid "Defaults"
+msgstr "Valeurs par défaut"
+
 # -- components/battery.tsx --
 # (Battery section title)
 #: components/battery.tsx:42
