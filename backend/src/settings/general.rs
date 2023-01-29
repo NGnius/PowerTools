@@ -105,7 +105,7 @@ impl Settings {
     pub fn from_json(other: SettingsJson, json_path: PathBuf) -> Self {
         match super::Driver::init(other, json_path.clone()) {
             Ok(x) => {
-                log::info!("Loaded settings for driver {:?}", x.general.provider());
+                log::info!("Loaded settings with drivers general:{:?},cpus:{:?},gpu:{:?},battery:{:?}", x.general.provider(), x.cpus.provider(), x.gpu.provider(), x.battery.provider());
                 Self {
                     general: x.general,
                     cpus: x.cpus,

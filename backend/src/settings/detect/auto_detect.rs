@@ -91,6 +91,7 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
         }
         if matches {
             if let Some(settings) = &settings_opt {
+                *builder.general.persistent() = true;
                 for limit in conf.limits {
                     match limit {
                         Limits::Cpu(cpus) => {
