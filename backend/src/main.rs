@@ -69,10 +69,6 @@ fn main() -> Result<(), ()> {
     //let (_save_handle, save_sender) = save_worker::spawn(loaded_settings.clone());
     let _resume_handle = resume_worker::spawn(api_sender.clone());
 
-    if let Err(e) = loaded_settings.on_set() {
-        log::error!("Startup Settings.on_set() error: {}", e);
-    }
-
     let instance = Instance::new(PORT)
         .register("V_INFO", |_: Vec<Primitive>| {
             vec![format!("{} v{}", PACKAGE_NAME, PACKAGE_VERSION).into()]
@@ -224,6 +220,12 @@ fn main() -> Result<(), ()> {
             api::general::get_provider(api_sender.clone())
         )
         .register("GENERAL_idk", api::general::gunter);
+
+    if let Err(e) = loaded_settings.on_set() {
+        log::error!("Startup Settings.on_set() error: {}", e);
+    } else {
+        log::info!("Startup Settings.on_set() success");
+    }
 
     api_worker::spawn(loaded_settings, api_handler);
 
