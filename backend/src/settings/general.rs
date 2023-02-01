@@ -136,7 +136,48 @@ impl Settings {
         self.gpu = driver.gpu;
         self.battery = driver.battery;
     }
+
+    pub fn load_file(&mut self, filename: PathBuf, name: String, system_defaults: bool) -> Result<bool, SettingError> {
+        let json_path = crate::utility::settings_dir().join(filename);
+        if json_path.exists() {
+            let settings_json = SettingsJson::open(&json_path).map_err(|e| SettingError {
+                msg: e.to_string(),
+                setting: SettingVariant::General,
+            })?;
+            if !settings_json.persistent {
+                log::warn!("Loaded persistent config `{}` ({}) with persistent=false", &settings_json.name, json_path.display());
+                *self.general.persistent() = false;
+                self.general.name(name);
+            } else {
+                match super::Driver::init(settings_json, json_path.clone()) {
+                    Ok(x) => {
+                        log::info!("Loaded settings with drivers general:{:?},cpus:{:?},gpu:{:?},battery:{:?}", x.general.provider(), x.cpus.provider(), x.gpu.provider(), x.battery.provider());
+                        self.general = x.general;
+                        self.cpus = x.cpus;
+                        self.gpu = x.gpu;
+                        self.battery = x.battery;
+                    },
+                    Err(e) => {
+                        log::error!("Driver init error: {}", e);
+                        self.general.name(name);
+                        *self.general.persistent() = false;
+                        self.general.path(json_path);
+                        return Err(e);
+                    }
+                };
+            }
+        } else {
+            if system_defaults {
+                self.load_system_default();
+            }
+            *self.general.persistent() = false;
+            self.general.name(name);
+        }
+        self.general.path(json_path);
+        Ok(*self.general.persistent())
+    }
     
+    /*
     pub fn load_file(&mut self, filename: PathBuf, name: String, system_defaults: bool) -> Result<bool, SettingError> {
         let json_path = crate::utility::settings_dir().join(filename);
         //let mut general_lock = unwrap_lock(self.general.lock(), "general");
@@ -165,7 +206,7 @@ impl Settings {
         }
         self.general.path(json_path);
         Ok(*self.general.persistent())
-    }
+    }*/
 
     pub fn json(&self) -> SettingsJson {
         SettingsJson {
