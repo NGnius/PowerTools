@@ -33,6 +33,7 @@ pub struct CpusLimits {
     pub cpus: Vec<CpuLimits>,
     pub count: usize,
     pub smt_capable: bool,
+    pub governors: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]

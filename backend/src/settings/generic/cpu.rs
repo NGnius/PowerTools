@@ -134,6 +134,7 @@ impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + OnResume + OnSet> TCpus for Cpus<C> {
             cpus: self.cpus.iter().map(|x| x.as_ref().limits()).collect(),
             count: self.cpus.len(),
             smt_capable: self.smt_capable,
+            governors: Vec::with_capacity(0),
         }
     }
 

@@ -54,6 +54,11 @@ export class Cpus extends Component<{}, CpuState> {
             label: <span>{elem}</span>,
         };});
 
+        const governorGlobalOptions: SingleDropdownOption[] = (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.governors.map((elem) => {return {
+            data: elem,
+            label: <span>{elem}</span>,
+        };});
+
         return (<Fragment>
             {/* CPU */}
                 <div className={staticClasses.PanelSectionTitle}>
@@ -214,6 +219,32 @@ export class Cpus extends Component<{}, CpuState> {
                         }
                     }}
                     />}
+                </PanelSectionRow>}
+                {!advancedMode && governorGlobalOptions.length != 0 && <PanelSectionRow>
+                    <Field
+                    label={tr("Governor")}
+                    >
+                    <Dropdown
+                        menuLabel={tr("Governor")}
+                        rgOptions={governorGlobalOptions}
+                        selectedOption={governorGlobalOptions.find((val: SingleDropdownOption, _index, _arr) => {
+                        backend.log(backend.LogLevel.Debug, "POWERTOOLS: array item " +  val.toString());
+                        backend.log(backend.LogLevel.Debug, "POWERTOOLS: looking for data " + get_value(GOVERNOR_CPU)[0].toString());
+                        return val.data == get_value(GOVERNOR_CPU)[0];
+                        })}
+                        strDefaultLabel={get_value(GOVERNOR_CPU)[0]}
+                        onChange={(elem: SingleDropdownOption) => {
+                            backend.log(backend.LogLevel.Debug, "Governor global dropdown selected " + elem.data.toString());
+                            const governors = get_value(GOVERNOR_CPU);
+                            for (let i = 0; i < total_cpus; i++) {
+                                governors[i] = elem.data as string;
+                                backend.resolve(backend.setCpuGovernor(i, elem.data as string), (_: string) => {});
+                            }
+                            set_value(GOVERNOR_CPU, governors);
+                            reloadGUI("CPUGlobalGovernor");
+                        }}
+                    />
+                    </Field>
                 </PanelSectionRow>}
                 {/* CPU advanced mode */}
                 {advancedMode && <PanelSectionRow>

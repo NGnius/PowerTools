@@ -138,6 +138,7 @@ impl TCpus for Cpus {
             cpus: self.cpus.iter().map(|x| x.limits()).collect(),
             count: self.cpus.len(),
             smt_capable: self.smt_capable,
+            governors: Vec::with_capacity(0),
         }
     }
 

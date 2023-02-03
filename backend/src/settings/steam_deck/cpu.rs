@@ -155,6 +155,12 @@ impl TCpus for Cpus {
             cpus: self.cpus.iter().map(|x| x.limits()).collect(),
             count: self.cpus.len(),
             smt_capable: self.smt_capable,
+            governors: if self.limits.global_governors {
+                self.cpus.iter()
+                    .next()
+                    .map(|x| x.governors())
+                    .unwrap_or_else(|| Vec::with_capacity(0))
+            } else { Vec::with_capacity(0) },
         }
     }
 
@@ -358,7 +364,7 @@ impl Cpu {
                 min: self.limits.clock_max.min,
                 max: self.limits.clock_max.max
             }),
-            clock_step: 100,
+            clock_step: self.limits.clock_step,
             governors: self.governors(),
         }
     }

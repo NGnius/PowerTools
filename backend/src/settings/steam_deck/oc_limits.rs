@@ -66,12 +66,14 @@ impl Default for BatteryLimits {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(super) struct CpusLimits {
     pub cpus: Vec<CpuLimits>,
+    pub global_governors: bool,
 }
 
 impl Default for CpusLimits {
     fn default() -> Self {
         Self {
-            cpus: [(); 8].iter().map(|_| CpuLimits::default()).collect()
+            cpus: [(); 8].iter().map(|_| CpuLimits::default()).collect(),
+            global_governors: false,
         }
     }
 }
@@ -80,13 +82,15 @@ impl Default for CpusLimits {
 pub(super) struct CpuLimits {
     pub clock_min: MinMax<u64>,
     pub clock_max: MinMax<u64>,
+    pub clock_step: u64,
 }
 
 impl Default for CpuLimits {
     fn default() -> Self {
         Self {
             clock_min: MinMax { min: 1400, max: 3500 },
-            clock_max: MinMax { min: 400, max: 3500 }
+            clock_max: MinMax { min: 400, max: 3500 },
+            clock_step: 100,
         }
     }
 }
@@ -95,8 +99,11 @@ impl Default for CpuLimits {
 pub(super) struct GpuLimits {
     pub fast_ppt: MinMax<u64>,
     pub slow_ppt: MinMax<u64>,
+    pub ppt_divisor: u64,
+    pub ppt_step: u64,
     pub clock_min: MinMax<u64>,
     pub clock_max: MinMax<u64>,
+    pub clock_step: u64,
 }
 
 impl Default for GpuLimits {
@@ -104,8 +111,11 @@ impl Default for GpuLimits {
         Self {
             fast_ppt: MinMax { min: 1000000, max: 30_000_000 },
             slow_ppt: MinMax { min: 1000000, max: 29_000_000 },
+            ppt_divisor: 1_000_000,
+            ppt_step: 1,
             clock_min: MinMax { min: 200, max: 1600 },
-            clock_max: MinMax { min: 200, max: 1600 }
+            clock_max: MinMax { min: 200, max: 1600 },
+            clock_step: 100,
         }
     }
 }

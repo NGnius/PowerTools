@@ -72,6 +72,7 @@ export type CpusLimits = {
     cpus: CpuLimits[];
     count: number;
     smt_capable: boolean;
+    governors: string[];
 };
 
 export type GeneralLimits = {};

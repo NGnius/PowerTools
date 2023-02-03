@@ -222,20 +222,18 @@ impl OnResume for Gpu {
     }
 }
 
-const PPT_DIVISOR: u64 = 1_000_000;
-
 impl TGpu for Gpu {
     fn limits(&self) -> crate::api::GpuLimits {
         crate::api::GpuLimits {
             fast_ppt_limits: Some(RangeLimit {
-                min: self.limits.fast_ppt.min / PPT_DIVISOR,
-                max: self.limits.fast_ppt.max / PPT_DIVISOR,
+                min: self.limits.fast_ppt.min / self.limits.ppt_divisor,
+                max: self.limits.fast_ppt.max / self.limits.ppt_divisor,
             }),
             slow_ppt_limits: Some(RangeLimit {
-                min: self.limits.slow_ppt.min / PPT_DIVISOR,
-                max: self.limits.slow_ppt.max / PPT_DIVISOR,
+                min: self.limits.slow_ppt.min / self.limits.ppt_divisor,
+                max: self.limits.slow_ppt.max / self.limits.ppt_divisor,
             }),
-            ppt_step: 1,
+            ppt_step: self.limits.ppt_step,
             tdp_limits: None,
             tdp_boost_limits: None,
             tdp_step: 42,
@@ -247,7 +245,7 @@ impl TGpu for Gpu {
                 min: self.limits.clock_max.min,
                 max: self.limits.clock_max.max,
             }),
-            clock_step: 100,
+            clock_step: self.limits.clock_step,
             memory_control_capable: true,
         }
     }
@@ -257,12 +255,12 @@ impl TGpu for Gpu {
     }
 
     fn ppt(&mut self, fast: Option<u64>, slow: Option<u64>) {
-        self.fast_ppt = fast.map(|x| x * PPT_DIVISOR);
-        self.slow_ppt = slow.map(|x| x * PPT_DIVISOR);
+        self.fast_ppt = fast.map(|x| x * self.limits.ppt_divisor);
+        self.slow_ppt = slow.map(|x| x * self.limits.ppt_divisor);
     }
 
     fn get_ppt(&self) -> (Option<u64>, Option<u64>) {
-        (self.fast_ppt.map(|x| x / PPT_DIVISOR), self.slow_ppt.map(|x| x / PPT_DIVISOR))
+        (self.fast_ppt.map(|x| x / self.limits.ppt_divisor), self.slow_ppt.map(|x| x / self.limits.ppt_divisor))
     }
 
     fn clock_limits(&mut self, limits: Option<MinMax<u64>>) {
