@@ -1,18 +1,27 @@
-import {init_usdpl, target_usdpl, init_embedded, call_backend} from "usdpl-front";
+import {init_usdpl, target_usdpl, init_embedded, call_backend, init_tr} from "usdpl-front";
 
 const USDPL_PORT: number = 44443;
 
 // Utility
 
-export function resolve(promise: Promise<any>, setter: any) {
+export function resolve<T>(promise: Promise<T>, setter: (t: T) => void) {
     (async function () {
         let data = await promise;
         if (data != null) {
             console.debug("Got resolved", data);
             setter(data);
         } else {
-            console.warn("Resolve failed:", data);
+            console.warn("Resolve failed:", data, promise);
+            log(LogLevel.Warn, "A resolve failed");
         }
+    })();
+}
+
+export function resolve_nullable<T>(promise: Promise<T | null>, setter: (t: T | null) => void) {
+    (async function () {
+        let data = await promise;
+        console.debug("Got resolved", data);
+        setter(data);
     })();
 }
 
@@ -21,8 +30,62 @@ export async function initBackend() {
     await init_embedded();
     init_usdpl(USDPL_PORT);
     console.log("USDPL started for framework: " + target_usdpl());
+    const user_locale =
+        navigator.languages && navigator.languages.length
+            ? navigator.languages[0]
+            : navigator.language;
+    console.log("POWERTOOLS: locale", user_locale);
+    let mo_path = "../plugins/PowerTools/translations/" + user_locale.toString() + ".mo";
+    await init_tr(mo_path);
+    //await init_tr("../plugins/PowerTools/translations/test.mo");
     //setReady(true);
 }
+
+// API limit types
+
+export type RangeLimit = {
+    min: number;
+    max: number;
+};
+
+export type SettingsLimits = {
+    battery: BatteryLimits;
+    cpu: CpusLimits;
+    gpu: GpuLimits;
+    general: GeneralLimits;
+};
+
+export type BatteryLimits = {
+    charge_current: RangeLimit | null;
+    charge_current_step: number;
+    charge_modes: string[];
+};
+
+export type CpuLimits = {
+    clock_min_limits: RangeLimit | null;
+    clock_max_limits: RangeLimit | null;
+    clock_step: number;
+    governors: string[];
+};
+
+export type CpusLimits = {
+    cpus: CpuLimits[];
+    count: number;
+    smt_capable: boolean;
+    governors: string[];
+};
+
+export type GeneralLimits = {};
+
+export type GpuLimits = {
+    fast_ppt_limits: RangeLimit | null;
+    slow_ppt_limits: RangeLimit | null;
+    ppt_step: number;
+    clock_min_limits: RangeLimit | null;
+    clock_max_limits: RangeLimit | null;
+    clock_step: number;
+    memory_control_capable: boolean;
+};
 
 // API
 
@@ -48,7 +111,7 @@ export async function getBatteryChargeDesign(): Promise<number> {
     return (await call_backend("BATTERY_charge_design", []))[0];
 }
 
-export async function getBatteryChargeRate(): Promise<number> {
+export async function getBatteryChargeRate(): Promise<number | null> {
     return (await call_backend("BATTERY_get_charge_rate", []))[0];
 }
 
@@ -60,11 +123,31 @@ export async function unsetBatteryChargeRate(): Promise<any[]> {
     return await call_backend("BATTERY_unset_charge_rate", []);
 }
 
+export async function getBatteryChargeMode(): Promise<string | null> {
+    return (await call_backend("BATTERY_get_charge_mode", []))[0];
+}
+
+export async function setBatteryChargeMode(val: string): Promise<string> {
+    return (await call_backend("BATTERY_set_charge_mode", [val]))[0];
+}
+
+export async function unsetBatteryChargeMode(): Promise<any[]> {
+    return await call_backend("BATTERY_unset_charge_mode", []);
+}
+
 // CPU
 
-export async function getCpuCount(): Promise<number> {
-    return (await call_backend("CPU_count", []))[0];
+export async function setCpuSmt(status: boolean): Promise<boolean[]> {
+    return await call_backend("CPU_set_smt", [status]);
 }
+
+export async function getCpuSmt(): Promise<boolean> {
+    return await call_backend("CPU_get_smt", []);
+}
+
+/*export async function getCpuCount(): Promise<number> {
+    return (await call_backend("CPU_count", []))[0];
+}*/
 
 export async function setCpuOnline(index: number, online: boolean): Promise<boolean> {
     return (await call_backend("CPU_set_online", [index, online]))[0];
@@ -150,10 +233,38 @@ export async function loadGeneralDefaultSettings(): Promise<boolean> {
     return (await call_backend("GENERAL_load_default_settings", []))[0];
 }
 
-export async function getGeneralSettingsName(): Promise<boolean> {
+export async function loadGeneralSystemSettings(): Promise<boolean> {
+    return (await call_backend("GENERAL_load_system_settings", []))[0];
+}
+
+export async function getGeneralSettingsName(): Promise<string> {
     return (await call_backend("GENERAL_get_name", []))[0];
 }
 
 export async function waitForComplete(): Promise<boolean> {
     return (await call_backend("GENERAL_wait_for_unlocks", []))[0];
+}
+
+export async function getLimits(): Promise<SettingsLimits> {
+    return (await call_backend("GENERAL_get_limits", []))[0];
+}
+
+export async function getDriverProviderName(name: string): Promise<string> {
+    return (await call_backend("GENERAL_get_provider", [name]))[0];
+}
+
+export enum LogLevel {
+    Trace = 1,
+    Debug = 2,
+    Info = 3,
+    Warn = 4,
+    Error = 5,
+}
+
+export async function log(level: LogLevel, msg: string): Promise<boolean> {
+    return (await call_backend("LOG", [level, msg]))[0];
+}
+
+export async function idk(): Promise<boolean> {
+    return (await call_backend("GENERAL_idk", []))[0];
 }

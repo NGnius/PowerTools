@@ -1,11 +1,11 @@
-use std::convert::Into;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+//use std::sync::{Arc, Mutex};
 
-use super::{Battery, Cpu, Gpu};
+//use super::{Battery, Cpus, Gpu};
 use super::{OnResume, OnSet, SettingError};
-use crate::persist::{CpuJson, SettingsJson};
-use crate::utility::unwrap_lock;
+use super::{TGeneral, TGpu, TCpus, TBattery};
+use crate::persist::SettingsJson;
+//use crate::utility::unwrap_lock;
 
 const LATEST_VERSION: u64 = 0;
 
@@ -33,6 +33,7 @@ pub struct General {
     pub persistent: bool,
     pub path: PathBuf,
     pub name: String,
+    pub driver: crate::persist::DriverJson,
 }
 
 impl OnSet for General {
@@ -41,26 +42,60 @@ impl OnSet for General {
     }
 }
 
-#[derive(Debug, Clone)]
+impl OnResume for General {
+    fn on_resume(&self) -> Result<(), SettingError> {
+        Ok(())
+    }
+}
+
+impl TGeneral for General {
+    fn limits(&self) -> crate::api::GeneralLimits {
+        crate::api::GeneralLimits {  }
+    }
+
+    fn get_persistent(&self) -> bool {
+        self.persistent
+    }
+
+    fn persistent(&mut self) -> &'_ mut bool {
+        &mut self.persistent
+    }
+
+    fn get_path(&self) -> &'_ std::path::Path {
+        &self.path
+    }
+
+    fn path(&mut self, path: std::path::PathBuf) {
+        self.path = path;
+    }
+
+    fn get_name(&self) -> &'_ str {
+        &self.name
+    }
+
+    fn name(&mut self, name: String) {
+        self.name = name;
+    }
+
+    fn provider(&self) -> crate::persist::DriverJson {
+        self.driver.clone()
+    }
+}
+
+#[derive(Debug)]
 pub struct Settings {
-    pub general: Arc<Mutex<General>>,
-    pub cpus: Arc<Mutex<Vec<Cpu>>>,
-    pub gpu: Arc<Mutex<Gpu>>,
-    pub battery: Arc<Mutex<Battery>>,
+    pub general: Box<dyn TGeneral>,
+    pub cpus: Box<dyn TCpus>,
+    pub gpu: Box<dyn TGpu>,
+    pub battery: Box<dyn TBattery>,
 }
 
 impl OnSet for Settings {
     fn on_set(&mut self) -> Result<(), SettingError> {
-        unwrap_lock(self.battery.lock(), "battery").on_set()?;
-        {
-            // cpu lock scope
-            let mut cpu_lock = unwrap_lock(self.cpus.lock(), "cpu");
-            for cpu in cpu_lock.iter_mut() {
-                cpu.on_set()?;
-            }
-        }
-        unwrap_lock(self.gpu.lock(), "gpu").on_set()?;
-        unwrap_lock(self.general.lock(), "general").on_set()?;
+        self.battery.on_set()?;
+        self.cpus.on_set()?;
+        self.gpu.on_set()?;
+        self.general.on_set()?;
         Ok(())
     }
 }
@@ -68,84 +103,42 @@ impl OnSet for Settings {
 impl Settings {
     #[inline]
     pub fn from_json(other: SettingsJson, json_path: PathBuf) -> Self {
-        match other.version {
-            0 => Self {
-                general: Arc::new(Mutex::new(General {
-                    persistent: other.persistent,
-                    path: json_path,
-                    name: other.name,
-                })),
-                cpus: Arc::new(Mutex::new(Self::convert_cpus(other.cpus, other.version))),
-                gpu: Arc::new(Mutex::new(Gpu::from_json(other.gpu, other.version))),
-                battery: Arc::new(Mutex::new(Battery::from_json(other.battery, other.version))),
-            },
-            _ => Self {
-                general: Arc::new(Mutex::new(General {
-                    persistent: other.persistent,
-                    path: json_path,
-                    name: other.name,
-                })),
-                cpus: Arc::new(Mutex::new(Self::convert_cpus(other.cpus, other.version))),
-                gpu: Arc::new(Mutex::new(Gpu::from_json(other.gpu, other.version))),
-                battery: Arc::new(Mutex::new(Battery::from_json(other.battery, other.version))),
-            },
-        }
-    }
-
-    fn convert_cpus(mut cpus: Vec<CpuJson>, version: u64) -> Vec<Cpu> {
-        let mut result = Vec::with_capacity(cpus.len());
-        let max_cpus = Cpu::cpu_count();
-        for (i, cpu) in cpus.drain(..).enumerate() {
-            // prevent having more CPUs than available
-            if let Some(max_cpus) = max_cpus {
-                if i == max_cpus {
-                    break;
+        match super::Driver::init(other, json_path.clone()) {
+            Ok(x) => {
+                log::info!("Loaded settings with drivers general:{:?},cpus:{:?},gpu:{:?},battery:{:?}", x.general.provider(), x.cpus.provider(), x.gpu.provider(), x.battery.provider());
+                Self {
+                    general: x.general,
+                    cpus: x.cpus,
+                    gpu: x.gpu,
+                    battery: x.battery,
                 }
-            }
-            result.push(Cpu::from_json(cpu, version, i));
-        }
-        if let Some(max_cpus) = max_cpus {
-            if result.len() != max_cpus {
-                let mut sys_cpus = Cpu::system_default();
-                for i in result.len()..sys_cpus.len() {
-                    result.push(sys_cpus.remove(i));
-                }
+            },
+            Err(e) => {
+                log::error!("Driver init error: {}", e);
+                Self::system_default(json_path)
             }
         }
-        result
     }
 
     pub fn system_default(json_path: PathBuf) -> Self {
+        let driver = super::Driver::system_default(json_path);
         Self {
-            general: Arc::new(Mutex::new(General {
-                persistent: false,
-                path: json_path,
-                name: crate::consts::DEFAULT_SETTINGS_NAME.to_owned(),
-            })),
-            cpus: Arc::new(Mutex::new(Cpu::system_default())),
-            gpu: Arc::new(Mutex::new(Gpu::system_default())),
-            battery: Arc::new(Mutex::new(Battery::system_default())),
+            general: driver.general,
+            cpus: driver.cpus,
+            gpu: driver.gpu,
+            battery: driver.battery,
         }
     }
 
-    fn load_system_default(&self) {
-        {
-            let mut cpu_lock = unwrap_lock(self.cpus.lock(), "cpu");
-            *cpu_lock = Cpu::system_default();
-        }
-        {
-            let mut gpu_lock = unwrap_lock(self.gpu.lock(), "gpu");
-            *gpu_lock = Gpu::system_default();
-        }
-        {
-            let mut battery_lock = unwrap_lock(self.battery.lock(), "battery");
-            *battery_lock = Battery::system_default();
-        }
+    pub fn load_system_default(&mut self) {
+        let driver = super::Driver::system_default(self.general.get_path().to_owned());
+        self.cpus = driver.cpus;
+        self.gpu = driver.gpu;
+        self.battery = driver.battery;
     }
-    
-    pub fn load_file(&self, filename: PathBuf, name: String, system_defaults: bool) -> Result<bool, SettingError> {
+
+    pub fn load_file(&mut self, filename: PathBuf, name: String, system_defaults: bool) -> Result<bool, SettingError> {
         let json_path = crate::utility::settings_dir().join(filename);
-        let mut general_lock = unwrap_lock(self.general.lock(), "general");
         if json_path.exists() {
             let settings_json = SettingsJson::open(&json_path).map_err(|e| SettingError {
                 msg: e.to_string(),
@@ -153,80 +146,106 @@ impl Settings {
             })?;
             if !settings_json.persistent {
                 log::warn!("Loaded persistent config `{}` ({}) with persistent=false", &settings_json.name, json_path.display());
-                general_lock.persistent = false;
-                general_lock.name = name;
+                *self.general.persistent() = false;
+                self.general.name(name);
             } else {
-                let new_cpus = Self::convert_cpus(settings_json.cpus, settings_json.version);
-                let new_gpu = Gpu::from_json(settings_json.gpu, settings_json.version);
-                let new_battery = Battery::from_json(settings_json.battery, settings_json.version);
-                {
-                    let mut cpu_lock = unwrap_lock(self.cpus.lock(), "cpu");
-                    *cpu_lock = new_cpus;
-                }
-                {
-                    let mut gpu_lock = unwrap_lock(self.gpu.lock(), "gpu");
-                    *gpu_lock = new_gpu;
-                }
-                {
-                    let mut battery_lock = unwrap_lock(self.battery.lock(), "battery");
-                    *battery_lock = new_battery;
-                }
-                general_lock.persistent = true;
-                general_lock.name = settings_json.name;
+                match super::Driver::init(settings_json, json_path.clone()) {
+                    Ok(x) => {
+                        log::info!("Loaded settings with drivers general:{:?},cpus:{:?},gpu:{:?},battery:{:?}", x.general.provider(), x.cpus.provider(), x.gpu.provider(), x.battery.provider());
+                        self.general = x.general;
+                        self.cpus = x.cpus;
+                        self.gpu = x.gpu;
+                        self.battery = x.battery;
+                    },
+                    Err(e) => {
+                        log::error!("Driver init error: {}", e);
+                        self.general.name(name);
+                        *self.general.persistent() = false;
+                        self.general.path(json_path);
+                        return Err(e);
+                    }
+                };
             }
         } else {
             if system_defaults {
                 self.load_system_default();
             }
-            general_lock.persistent = false;
-            general_lock.name = name;
+            *self.general.persistent() = false;
+            self.general.name(name);
         }
-        general_lock.path = json_path;
-        Ok(general_lock.persistent)
+        self.general.path(json_path);
+        Ok(*self.general.persistent())
+    }
+    
+    /*
+    pub fn load_file(&mut self, filename: PathBuf, name: String, system_defaults: bool) -> Result<bool, SettingError> {
+        let json_path = crate::utility::settings_dir().join(filename);
+        //let mut general_lock = unwrap_lock(self.general.lock(), "general");
+        if json_path.exists() {
+            let settings_json = SettingsJson::open(&json_path).map_err(|e| SettingError {
+                msg: e.to_string(),
+                setting: SettingVariant::General,
+            })?;
+            if !settings_json.persistent {
+                log::warn!("Loaded persistent config `{}` ({}) with persistent=false", &settings_json.name, json_path.display());
+                *self.general.persistent() = false;
+                self.general.name(name);
+            } else {
+                self.cpus = Box::new(super::steam_deck::Cpus::from_json(settings_json.cpus, settings_json.version));
+                self.gpu = Box::new(super::steam_deck::Gpu::from_json(settings_json.gpu, settings_json.version));
+                self.battery = Box::new(super::steam_deck::Battery::from_json(settings_json.battery, settings_json.version));
+                *self.general.persistent() = true;
+                self.general.name(settings_json.name);
+            }
+        } else {
+            if system_defaults {
+                self.load_system_default();
+            }
+            *self.general.persistent() = false;
+            self.general.name(name);
+        }
+        self.general.path(json_path);
+        Ok(*self.general.persistent())
+    }*/
+
+    pub fn json(&self) -> SettingsJson {
+        SettingsJson {
+            version: LATEST_VERSION,
+            name: self.general.get_name().to_owned(),
+            persistent: self.general.get_persistent(),
+            cpus: self.cpus.json(),
+            gpu: self.gpu.json(),
+            battery: self.battery.json(),
+            provider: Some(self.general.provider()),
+        }
     }
 }
 
 impl OnResume for Settings {
     fn on_resume(&self) -> Result<(), SettingError> {
-        log::debug!("Locking settings for on_resume");
-        unwrap_lock(self.battery.lock(), "battery").on_resume()?;
-        log::debug!("Got battery lock");
-        {
-            let cpu_lock = unwrap_lock(self.cpus.lock(), "cpu");
-            log::debug!("Got cpus lock");
-            for cpu in cpu_lock.iter() {
-                cpu.on_resume()?;
-            }
-        }
-        unwrap_lock(self.gpu.lock(), "gpu").on_resume()?;
-        log::debug!("Got gpu lock");
+        log::debug!("Applying settings for on_resume");
+        self.battery.on_resume()?;
+        log::debug!("Resumed battery");
+        self.cpus.on_resume()?;
+        log::debug!("Resumed CPUs");
+        self.gpu.on_resume()?;
+        log::debug!("Resumed GPU");
         Ok(())
     }
 }
 
-impl Into<SettingsJson> for Settings {
+/*impl Into<SettingsJson> for Settings {
     #[inline]
     fn into(self) -> SettingsJson {
-        log::debug!("Locking settings to convert into json");
-        let gen_lock = unwrap_lock(self.general.lock(), "general");
-        log::debug!("Got general lock");
-        let cpu_lock = unwrap_lock(self.cpus.lock(), "cpu");
-        log::debug!("Got cpus lock");
-        let gpu_lock = unwrap_lock(self.gpu.lock(), "gpu");
-        log::debug!("Got gpu lock");
-        let batt_lock = unwrap_lock(self.battery.lock(), "battery");
-        log::debug!("Got battery lock");
+        log::debug!("Converting into json");
         SettingsJson {
             version: LATEST_VERSION,
-            name: gen_lock.name.clone(),
-            persistent: gen_lock.persistent,
-            cpus: cpu_lock
-                .clone()
-                .drain(..)
-                .map(|cpu| cpu.into())
-                .collect(),
-            gpu: gpu_lock.clone().into(),
-            battery: batt_lock.clone().into(),
+            name: self.general.get_name().to_owned(),
+            persistent: self.general.get_persistent(),
+            cpus: self.cpus.json(),
+            gpu: self.gpu.json(),
+            battery: self.battery.json(),
+            provider: Some(self.general.provider()),
         }
     }
-}
+}*/

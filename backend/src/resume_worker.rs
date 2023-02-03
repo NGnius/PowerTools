@@ -1,12 +1,13 @@
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
+use std::sync::mpsc::Sender;
 
-use crate::settings::{OnResume, Settings};
-use crate::utility::unwrap_maybe_fatal;
+use crate::api::handler::ApiMessage;
+//use crate::utility::unwrap_maybe_fatal;
 
 const ALLOWED_ERROR: f64 = 100.0; // period of 10ms with 100x means sleep has to be >= 1s to be detected
 
-pub fn spawn(settings: Settings) -> JoinHandle<()> {
+pub fn spawn(sender: Sender<ApiMessage>) -> JoinHandle<()> {
     thread::spawn(move || {
         log::info!("resume_worker starting...");
         let duration = Duration::from_millis(10); // very low so it detects before Steam client does
@@ -18,7 +19,7 @@ pub fn spawn(settings: Settings) -> JoinHandle<()> {
             if old_start.as_secs_f64() > duration.as_secs_f64() * (1.0 + ALLOWED_ERROR) {
                 // has just resumed from sleep
                 log::info!("Resume detected");
-                unwrap_maybe_fatal(settings.on_resume(), "On resume failure");
+                sender.send(ApiMessage::OnResume).expect("resume_worker send failed");
                 log::debug!(
                     "OnResume completed after sleeping for {}s",
                     old_start.as_secs_f32()

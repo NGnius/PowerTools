@@ -1,0 +1,229 @@
+# TEMPLATE TITLE.
+# Copyright (C) 2023 NGnius
+# This file is distributed under the same license as the PowerTools package.
+# NGnius (Graham) <ngniusness@gmail.com>, 2023.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: v1.1\n"
+"Report-Msgid-Bugs-To: https://github.com/NGnius/PowerTools/issues\n"
+"POT-Creation-Date: 2023-01-12 \n"
+"PO-Revision-Date: 2023-01-12 \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: zh_HK\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# -- index.tsx --
+
+#: index.tsx:226
+# (Section title)
+msgid "Miscellaneou"
+msgstr "其他選項"
+
+#: index.tsx:226
+# (Profile persistence toggle)
+msgid "Persistent Profile"
+msgstr "持續"
+
+#: index.tsx:227
+# (Profile persistence toggle description)
+msgid "Save profile and load it next time"
+msgstr "保存配置並自動載入"
+
+#: index.tsx:239
+# (Profile display)
+msgid "Profile"
+msgstr "配置文件"
+
+# -- components/battery.tsx --
+
+#: components/battery.tsx:42
+# (Battery section title)
+msgid "Battery"
+msgstr "電池"
+
+#: components/battery.tsx:46
+# (Charge of battery at this moment, with percentage of expected full charge in brackets)
+msgid "Now (Charge)"
+msgstr "此刻 (正在充電中)"
+
+#: components/battery.tsx:52
+# (Maximum capacity of battery, with percentage of design capacity in brackets)
+msgid "Max (Design)"
+msgstr "最大電量 (設計)"
+
+#: components/battery.tsx:59
+# (Charge current limit override toggle)
+msgid "Charge Current Limits"
+msgstr "充電電流限制"
+
+#: components/battery.tsx:60
+# (Charge current limit override toggle description)
+msgid "Control battery charge rate when awake"
+msgstr "控制電池充電效率"
+
+#: components/battery.tsx:74
+# (Battery maximum input current with unit)
+msgid "Maximum (mA)"
+msgstr "最大 (mA)"
+
+#: components/battery.tsx:97,115
+# (Battery charge mode override toggle)
+msgid "Charge Mode"
+msgstr "充電模式"
+
+#: components/battery.tsx:98
+# (Battery charge mode override toggle description)
+msgid "Force battery charge mode"
+msgstr "強制電池充電模式"
+
+#: components/battery.tsx:112
+# (Battery charge mode dropdown)
+msgid "Mode"
+msgstr "模式"
+
+#: components/battery.tsx:133
+# (Battery current display)
+msgid "Current"
+msgstr "當前"
+
+# -- components/cpus.tsx --
+
+#: components/cpus.tsx:64
+# (CPU section title)
+msgid "CPU"
+msgstr "CPU"
+
+#: components/cpus.tsx:70
+# (CPU advanced mode toggle)
+msgid "Advanced"
+msgstr "進階"
+
+#: components/cpus.tsx:71
+# (CPU advanced mode toggle description)
+msgid "Enables per-thread configuration"
+msgstr "線程設定"
+
+#: components/cpus.tsx:88
+# (CPU Simultaneous MultiThreading toggle)
+msgid "SMT"
+msgstr "同步多執行緒"
+
+#: components/cpus.tsx:89
+# (CPU SMT toggle description)
+msgid "Enables odd-numbered CPUs"
+msgstr "啟用多執行緒CPU"
+
+#: components/cpus.tsx:106
+# (CPU thread count slider)
+msgid "Threads"
+msgstr "線程數"
+
+#: components/cpus.tsx:137
+#: components/gpu.tsx:112
+# (Clock speed override toggle)
+msgid "Frequency Limits"
+msgstr "頻率限制"
+
+#: components/cpus.tsx:138
+#: components/gpu.tsx:113
+# (Clock speed override toggle description)
+msgid "Set bounds on clock speed"
+msgstr "設定頻率"
+
+#: components/cpus.tsx:165
+#: components/gpu.tsx:137
+# (Minimum clock speed with unit)
+msgid "Minimum (MHz)"
+msgstr "最小 (MHz)"
+
+#: components/cpus.tsx:195
+#: components/gpu.tsx:160
+# (Maximum clock speed with unit)
+msgid "Maximum (MHz)"
+msgstr "最大 (MHz)"
+
+# advanced mode
+
+#: components/cpus.tsx:226
+# (CPU selection slider)
+msgid "Selected CPU"
+msgstr "選擇 CPU"
+
+#: components/cpus.tsx:246
+# (CPU Online toggle)
+msgid "Online"
+msgstr "線上"
+
+#: components/cpus.tsx:247
+# (CPU Online description)
+msgid "Allow the CPU thread to do work"
+msgstr "允许CPU工作線程"
+
+#: components/cpus.tsx:342
+# (CPU scheduling governor dropdown -- governor names are not translated)
+msgid "Governor"
+msgstr "穩壓"
+
+# -- components/debug.tsx --
+
+#: components/debug.tsx:29
+# (Debug section title)
+msgid "Debug"
+msgstr "除錯"
+
+#: components/debug.tsx:33
+# (Version display for native back-end of PowerTools)
+msgid "Native"
+msgstr "原生版本"
+
+#: components/debug.tsx:47
+# (Mode display for framework of USDPL API)
+msgid "Framework"
+msgstr "API 架構"
+
+#: components/debug.tsx:54
+# (Display for software implementation in PowerTools which applies settings)
+msgid "Driver"
+msgstr "驅動程式"
+
+# -- components/gpu.tsx --
+
+#: components/gpu.tsx:34
+# (GPU section title)
+msgid "GPU"
+msgstr "GPU"
+
+#: components/gpu.tsx:39
+# (PPT Limits override toggle)
+msgid "PowerPlay Limits"
+msgstr "PowerPlay 限制"
+
+#: components/gpu.tsx:40
+# (PPT Limits override toggle description)
+msgid "Override APU TDP settings"
+msgstr "覆蓋 APU TDP 設定"
+
+#: components/gpu.tsx:63
+# (SlowPPT slider with unit)
+msgid "SlowPPT (W)"
+msgstr "SlowPPT (W)"
+
+#: components/gpu.tsx:87
+# (FastPPT slider with unit)
+msgid "FastPPT (W)"
+msgstr "FastPPT (W)"
+
+#: components/gpu.tsx:112
+# (Reduce memory clock speed toggle)
+msgid "Downclock Memory"
+msgstr "降低記憶體頻率"
+
+#: components/gpu.tsx:112
+# (Reduce memory clock speed toggle description)
+msgid "Force RAM into low-power mode"
+msgstr "強制記憶體進入低功率消耗模式"

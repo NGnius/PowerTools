@@ -7,7 +7,7 @@ use super::MinMaxJson;
 
 //const SCALING_FREQUENCIES: &[u64] = &[1700000, 2400000, 2800000];
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct CpuJson {
     pub online: bool,
     pub clock_limits: Option<MinMaxJson<u64>>,

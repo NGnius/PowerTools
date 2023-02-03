@@ -1,24 +1,19 @@
 use std::convert::Into;
 
+use limits_core::json::RangeLimit;
+
 use crate::persist::MinMaxJson;
 
-#[derive(Debug, Clone)]
-pub struct MinMax<T> {
-    pub max: T,
-    pub min: T,
-}
+pub type MinMax<T> = RangeLimit<T>;
 
-impl<T> MinMax<T> {
-    #[inline]
-    pub fn from_json<X: Into<T>>(other: MinMaxJson<X>, _version: u64) -> Self {
-        Self {
-            max: other.max.into(),
-            min: other.min.into(),
-        }
+pub fn min_max_from_json<T, X: Into<T>>(other: MinMaxJson<X>, _version: u64) -> MinMax<T> {
+    MinMax {
+        max: other.max.into(),
+        min: other.min.into(),
     }
 }
 
-impl<X: Into<Y>, Y> Into<MinMaxJson<Y>> for MinMax<X> {
+impl<X: Into<Y>, Y> Into<MinMaxJson<Y>> for RangeLimit<X> {
     #[inline]
     fn into(self) -> MinMaxJson<Y> {
         MinMaxJson {

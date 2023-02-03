@@ -1,31 +1,25 @@
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::mpsc::{Sender, self};
+use std::sync::{Mutex, Arc};
 use usdpl_back::core::serdes::Primitive;
+use usdpl_back::AsyncCallable;
 
-use crate::settings::{Gpu, OnSet, MinMax};
-use crate::utility::{unwrap_lock, unwrap_maybe_fatal};
+use crate::settings::MinMax;
+//use crate::utility::{unwrap_lock, unwrap_maybe_fatal};
+use super::handler::{ApiMessage, GpuMessage};
 
 pub fn set_ppt(
-    settings: Arc<Mutex<Gpu>>,
-    saver: Sender<()>,
+    sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
-    let saver = Mutex::new(saver); // Sender is not Sync; this is required for safety
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let setter = move |fast: u64, slow: u64|
+        sender.lock()
+            .unwrap()
+            .send(ApiMessage::Gpu(GpuMessage::SetPpt(Some(fast), Some(slow)))).expect("set_ppt send failed");
     move |params_in: super::ApiParameterType| {
-        if let Some(Primitive::F64(fast_ppt)) = params_in.get(0) {
-            if let Some(Primitive::F64(slow_ppt)) = params_in.get(1) {
-                let mut settings_lock = unwrap_lock(settings.lock(), "gpu");
-                settings_lock.fast_ppt = Some(*fast_ppt as u64);
-                settings_lock.slow_ppt = Some(*slow_ppt as u64);
-                unwrap_maybe_fatal(
-                    unwrap_lock(saver.lock(), "save channel").send(()),
-                    "Failed to send on save channel",
-                );
-                match settings_lock.on_set() {
-                    Ok(_) => vec![
-                        settings_lock.fast_ppt.unwrap().into(),
-                        settings_lock.slow_ppt.unwrap().into()
-                    ],
-                    Err(e) => vec![e.msg.into()],
-                }
+        if let Some(&Primitive::F64(fast_ppt)) = params_in.get(0) {
+            if let Some(&Primitive::F64(slow_ppt)) = params_in.get(1) {
+                setter(fast_ppt as u64, slow_ppt as u64);
+                vec![(fast_ppt as u64).into(), (slow_ppt as u64).into()]
             } else {
                 vec!["set_ppt missing parameter 1".into()]
             }
@@ -36,60 +30,69 @@ pub fn set_ppt(
 }
 
 pub fn get_ppt(
-    settings: Arc<Mutex<Gpu>>,
-) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
-    move |_: super::ApiParameterType| {
-        let settings_lock = unwrap_lock(settings.lock(), "gpu");
-        let fast_ppt = settings_lock.fast_ppt.map(|x| x.into()).unwrap_or(Primitive::Empty);
-        let slow_ppt = settings_lock.slow_ppt.map(|x| x.into()).unwrap_or(Primitive::Empty);
-        vec![fast_ppt, slow_ppt]
+    sender: Sender<ApiMessage>,
+) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move || {
+            let (tx, rx) = mpsc::channel();
+            let callback = move |ppt: (Option<u64>, Option<u64>)| tx.send(ppt).expect("get_ppt callback send failed");
+            sender2.lock().unwrap().send(ApiMessage::Gpu(GpuMessage::GetPpt(Box::new(callback)))).expect("get_ppt send failed");
+            rx.recv().expect("get_ppt callback recv failed")
+        }
+    };
+    super::async_utils::AsyncIshGetter {
+        set_get: getter,
+        trans_getter: |(fast, slow): (Option<u64>, Option<u64>)| {
+            vec![
+                fast.map(|x| x.into()).unwrap_or(Primitive::Empty),
+                slow.map(|x| x.into()).unwrap_or(Primitive::Empty),
+            ]
+        }
     }
 }
 
 pub fn unset_ppt(
-    settings: Arc<Mutex<Gpu>>,
-    saver: Sender<()>,
+    sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
-    let saver = Mutex::new(saver); // Sender is not Sync; this is required for safety
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let setter = move ||
+        sender.lock()
+            .unwrap()
+            .send(ApiMessage::Gpu(GpuMessage::SetPpt(None, None))).expect("set_ppt send failed");
     move |_: super::ApiParameterType| {
-        let mut settings_lock = unwrap_lock(settings.lock(), "gpu");
-        settings_lock.fast_ppt = None;
-        settings_lock.slow_ppt = None;
-        unwrap_maybe_fatal(
-            unwrap_lock(saver.lock(), "save channel").send(()),
-            "Failed to send on save channel",
-        );
-        super::utility::map_empty_result(
-            settings_lock.on_set(),
-            Primitive::Empty,
-        )
+        setter();
+        vec![true.into()]
     }
 }
 
 pub fn set_clock_limits(
-    settings: Arc<Mutex<Gpu>>,
-    saver: Sender<()>,
+    sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
-    let saver = Mutex::new(saver); // Sender is not Sync; this is required for safety
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let setter = move |value: MinMax<u64>|
+        sender.lock()
+            .unwrap()
+            .send(ApiMessage::Gpu(GpuMessage::SetClockLimits(Some(value)))).expect("set_clock_limits send failed");
     move |params_in: super::ApiParameterType| {
-        if let Some(Primitive::F64(min)) = params_in.get(0) {
-            if let Some(Primitive::F64(max)) = params_in.get(1) {
-                let mut settings_lock = unwrap_lock(settings.lock(), "gpu");
-                settings_lock.clock_limits = Some(MinMax {
-                    min: *min as _,
-                    max: *max as _,
+        if let Some(&Primitive::F64(min)) = params_in.get(0) {
+            if let Some(&Primitive::F64(max)) = params_in.get(1) {
+                let safe_max = if max < min {
+                    min
+                } else {
+                    max
+                };
+                let safe_min = if min > max {
+                    max
+                } else {
+                    min
+                };
+                setter(MinMax {
+                    min: safe_min as _,
+                    max: safe_max as _,
                 });
-                unwrap_maybe_fatal(
-                    unwrap_lock(saver.lock(), "save channel").send(()),
-                    "Failed to send on save channel",
-                );
-                match settings_lock.on_set() {
-                    Ok(_) => vec![
-                        settings_lock.clock_limits.as_ref().unwrap().min.into(),
-                        settings_lock.clock_limits.as_ref().unwrap().max.into(),
-                    ],
-                    Err(e) => vec![e.msg.into()]
-                }
+                vec![(safe_min as u64).into(), (safe_max as u64).into()]
             } else {
                 vec!["set_clock_limits missing parameter 1".into()]
             }
@@ -100,51 +103,54 @@ pub fn set_clock_limits(
 }
 
 pub fn get_clock_limits(
-    settings: Arc<Mutex<Gpu>>,
-) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
-    move |_: super::ApiParameterType| {
-        let settings_lock = unwrap_lock(settings.lock(), "gpu");
-        if let Some(min_max) = &settings_lock.clock_limits {
-            vec![min_max.min.into(), min_max.max.into()]
-        } else {
-            vec![Primitive::Empty, Primitive::Empty]
+    sender: Sender<ApiMessage>,
+) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move|| {
+        let sender2 = sender.clone();
+        move || {
+            let (tx, rx) = mpsc::channel();
+            let callback = move |clocks: Option<MinMax<u64>>| tx.send(clocks).expect("get_clock_limits callback send failed");
+            sender2.lock().unwrap().send(ApiMessage::Gpu(GpuMessage::GetClockLimits(Box::new(callback)))).expect("get_clock_limits send failed");
+            rx.recv().expect("get_clock_limits callback recv failed")
+        }
+    };
+    super::async_utils::AsyncIshGetter {
+        set_get: getter,
+        trans_getter: |clocks: Option<MinMax<u64>>| {
+            clocks.map(|x| vec![
+                x.min.into(), x.max.into()
+            ]).unwrap_or_else(|| vec![Primitive::Empty, Primitive::Empty])
         }
     }
 }
 
 pub fn unset_clock_limits(
-    settings: Arc<Mutex<Gpu>>,
-    saver: Sender<()>,
+    sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
-    let saver = Mutex::new(saver); // Sender is not Sync; this is required for safety
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let setter = move ||
+        sender.lock()
+            .unwrap()
+            .send(ApiMessage::Gpu(GpuMessage::SetClockLimits(None))).expect("unset_clock_limits send failed");
     move |_: super::ApiParameterType| {
-        let mut settings_lock = unwrap_lock(settings.lock(), "gpu");
-        settings_lock.clock_limits = None;
-        unwrap_maybe_fatal(
-            unwrap_lock(saver.lock(), "save channel").send(()),
-            "Failed to send on save channel",
-        );
-        super::utility::map_empty_result(settings_lock.on_set(), true)
+        setter();
+        vec![true.into()]
     }
 }
 
 pub fn set_slow_memory(
-    settings: Arc<Mutex<Gpu>>,
-    saver: Sender<()>,
+    sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
-    let saver = Mutex::new(saver); // Sender is not Sync; this is required for safety
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let setter = move |value: bool|
+        sender.lock()
+            .unwrap()
+            .send(ApiMessage::Gpu(GpuMessage::SetSlowMemory(value))).expect("unset_clock_limits send failed");
     move |params_in: super::ApiParameterType| {
-        if let Some(Primitive::Bool(memory_is_slow)) = params_in.get(0) {
-            let mut settings_lock = unwrap_lock(settings.lock(), "gpu");
-            settings_lock.slow_memory = *memory_is_slow;
-            unwrap_maybe_fatal(
-                unwrap_lock(saver.lock(), "save channel").send(()),
-                "Failed to send on save channel",
-            );
-            super::utility::map_empty_result(
-                settings_lock.on_set(),
-                settings_lock.slow_memory,
-            )
+        if let Some(&Primitive::Bool(memory_is_slow)) = params_in.get(0) {
+            setter(memory_is_slow);
+            vec![memory_is_slow.into()]
         } else {
             vec!["set_slow_memory missing parameter 0".into()]
         }
@@ -152,10 +158,22 @@ pub fn set_slow_memory(
 }
 
 pub fn get_slow_memory(
-    settings: Arc<Mutex<Gpu>>,
-) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
-    move |_: super::ApiParameterType| {
-        let settings_lock = unwrap_lock(settings.lock(), "cpu");
-        vec![settings_lock.slow_memory.into()]
+    sender: Sender<ApiMessage>,
+) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move || {
+            let (tx, rx) = mpsc::channel();
+            let callback = move |value: bool| tx.send(value).expect("get_slow_memory callback send failed");
+            sender2.lock().unwrap().send(ApiMessage::Gpu(GpuMessage::GetSlowMemory(Box::new(callback)))).expect("get_slow_memory send failed");
+            rx.recv().expect("get_slow_memory callback recv failed")
+        }
+    };
+    super::async_utils::AsyncIshGetter {
+        set_get: getter,
+        trans_getter: |value: bool| {
+            vec![value.into()]
+        }
     }
 }

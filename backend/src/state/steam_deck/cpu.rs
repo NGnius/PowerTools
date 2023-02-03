@@ -2,6 +2,7 @@
 pub struct Cpu {
     pub clock_limits_set: bool,
     pub is_resuming: bool,
+    pub do_set_online: bool,
 }
 
 impl std::default::Default for Cpu {
@@ -9,6 +10,7 @@ impl std::default::Default for Cpu {
         Self {
             clock_limits_set: false,
             is_resuming: false,
+            do_set_online: true,
         }
     }
 }
