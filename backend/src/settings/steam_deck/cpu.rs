@@ -15,7 +15,6 @@ pub struct Cpus {
     pub cpus: Vec<Cpu>,
     pub smt: bool,
     pub smt_capable: bool,
-    #[allow(dead_code)] // in case this may be useful in the future
     pub(super) limits: CpusLimits,
     driver_mode: crate::persist::DriverJson,
 }

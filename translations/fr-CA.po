@@ -26,7 +26,7 @@ msgstr "Divers"
 
 # (Profile persistence toggle)
 #: index.tsx:226
-msgid "Persistent"
+msgid "Persistent Profile"
 msgstr "Persistant"
 
 # (Profile persistence toggle description)

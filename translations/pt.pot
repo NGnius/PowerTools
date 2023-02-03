@@ -23,8 +23,8 @@ msgid "Miscellaneous"
 msgstr ""
 
 #: index.tsx:226
-# (Profile persistence toggle)
-msgid "Persistent"
+# (Profile persistence toggle, a bit like SteamOS's "Use per-game profile")
+msgid "Persistent Profile"
 msgstr ""
 
 #: index.tsx:227

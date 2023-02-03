@@ -226,7 +226,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
       <PanelSectionRow>
         <ToggleField
           checked={get_value(PERSISTENT_GEN)}
-          label={tr("Persistent")}
+          label={tr("Persistent Profile")}
           description={tr("Save profile and load it next time")}
           onChange={(persist: boolean) => {
             backend.log(backend.LogLevel.Debug, "Persist is now " + persist.toString());

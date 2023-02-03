@@ -26,7 +26,7 @@ msgstr "其他選項"
 
 #: index.tsx:226
 # (Profile persistence toggle)
-msgid "Persistent"
+msgid "Persistent Profile"
 msgstr "持續"
 
 #: index.tsx:227
