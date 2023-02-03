@@ -59,8 +59,7 @@ body:
           description: What version of PowerTools are you using? This is the version beside `powertools-rs` near the bottom of the plugin's UI.
           options:
               - _
-              - 1.1.0 (Indev)
-              - 1.0.5 (Latest stable)
+              - 1.1.0 (Latest stable)
               - 1.0.X (Out of date)
               - 0.7.X (Very out of date)
               - Not listed
@@ -74,7 +73,7 @@ body:
           options:
               - _
               - Steam Deck
-              - RyzenAdj
+              - GenericAMD (RyzenAdj)
               - Generic
               - Unknown
               - Not listed
