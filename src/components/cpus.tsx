@@ -30,8 +30,8 @@ interface CpuState {
 let advancedMode = false;
 let advancedCpu = 1;
 
-export class Cpus extends Component<{}, CpuState> {
-    constructor(props: {}) {
+export class Cpus extends Component<backend.IdcProps, CpuState> {
+    constructor(props: backend.IdcProps) {
         super(props);
         this.state = {
             reloadThingy: "/shrug",

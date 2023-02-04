@@ -115,7 +115,7 @@ const reload = function() {
     set_value(ONLINE_STATUS_CPUS, statii);
     const count = countCpus(statii);
     set_value(ONLINE_CPUS, count);
-    set_value(SMT_CPU, statii.length > 3 && statii[0] == statii[1] && statii[2] == statii[3]);
+    //set_value(SMT_CPU, statii.length > 3 && statii[0] == statii[1] && statii[2] == statii[3]);
   });
   backend.resolve(backend.getCpuSmt(), (smt: boolean) => {
     set_value(SMT_CPU, smt);
@@ -198,7 +198,7 @@ const periodicals = function() {
 
 const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
 
-  const [_idc, reloadGUI] = useState<any>("/shrug");
+  const [idc, reloadGUI] = useState<any>("/shrug");
 
   if (periodicHook != null) {
     clearInterval(periodicHook);
@@ -212,11 +212,11 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
 
   return (
     <PanelSection>
-      <Cpus />
+      <Cpus idc={idc}/>
 
-      <Gpu />
+      <Gpu idc={idc}/>
 
-      <Battery />
+      <Battery idc={idc}/>
 
 
       {/* Persistence */}
@@ -244,7 +244,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
         </Field>
       </PanelSectionRow>
 
-      <Debug/>
+      <Debug idc={idc}/>
 
       <PanelSectionRow>
         <ButtonItem

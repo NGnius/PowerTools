@@ -41,6 +41,10 @@ export async function initBackend() {
     //setReady(true);
 }
 
+export type IdcProps = {
+    idc: any;
+}
+
 // API limit types
 
 export type RangeLimit = {

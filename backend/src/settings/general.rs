@@ -103,6 +103,7 @@ impl OnSet for Settings {
 impl Settings {
     #[inline]
     pub fn from_json(other: SettingsJson, json_path: PathBuf) -> Self {
+        let name_bup = other.name.clone();
         match super::Driver::init(other, json_path.clone()) {
             Ok(x) => {
                 log::info!("Loaded settings with drivers general:{:?},cpus:{:?},gpu:{:?},battery:{:?}", x.general.provider(), x.cpus.provider(), x.gpu.provider(), x.battery.provider());
@@ -115,13 +116,13 @@ impl Settings {
             },
             Err(e) => {
                 log::error!("Driver init error: {}", e);
-                Self::system_default(json_path)
+                Self::system_default(json_path, name_bup)
             }
         }
     }
 
-    pub fn system_default(json_path: PathBuf) -> Self {
-        let driver = super::Driver::system_default(json_path);
+    pub fn system_default(json_path: PathBuf, name: String) -> Self {
+        let driver = super::Driver::system_default(json_path, name);
         Self {
             general: driver.general,
             cpus: driver.cpus,
@@ -130,8 +131,8 @@ impl Settings {
         }
     }
 
-    pub fn load_system_default(&mut self) {
-        let driver = super::Driver::system_default(self.general.get_path().to_owned());
+    pub fn load_system_default(&mut self, name: String) {
+        let driver = super::Driver::system_default(self.general.get_path().to_owned(), name);
         self.cpus = driver.cpus;
         self.gpu = driver.gpu;
         self.battery = driver.battery;
@@ -168,10 +169,11 @@ impl Settings {
             }
         } else {
             if system_defaults {
-                self.load_system_default();
+                self.load_system_default(name);
+            } else {
+                self.general.name(name);
             }
             *self.general.persistent() = false;
-            self.general.name(name);
         }
         self.general.path(json_path);
         Ok(*self.general.persistent())

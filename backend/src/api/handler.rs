@@ -296,7 +296,7 @@ impl ApiMessageHandler {
                 true
             }
             ApiMessage::LoadSystemSettings => {
-                settings.load_system_default();
+                settings.load_system_default(settings.general.get_name().to_owned());
                 true
             },
             ApiMessage::GetLimits(cb) => {

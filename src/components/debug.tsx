@@ -17,7 +17,7 @@ import { get_value, target_usdpl, version_usdpl} from "usdpl-front";
 
 let eggCount = 0;
 
-export class Debug extends Component<{}> {
+export class Debug extends Component<backend.IdcProps> {
     render() {
         return buildDebug();
     }
