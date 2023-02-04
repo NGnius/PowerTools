@@ -60,7 +60,7 @@ fn main() -> Result<(), ()> {
 
     let mut loaded_settings = persist::SettingsJson::open(utility::settings_dir().join(DEFAULT_SETTINGS_FILE))
         .map(|settings| settings::Settings::from_json(settings, DEFAULT_SETTINGS_FILE.into()))
-        .unwrap_or_else(|_| settings::Settings::system_default(DEFAULT_SETTINGS_FILE.into()));
+        .unwrap_or_else(|_| settings::Settings::system_default(DEFAULT_SETTINGS_FILE.into(), DEFAULT_SETTINGS_NAME.into()));
 
     log::debug!("Settings: {:?}", loaded_settings);
 

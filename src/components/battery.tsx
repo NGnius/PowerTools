@@ -22,8 +22,8 @@ import {
 } from "../consts";
 import { set_value, get_value} from "usdpl-front";
 
-export class Battery extends Component<{}> {
-    constructor(props: {}) {
+export class Battery extends Component<backend.IdcProps> {
+    constructor(props: backend.IdcProps) {
         super(props);
         this.state = {
             reloadThingy: "/shrug",

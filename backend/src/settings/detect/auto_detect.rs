@@ -28,7 +28,7 @@ fn get_limits() -> limits_core::json::Base {
 
 #[inline]
 pub fn auto_detect_provider() -> DriverJson {
-    let provider = auto_detect0(None, crate::utility::settings_dir().join("autodetect.json"))
+    let provider = auto_detect0(None, crate::utility::settings_dir().join("autodetect.json"), "".to_owned())
         .battery
         .provider();
     //log::info!("Detected device automatically, compatible driver: {:?}", provider);
@@ -36,8 +36,8 @@ pub fn auto_detect_provider() -> DriverJson {
 }
 
 /// Device detection logic
-pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::PathBuf) -> Driver {
-    let mut builder = DriverBuilder::new(json_path);
+pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::PathBuf, name: String) -> Driver {
+    let mut builder = DriverBuilder::new(json_path, name);
 
     let cpu_info: String = usdpl_back::api::files::read_single("/proc/cpuinfo").unwrap_or_default();
     log::debug!("Read from /proc/cpuinfo:\n{}", cpu_info);
@@ -92,6 +92,7 @@ pub fn auto_detect0(settings_opt: Option<SettingsJson>, json_path: std::path::Pa
         if matches {
             if let Some(settings) = &settings_opt {
                 *builder.general.persistent() = true;
+                builder.general.name(settings.name.clone());
                 for limit in conf.limits {
                     match limit {
                         Limits::Cpu(cpus) => {
@@ -175,12 +176,12 @@ struct DriverBuilder {
 }
 
 impl DriverBuilder {
-    fn new(json_path: std::path::PathBuf) -> Self {
+    fn new(json_path: std::path::PathBuf, profile_name: String) -> Self {
         Self {
             general: Box::new(General {
                 persistent: false,
                 path: json_path,
-                name: crate::consts::DEFAULT_SETTINGS_NAME.to_owned(),
+                name: profile_name,
                 driver: DriverJson::AutoDetect,
             }),
             cpus: None,
