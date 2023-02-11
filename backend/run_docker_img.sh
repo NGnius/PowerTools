@@ -4,4 +4,4 @@
 
 docker run -i --entrypoint /backend/entrypoint.sh -v $PWD:/backend powertools_backend
 mkdir -p ../bin
-cp ./out/backend ../bin
+cp ./out/* ../bin/
