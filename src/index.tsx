@@ -210,6 +210,24 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
       reloadGUI("periodic" + (new Date()).getTime().toString());
   }, 1000);
 
+  if (!usdplReady || !get_value(LIMITS_INFO)) {
+    // Not translated on purpose (to avoid USDPL issues)
+    return (
+      <PanelSection>
+        USDPL or PowerTools's backend did not start correctly!
+        <ButtonItem
+          layout="below"
+          onClick={(_: MouseEvent) => {
+            console.log("POWERTOOLS: manual reload after startup failure");
+            reload();
+          }}
+        >
+        Reload
+        </ButtonItem>
+      </PanelSection>
+    )
+  }
+
   return (
     <PanelSection>
       <Cpus idc={idc}/>
