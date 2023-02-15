@@ -146,7 +146,7 @@ export async function setCpuSmt(status: boolean): Promise<boolean[]> {
 }
 
 export async function getCpuSmt(): Promise<boolean> {
-    return await call_backend("CPU_get_smt", []);
+    return (await call_backend("CPU_get_smt", []))[0];
 }
 
 /*export async function getCpuCount(): Promise<number> {

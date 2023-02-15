@@ -176,6 +176,7 @@ impl TCpus for Cpus {
     }
 
     fn smt(&mut self) -> &'_ mut bool {
+        log::debug!("CPU driver thinks SMT is {}", self.smt);
         &mut self.smt
     }
 
