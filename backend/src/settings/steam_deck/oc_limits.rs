@@ -116,8 +116,8 @@ impl Default for GpuLimits {
             slow_ppt: MinMax { min: 1000000, max: 29_000_000 },
             ppt_divisor: 1_000_000,
             ppt_step: 1,
-            clock_min: MinMax { min: 200, max: 1600 },
-            clock_max: MinMax { min: 200, max: 1600 },
+            clock_min: MinMax { min: 400, max: 1600 },
+            clock_max: MinMax { min: 400, max: 1600 },
             clock_step: 100,
             skip_resume_reclock: false,
         }

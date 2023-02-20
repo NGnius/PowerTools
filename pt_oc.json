@@ -118,11 +118,11 @@
     "ppt_divisor": 1000000,
     "ppt_step": 1,
     "clock_min": {
-      "min": 200,
+      "min": 400,
       "max": 1600
     },
     "clock_max": {
-      "min": 200,
+      "min": 400,
       "max": 1600
     },
     "clock_step": 100,
