@@ -104,7 +104,7 @@
         "skip_resume_reclock": false
       }
     ],
-    "global_governors": false
+    "global_governors": true
   },
   "gpu": {
     "fast_ppt": {

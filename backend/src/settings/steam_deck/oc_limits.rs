@@ -73,7 +73,7 @@ impl Default for CpusLimits {
     fn default() -> Self {
         Self {
             cpus: [(); 8].iter().map(|_| CpuLimits::default()).collect(),
-            global_governors: false,
+            global_governors: true,
         }
     }
 }

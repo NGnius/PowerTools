@@ -238,7 +238,7 @@ export class Cpus extends Component<backend.IdcProps, CpuState> {
                             const governors = get_value(GOVERNOR_CPU);
                             for (let i = 0; i < total_cpus; i++) {
                                 governors[i] = elem.data as string;
-                                backend.resolve(backend.setCpuGovernor(i, elem.data as string), (_: string) => {});
+                                backend.resolve(backend.setCpuGovernor(i, governors[i]), (_: string) => {});
                             }
                             set_value(GOVERNOR_CPU, governors);
                             reloadGUI("CPUGlobalGovernor");
