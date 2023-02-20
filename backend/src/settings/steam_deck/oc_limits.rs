@@ -127,3 +127,22 @@ impl Default for GpuLimits {
 fn oc_limits_filepath() -> std::path::PathBuf {
     crate::utility::settings_dir().join(OC_LIMITS_FILEPATH)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn load_pt_oc() {
+        let mut file = std::fs::File::open("../pt_oc.json").unwrap();
+        let settings: OverclockLimits = serde_json::from_reader(&mut file).unwrap();
+        assert!(settings.cpus.cpus.len() == 8);
+    }
+
+    #[cfg(feature = "dev_stuff")]
+    #[test]
+    fn emit_default_pt_oc() {
+        let mut file = std::fs::File::create("../pt_oc.json").unwrap();
+        serde_json::to_writer_pretty(&mut file, &OverclockLimits::default()).unwrap();
+    }
+}

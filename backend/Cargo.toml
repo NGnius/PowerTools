@@ -37,6 +37,7 @@ decky = ["usdpl-back/decky"]
 crankshaft = ["usdpl-back/crankshaft"]
 encrypt = ["usdpl-back/encrypt"]
 online = ["ureq"]
+dev_stuff = []
 
 [profile.release]
 debug = false
