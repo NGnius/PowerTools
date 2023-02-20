@@ -273,7 +273,7 @@ impl Cpu {
                     setting: crate::settings::SettingVariant::Cpu,
                 },
             )?;
-        } else if self.state.clock_limits_set || self.state.is_resuming {
+        } else if self.state.clock_limits_set || (self.state.is_resuming && !self.limits.skip_resume_reclock) {
             self.state.clock_limits_set = false;
             // disable manual clock limits
             log::debug!("Setting CPU {} to default clockspeed", self.index);

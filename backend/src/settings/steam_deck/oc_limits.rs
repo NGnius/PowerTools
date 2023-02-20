@@ -83,6 +83,7 @@ pub(super) struct CpuLimits {
     pub clock_min: MinMax<u64>,
     pub clock_max: MinMax<u64>,
     pub clock_step: u64,
+    pub skip_resume_reclock: bool,
 }
 
 impl Default for CpuLimits {
@@ -91,6 +92,7 @@ impl Default for CpuLimits {
             clock_min: MinMax { min: 1400, max: 3500 },
             clock_max: MinMax { min: 400, max: 3500 },
             clock_step: 100,
+            skip_resume_reclock: false,
         }
     }
 }
@@ -104,6 +106,7 @@ pub(super) struct GpuLimits {
     pub clock_min: MinMax<u64>,
     pub clock_max: MinMax<u64>,
     pub clock_step: u64,
+    pub skip_resume_reclock: bool,
 }
 
 impl Default for GpuLimits {
@@ -116,6 +119,7 @@ impl Default for GpuLimits {
             clock_min: MinMax { min: 200, max: 1600 },
             clock_max: MinMax { min: 200, max: 1600 },
             clock_step: 100,
+            skip_resume_reclock: false,
         }
     }
 }

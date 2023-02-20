@@ -125,7 +125,7 @@ impl Gpu {
                     setting: crate::settings::SettingVariant::Gpu,
                 },
             )?;
-        } else if self.state.clock_limits_set || self.state.is_resuming {
+        } else if self.state.clock_limits_set || (self.state.is_resuming && !self.limits.skip_resume_reclock) {
             self.state.clock_limits_set = false;
             // disable manual clock limits
             // max clock

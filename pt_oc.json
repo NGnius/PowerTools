@@ -7,42 +7,50 @@
             {
                 "clock_min": {"min": 1400, "max": 3500},
                 "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
+                "clock_step": 100,
+                "skip_resume_reclock": false
             },
             {
                 "clock_min": {"min": 1400, "max": 3500},
                 "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
+                "clock_step": 100,
+                "skip_resume_reclock": false
             },
             {
                 "clock_min": {"min": 1400, "max": 3500},
                 "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
+                "clock_step": 100,
+                "skip_resume_reclock": false
             },
             {
                 "clock_min": {"min": 1400, "max": 3500},
                 "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
+                "clock_step": 100,
+                "skip_resume_reclock": false
             },
             {
                 "clock_min": {"min": 1400, "max": 3500},
                 "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
+                "clock_step": 100,
+                "skip_resume_reclock": false
             },
             {
                 "clock_min": {"min": 1400, "max": 3500},
                 "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
+                "clock_step": 100,
+                "skip_resume_reclock": false
             },
             {
                 "clock_min": {"min": 1400, "max": 3500},
                 "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
+                "clock_step": 100,
+                "skip_resume_reclock": false
             },
             {
                 "clock_min": {"min": 1400, "max": 3500},
                 "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
+                "clock_step": 100,
+                "skip_resume_reclock": false
             }
         ],
         "global_governors": false
@@ -54,6 +62,7 @@
         "ppt_step": 1,
         "clock_min": {"min": 200, "max": 1600},
         "clock_max": {"min": 200, "max": 1600},
-        "clock_step": 100
+        "clock_step": 100,
+        "skip_resume_reclock": false
     }
 }
