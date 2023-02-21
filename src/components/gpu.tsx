@@ -40,20 +40,20 @@ export class Gpu extends Component<backend.IdcProps> {
                 description={tr("Override APU TDP settings")}
                 onChange={(value: boolean) => {
                     if (value) {
-                    if ((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits != null) {
-                        set_value(SLOW_PPT_GPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits!.max);
-                    }
+                        if ((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits != null) {
+                            set_value(SLOW_PPT_GPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.slow_ppt_limits!.max);
+                        }
 
-                    if ((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits != null) {
-                        set_value(FAST_PPT_GPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits!.max);
-                    }
-                    reloadGUI("GPUPPTToggle");
+                        if ((get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits != null) {
+                            set_value(FAST_PPT_GPU, (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.fast_ppt_limits!.max);
+                        }
+                        reloadGUI("GPUPPTToggle");
                     } else {
-                    set_value(SLOW_PPT_GPU, null);
-                    set_value(FAST_PPT_GPU, null);
-                    backend.resolve(backend.unsetGpuPpt(), (_: any[]) => {
-                        reloadGUI("GPUUnsetPPT");
-                    });
+                        set_value(SLOW_PPT_GPU, null);
+                        set_value(FAST_PPT_GPU, null);
+                        backend.resolve(backend.unsetGpuPpt(), (_: any[]) => {
+                            reloadGUI("GPUUnsetPPT");
+                        });
                     }
                 }}
                 />
@@ -113,15 +113,15 @@ export class Gpu extends Component<backend.IdcProps> {
                 description={tr("Set bounds on clock speed")}
                 onChange={(value: boolean) => {
                     if (value) {
-                    let clock_min_limits = (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits;
-                    let clock_max_limits = (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_max_limits;
-                    if (clock_min_limits != null) {
-                        set_value(CLOCK_MIN_GPU, clock_min_limits.min);
-                    }
-                    if (clock_max_limits != null) {
-                        set_value(CLOCK_MAX_GPU, clock_max_limits.max);
-                    }
-                    reloadGUI("GPUFreqToggle");
+                        let clock_min_limits = (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_min_limits;
+                        let clock_max_limits = (get_value(LIMITS_INFO) as backend.SettingsLimits).gpu.clock_max_limits;
+                        if (clock_min_limits != null) {
+                            set_value(CLOCK_MIN_GPU, clock_min_limits.min);
+                        }
+                        if (clock_max_limits != null) {
+                            set_value(CLOCK_MAX_GPU, clock_max_limits.max);
+                        }
+                        reloadGUI("GPUFreqToggle");
                     } else {
                         set_value(CLOCK_MIN_GPU, null);
                         set_value(CLOCK_MAX_GPU, null);
@@ -187,8 +187,8 @@ export class Gpu extends Component<backend.IdcProps> {
                 description={tr("Force RAM into low-power mode")}
                 onChange={(value: boolean) => {
                     backend.resolve(backend.setGpuSlowMemory(value), (val: boolean) => {
-                    set_value(SLOW_MEMORY_GPU, val);
-                    reloadGUI("GPUSlowMemory");
+                        set_value(SLOW_MEMORY_GPU, val);
+                        reloadGUI("GPUSlowMemory");
                     })
                 }}
                 />
