@@ -826,7 +826,7 @@ dependencies = [
 
 [[package]]
 name = "powertools-rs"
-version = "1.2.0-alpha"
+version = "1.2.0-beta1"
 dependencies = [
  "async-trait",
  "limits_core",
@@ -1375,9 +1375,9 @@ dependencies = [
 
 [[package]]
 name = "usdpl-back"
-version = "0.9.1"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2938cb40ba84ebea44658ebb1e4e0045fca54a562873bacab2ae094abab61ff"
+checksum = "2d185cc6e3f5d305e6e97f1b5cadf1da78bac6b62ea3457802d250708c315306"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -1393,9 +1393,9 @@ dependencies = [
 
 [[package]]
 name = "usdpl-core"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3904ca38aca189c68a6bc876cf73de7cc60003476b4e118012ae7eb783c1700"
+checksum = "bd73bec3df5bed5862cab15aaa645d76c388e00128a14c372806907e2f331960"
 dependencies = [
  "aes-gcm-siv",
  "base64",

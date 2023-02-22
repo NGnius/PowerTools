@@ -35,8 +35,8 @@ export async function initBackend() {
             ? navigator.languages[0]
             : navigator.language;
     console.log("POWERTOOLS: locale", user_locale);
-    let mo_path = "../plugins/PowerTools/translations/" + user_locale.toString() + ".mo";
-    await init_tr(mo_path);
+    //let mo_path = "../plugins/PowerTools/translations/" + user_locale.toString() + ".mo";
+    await init_tr(user_locale);
     //await init_tr("../plugins/PowerTools/translations/test.mo");
     //setReady(true);
 }

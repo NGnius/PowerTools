@@ -290,7 +290,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
 
 export default definePlugin((serverApi: ServerAPI) => {
   return {
-    title: <div className={staticClasses.Title}>PowerTools</div>,
+    title: <div className={staticClasses.Title}>PowerTools 300</div>,
     content: <Content serverAPI={serverApi} />,
     icon: <GiDrill />,
     onDismount() {

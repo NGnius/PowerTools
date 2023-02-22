@@ -12,9 +12,14 @@ class Plugin:
     async def _main(self):
         # startup
         print("PowerTools starting...")
+        env_proc = dict(os.environ)
+        if "LD_LIBRARY_PATH" in env_proc:
+            env_proc["LD_LIBRARY_PATH"] += ":"+PARENT_DIR+"/bin"
+        else:
+            env_proc["LD_LIBRARY_PATH"] = ":"+PARENT_DIR+"/bin"
         self.backend_proc = subprocess.Popen(
             [PARENT_DIR + "/bin/backend"],
-            env = {"LD_LIBRARY_PATH": ":"+PARENT_DIR+"/bin"})
+            env = env_proc)
         while True:
             await asyncio.sleep(1)
 

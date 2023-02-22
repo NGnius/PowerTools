@@ -244,6 +244,9 @@ impl ApiMessageHandler {
                     let save_json: SettingsJson = settings_clone.into();
                     unwrap_maybe_fatal(save_json.save(&save_path), "Failed to save settings");
                     log::debug!("Saved settings to {}", save_path.display());
+                    if let Err(e) = crate::utility::chown_settings_dir() {
+                        log::error!("Failed to change config dir permissions: {}", e);
+                    }
                 } else {
                     if save_path.exists() {
                         if let Err(e) = std::fs::remove_file(&save_path) {

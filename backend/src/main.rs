@@ -18,7 +18,6 @@ use usdpl_back::core::serdes::Primitive;
 use usdpl_back::Instance;
 
 fn main() -> Result<(), ()> {
-
     #[cfg(debug_assertions)]
     let log_filepath = usdpl_back::api::dirs::home()
         .unwrap_or_else(|| "/tmp/".into())
@@ -46,6 +45,7 @@ fn main() -> Result<(), ()> {
         },
         Default::default(),
         std::fs::File::create(&log_filepath).unwrap(),
+        //std::fs::File::create("/home/deck/powertools-rs.log").unwrap(),
     )
     .unwrap();
     log::debug!("Logging to: {:?}.", log_filepath);
@@ -54,6 +54,8 @@ fn main() -> Result<(), ()> {
     println!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
     log::info!("Current dir `{}`", std::env::current_dir().unwrap().display());
     println!("Current dir `{}`", std::env::current_dir().unwrap().display());
+
+    log::info!("home dir: {:?}", usdpl_back::api::dirs::home());
 
     let _limits_handle = crate::settings::limits_worker_spawn();
     log::info!("Detected device automatically, starting with driver: {:?} (This can be overriden)", crate::settings::auto_detect_provider());
@@ -225,6 +227,10 @@ fn main() -> Result<(), ()> {
         log::error!("Startup Settings.on_set() error: {}", e);
     } else {
         log::info!("Startup Settings.on_set() success");
+    }
+
+    if let Err(e) = utility::chown_settings_dir() {
+        log::warn!("Failed to change config dir permissions: {}", e);
     }
 
     api_worker::spawn(loaded_settings, api_handler);
