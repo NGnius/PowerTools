@@ -35,7 +35,7 @@ function buildDebug() {
             if (eggCount % 10 == 9) {
               // you know you're bored and/or conceited when you spend time adding an easter egg
               // that just sends people to your own project's repo
-              Router.NavigateToExternalWeb("https://github.com/NGnius/PowerTools");
+              Router.NavigateToExternalWeb("https://github.com/NGnius/PowerTools/releases");
             }
             eggCount++;
           }}>

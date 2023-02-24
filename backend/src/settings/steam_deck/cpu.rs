@@ -20,7 +20,8 @@ pub struct Cpus {
 }
 
 impl OnSet for Cpus {
-    fn on_set(&mut self) -> Result<(), SettingError> {
+    fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
         if self.smt_capable {
             // toggle SMT
             if self.smt {
@@ -32,7 +33,7 @@ impl OnSet for Cpus {
                         ),
                         setting: crate::settings::SettingVariant::Cpu,
                     }
-                })?;
+                }).unwrap_or_else(|e| errors.push(e));
             } else {
                 usdpl_back::api::files::write_single(CPU_SMT_PATH, "off").map_err(|e| {
                     SettingError {
@@ -42,23 +43,32 @@ impl OnSet for Cpus {
                         ),
                         setting: crate::settings::SettingVariant::Cpu,
                     }
-                })?;
+                }).unwrap_or_else(|e| errors.push(e));
             }
         }
         for (i, cpu) in self.cpus.as_mut_slice().iter_mut().enumerate() {
             cpu.state.do_set_online = self.smt || i % 2 == 0;
-            cpu.on_set()?;
+            cpu.on_set().unwrap_or_else(|mut e| errors.append(&mut e));
         }
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 
 impl OnResume for Cpus {
-    fn on_resume(&self) -> Result<(), SettingError> {
+    fn on_resume(&self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
         for cpu in &self.cpus {
-            cpu.on_resume()?;
+            cpu.on_resume().unwrap_or_else(|mut e| errors.append(&mut e));
         }
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 
@@ -221,30 +231,22 @@ impl Cpu {
         }
     }
 
-    fn set_all(&mut self) -> Result<(), SettingError> {
-        // set cpu online/offline
-        if self.index != 0 && self.state.do_set_online { // cpu0 cannot be disabled
-            let online_path = cpu_online_path(self.index);
-            usdpl_back::api::files::write_single(&online_path, self.online as u8).map_err(|e| {
-                SettingError {
-                    msg: format!("Failed to write to `{}`: {}", &online_path, e),
-                    setting: crate::settings::SettingVariant::Cpu,
-                }
-            })?;
-        }
+    fn set_force_performance_related(&mut self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
+
         // set clock limits
         log::debug!("Setting {} to manual", CPU_FORCE_LIMITS_PATH);
         let mode: String = usdpl_back::api::files::read_single(CPU_FORCE_LIMITS_PATH.to_owned()).unwrap();
         if mode != "manual" {
             // set manual control
             usdpl_back::api::files::write_single(CPU_FORCE_LIMITS_PATH, "manual").map_err(|e| {
-                SettingError {
+                vec![SettingError {
                     msg: format!(
                         "Failed to write `manual` to `{}`: {}",
                         CPU_FORCE_LIMITS_PATH, e
                     ),
                     setting: crate::settings::SettingVariant::Cpu,
-                }
+                }]
             })?;
         }
         if let Some(clock_limits) = &self.clock_limits {
@@ -260,7 +262,7 @@ impl Cpu {
                     ),
                     setting: crate::settings::SettingVariant::Cpu,
                 },
-            )?;
+            ).unwrap_or_else(|e| errors.push(e));
             // min clock
             let valid_min = if clock_limits.min < self.limits.clock_min.min {self.limits.clock_min.min} else {clock_limits.min};
             let payload_min = format!("p {} 0 {}\n", self.index / 2, valid_min);
@@ -272,7 +274,7 @@ impl Cpu {
                     ),
                     setting: crate::settings::SettingVariant::Cpu,
                 },
-            )?;
+            ).unwrap_or_else(|e| errors.push(e));
         } else if self.state.clock_limits_set || (self.state.is_resuming && !self.limits.skip_resume_reclock) {
             self.state.clock_limits_set = false;
             // disable manual clock limits
@@ -287,7 +289,7 @@ impl Cpu {
                     ),
                     setting: crate::settings::SettingVariant::Cpu,
                 },
-            )?;
+            ).unwrap_or_else(|e| errors.push(e));
             // min clock
             let payload_min = format!("p {} 0 {}\n", self.index / 2, self.limits.clock_min.min);
             usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
@@ -298,15 +300,39 @@ impl Cpu {
                     ),
                     setting: crate::settings::SettingVariant::Cpu,
                 },
-            )?;
+            ).unwrap_or_else(|e| errors.push(e));
         }
         // commit changes
-        usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
-            SettingError {
-                msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
-                setting: crate::settings::SettingVariant::Cpu,
-            }
-        })?;
+        usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n")
+            .unwrap_or_else(|e| {
+                errors.push(SettingError {
+                    msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
+                    setting: crate::settings::SettingVariant::Cpu,
+                });
+            });
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+
+    fn set_all(&mut self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
+        // set cpu online/offline
+        if self.index != 0 && self.state.do_set_online { // cpu0 cannot be disabled
+            let online_path = cpu_online_path(self.index);
+            usdpl_back::api::files::write_single(&online_path, self.online as u8).map_err(|e| {
+                SettingError {
+                    msg: format!("Failed to write to `{}`: {}", &online_path, e),
+                    setting: crate::settings::SettingVariant::Cpu,
+                }
+            }).unwrap_or_else(|e| errors.push(e));
+        }
+
+        self.set_force_performance_related()
+            .unwrap_or_else(|mut e| errors.append(&mut e));
 
         // set governor
         if self.index == 0 || self.online {
@@ -319,9 +345,13 @@ impl Cpu {
                     ),
                     setting: crate::settings::SettingVariant::Cpu,
                 }
-            })?;
+            }).unwrap_or_else(|e| errors.push(e));
         }
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 
     fn clamp_all(&mut self) {
@@ -394,14 +424,14 @@ impl Into<CpuJson> for Cpu {
 }
 
 impl OnSet for Cpu {
-    fn on_set(&mut self) -> Result<(), SettingError> {
+    fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
         self.clamp_all();
         self.set_all()
     }
 }
 
 impl OnResume for Cpu {
-    fn on_resume(&self) -> Result<(), SettingError> {
+    fn on_resume(&self) -> Result<(), Vec<SettingError>> {
         let mut copy = self.clone();
         copy.state.is_resuming = true;
         copy.set_all()

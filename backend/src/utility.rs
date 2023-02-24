@@ -44,10 +44,10 @@ pub fn chown_settings_dir() -> std::io::Result<()> {
         .output()?;
     let uid: u32 = String::from_utf8_lossy(&output.stdout).parse().unwrap_or(1000);
     log::info!("chmod/chown ~/.config/powertools for user `{}` ({})", deck_user, uid);
-    let permissions = PermissionsExt::from_mode(0o655);
+    let permissions = PermissionsExt::from_mode(0o755);
     std::fs::set_permissions(&dir, permissions)?;
     // FIXME once merged into stable https://github.com/rust-lang/rust/issues/88989
-    //std::os::unix::fs::chown(&dir, Some(uid), None)
+    //std::os::unix::fs::chown(&dir, Some(uid), Some(uid))
     std::process::Command::new("chown")
         .args(["-R", &format!("{}:{}", deck_user, deck_user), &dir.to_str().unwrap_or(".")])
         .output()?;

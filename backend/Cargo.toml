@@ -1,6 +1,6 @@
 [package]
 name = "powertools-rs"
-version = "1.2.0-beta1"
+version = "1.2.0-beta2"
 edition = "2021"
 authors = ["NGnius (Graham) <ngniusness@gmail.com>"]
 description = "Backend (superuser) functionality for PowerTools"

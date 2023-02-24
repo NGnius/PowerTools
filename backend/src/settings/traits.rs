@@ -3,11 +3,11 @@ use super::SettingError;
 use super::MinMax;
 
 pub trait OnSet {
-    fn on_set(&mut self) -> Result<(), SettingError>;
+    fn on_set(&mut self) -> Result<(), Vec<SettingError>>;
 }
 
 pub trait OnResume {
-    fn on_resume(&self) -> Result<(), SettingError>;
+    fn on_resume(&self) -> Result<(), Vec<SettingError>>;
 }
 
 pub trait SettingsRange {

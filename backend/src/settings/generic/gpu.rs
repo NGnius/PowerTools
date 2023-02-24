@@ -69,13 +69,13 @@ impl Into<GpuJson> for Gpu {
 }
 
 impl OnSet for Gpu {
-    fn on_set(&mut self) -> Result<(), SettingError> {
+    fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
         Ok(())
     }
 }
 
 impl OnResume for Gpu {
-    fn on_resume(&self) -> Result<(), SettingError> {
+    fn on_resume(&self) -> Result<(), Vec<SettingError>> {
         Ok(())
     }
 }

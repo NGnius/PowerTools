@@ -224,7 +224,7 @@ fn main() -> Result<(), ()> {
         .register("GENERAL_idk", api::general::gunter);
 
     if let Err(e) = loaded_settings.on_set() {
-        log::error!("Startup Settings.on_set() error: {}", e);
+        e.iter().for_each(|e| log::error!("Startup Settings.on_set() error: {}", e));
     } else {
         log::info!("Startup Settings.on_set() success");
     }

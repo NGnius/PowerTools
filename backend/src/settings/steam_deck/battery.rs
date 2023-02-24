@@ -67,7 +67,8 @@ impl Battery {
         }
     }
 
-    fn set_all(&mut self) -> Result<(), SettingError> {
+    fn set_all(&mut self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
         if let Some(charge_rate) = self.charge_rate {
             self.state.charge_rate_set = true;
             usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, charge_rate).map_err(
@@ -75,7 +76,7 @@ impl Battery {
                     msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
                     setting: crate::settings::SettingVariant::Battery,
                 },
-            )?;
+            ).unwrap_or_else(|e| errors.push(e));
         } else if self.state.charge_rate_set {
             self.state.charge_rate_set = false;
             usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, self.limits.charge_rate.max).map_err(
@@ -83,7 +84,7 @@ impl Battery {
                     msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
                     setting: crate::settings::SettingVariant::Battery,
                 },
-            )?;
+            ).unwrap_or_else(|e| errors.push(e));
         }
         if let Some(charge_mode) = self.charge_mode {
             self.state.charge_mode_set = true;
@@ -92,7 +93,7 @@ impl Battery {
                     msg: format!("Failed to set charge mode: {}", e),
                     setting: crate::settings::SettingVariant::Battery,
                 },
-            )?;
+            ).unwrap_or_else(|e| {errors.push(e); 0});
         } else if self.state.charge_mode_set {
             self.state.charge_mode_set = false;
             super::util::set(super::util::Setting::ChargeMode, ChargeMode::Normal as _).map_err(
@@ -100,9 +101,13 @@ impl Battery {
                     msg: format!("Failed to set charge mode: {}", e),
                     setting: crate::settings::SettingVariant::Battery,
                 },
-            )?;
+            ).unwrap_or_else(|e| {errors.push(e); 0});
         }
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 
     fn clamp_all(&mut self) {
@@ -181,14 +186,14 @@ impl Into<BatteryJson> for Battery {
 }
 
 impl OnSet for Battery {
-    fn on_set(&mut self) -> Result<(), SettingError> {
+    fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
         self.clamp_all();
         self.set_all()
     }
 }
 
 impl OnResume for Battery {
-    fn on_resume(&self) -> Result<(), SettingError> {
+    fn on_resume(&self) -> Result<(), Vec<SettingError>> {
         self.clone().set_all()
     }
 }

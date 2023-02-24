@@ -29,7 +29,7 @@ export async function initBackend() {
     // init usdpl
     await init_embedded();
     init_usdpl(USDPL_PORT);
-    console.log("USDPL started for framework: " + target_usdpl());
+    console.log("POWERTOOLS: USDPL started for framework: " + target_usdpl());
     const user_locale =
         navigator.languages && navigator.languages.length
             ? navigator.languages[0]

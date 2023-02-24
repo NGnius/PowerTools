@@ -16,7 +16,8 @@ pub struct Cpus {
 }
 
 impl OnSet for Cpus {
-    fn on_set(&mut self) -> Result<(), SettingError> {
+    fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
         if self.smt_capable {
             // toggle SMT
             if self.smt {
@@ -28,7 +29,7 @@ impl OnSet for Cpus {
                         ),
                         setting: crate::settings::SettingVariant::Cpu,
                     }
-                })?;
+                }).unwrap_or_else(|e| {errors.push(e);});
             } else {
                 usdpl_back::api::files::write_single(CPU_SMT_PATH, "off").map_err(|e| {
                     SettingError {
@@ -38,23 +39,32 @@ impl OnSet for Cpus {
                         ),
                         setting: crate::settings::SettingVariant::Cpu,
                     }
-                })?;
+                }).unwrap_or_else(|e| {errors.push(e);});
             }
         }
         for (i, cpu) in self.cpus.as_mut_slice().iter_mut().enumerate() {
-            cpu.state.do_set_online = self.smt || i % 2 == 0;
-            cpu.on_set()?;
+            cpu.state.do_set_online = self.smt || i % 2 == 0 || !self.smt_capable;
+            cpu.on_set().unwrap_or_else(|mut e| errors.append(&mut e));
         }
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 
 impl OnResume for Cpus {
-    fn on_resume(&self) -> Result<(), SettingError> {
+    fn on_resume(&self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
         for cpu in &self.cpus {
-            cpu.on_resume()?;
+            cpu.on_resume().unwrap_or_else(|mut e| errors.append(&mut e));
         }
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 
@@ -191,7 +201,8 @@ impl Cpu {
         }
     }
 
-    fn set_all(&mut self) -> Result<(), SettingError> {
+    fn set_all(&mut self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
         // set cpu online/offline
         if self.index != 0 && self.state.do_set_online { // cpu0 cannot be disabled
             let online_path = cpu_online_path(self.index);
@@ -200,7 +211,7 @@ impl Cpu {
                     msg: format!("Failed to write to `{}`: {}", &online_path, e),
                     setting: crate::settings::SettingVariant::Cpu,
                 }
-            })?;
+            }).unwrap_or_else(|e| errors.push(e));
         }
 
         // set governor
@@ -214,9 +225,13 @@ impl Cpu {
                     ),
                     setting: crate::settings::SettingVariant::Cpu,
                 }
-            })?;
+            }).unwrap_or_else(|e| errors.push(e));
         }
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 
     fn from_sys(cpu_index: usize) -> Self {
@@ -251,14 +266,14 @@ impl Into<CpuJson> for Cpu {
 }
 
 impl OnSet for Cpu {
-    fn on_set(&mut self) -> Result<(), SettingError> {
+    fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
         //self.clamp_all();
         self.set_all()
     }
 }
 
 impl OnResume for Cpu {
-    fn on_resume(&self) -> Result<(), SettingError> {
+    fn on_resume(&self) -> Result<(), Vec<SettingError>> {
         let mut copy = self.clone();
         copy.state.is_resuming = true;
         copy.set_all()
