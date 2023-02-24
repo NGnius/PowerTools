@@ -5,6 +5,6 @@ cargo build --target x86_64-unknown-linux-musl
 #cross build --release
 
 mkdir -p ../bin
-#cp ./target/x86_64-unknown-linux-musl/release/powertools-rs ../bin/backend
-cp ./target/x86_64-unknown-linux-musl/debug/powertools-rs ../bin/backend
-#cp ./target/release/powertools-rs ../bin/backend
+#cp ./target/x86_64-unknown-linux-musl/release/powertools ../bin/backend
+cp ./target/x86_64-unknown-linux-musl/debug/powertools ../bin/backend
+#cp ./target/release/powertools ../bin/backend

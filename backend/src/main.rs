@@ -73,7 +73,13 @@ fn main() -> Result<(), ()> {
 
     let instance = Instance::new(PORT)
         .register("V_INFO", |_: Vec<Primitive>| {
-            vec![format!("{} v{}", PACKAGE_NAME, PACKAGE_VERSION).into()]
+            #[cfg(debug_assertions)]
+            {vec![format!("v{}-dbg", PACKAGE_VERSION).into()]}
+            #[cfg(not(debug_assertions))]
+            {vec![format!("v{}-rls", PACKAGE_VERSION).into()]}
+        })
+        .register("NAME", |_: Vec<Primitive>| {
+            vec![PACKAGE_NAME.into()]
         })
         .register("LOG", api::general::log_it())
         // battery API functions
