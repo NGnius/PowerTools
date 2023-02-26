@@ -299,7 +299,7 @@ export default definePlugin((serverApi: ServerAPI) => {
       periodicHook = null;
       lifetimeHook!.unregister();
       startHook!.unregister();
-      serverApi.routerHook.removeRoute("/decky-plugin-test");
+      //serverApi.routerHook.removeRoute("/decky-plugin-test");
       backend.log(backend.LogLevel.Debug, "Unregistered PowerTools callbacks, so long and thanks for all the fish.");
     },
   };

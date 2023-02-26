@@ -302,7 +302,7 @@ impl Cpu {
                 },
             ).unwrap_or_else(|e| errors.push(e));
         }
-        // commit changes
+
         usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n")
             .unwrap_or_else(|e| {
                 errors.push(SettingError {
@@ -310,9 +310,14 @@ impl Cpu {
                     setting: crate::settings::SettingVariant::Cpu,
                 });
             });
-
+        // commit changes (if no errors have already occured)
         if errors.is_empty() {
-            Ok(())
+            usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
+                    vec![SettingError {
+                        msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
+                        setting: crate::settings::SettingVariant::Cpu,
+                    }]
+                })
         } else {
             Err(errors)
         }

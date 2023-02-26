@@ -139,15 +139,14 @@ impl Gpu {
             });
         self.set_clocks()
             .unwrap_or_else(|mut e| errors.append(&mut e));
-        // commit changes
-        usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
-            SettingError {
-                msg: format!("Failed to write `c` to `{}`: {}", GPU_CLOCK_LIMITS_PATH, e),
-                setting: crate::settings::SettingVariant::Gpu,
-            }
-        }).unwrap_or_else(|e| errors.push(e));
+        // commit changes (if no errors have already occured)
         if errors.is_empty() {
-            Ok(())
+            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
+                vec![SettingError {
+                    msg: format!("Failed to write `c` to `{}`: {}", GPU_CLOCK_LIMITS_PATH, e),
+                    setting: crate::settings::SettingVariant::Gpu,
+                }]
+            })
         } else {
             Err(errors)
         }
