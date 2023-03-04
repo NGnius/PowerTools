@@ -20,7 +20,7 @@ import {
   //joinClassNames,
 } from "decky-frontend-lib";
 import { VFC, useState } from "react";
-import { GiDrill } from "react-icons/gi";
+import { GiDrill, GiTimeBomb, GiTimeTrap, GiDynamite } from "react-icons/gi";
 
 //import * as python from "./python";
 import * as backend from "./backend";
@@ -289,10 +289,15 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
 };
 
 export default definePlugin((serverApi: ServerAPI) => {
+  let ico = <GiDrill />;
+  let now = new Date();
+  if (now.getDate() == 1 && now.getMonth() == 3) {
+    ico = <span><GiDynamite /><GiTimeTrap /><GiTimeBomb /></span>;
+  }
   return {
     title: <div className={staticClasses.Title}>I'm a tool</div>,
     content: <Content serverAPI={serverApi} />,
-    icon: <GiDrill />,
+    icon: ico,
     onDismount() {
       backend.log(backend.LogLevel.Debug, "PowerTools shutting down");
       clearInterval(periodicHook!);
