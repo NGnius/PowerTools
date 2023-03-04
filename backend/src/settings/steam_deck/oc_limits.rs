@@ -73,7 +73,7 @@ impl Default for CpusLimits {
     fn default() -> Self {
         Self {
             cpus: [(); 8].iter().map(|_| CpuLimits::default()).collect(),
-            global_governors: false,
+            global_governors: true,
         }
     }
 }
@@ -83,6 +83,7 @@ pub(super) struct CpuLimits {
     pub clock_min: MinMax<u64>,
     pub clock_max: MinMax<u64>,
     pub clock_step: u64,
+    pub skip_resume_reclock: bool,
 }
 
 impl Default for CpuLimits {
@@ -91,6 +92,7 @@ impl Default for CpuLimits {
             clock_min: MinMax { min: 1400, max: 3500 },
             clock_max: MinMax { min: 400, max: 3500 },
             clock_step: 100,
+            skip_resume_reclock: false,
         }
     }
 }
@@ -104,6 +106,7 @@ pub(super) struct GpuLimits {
     pub clock_min: MinMax<u64>,
     pub clock_max: MinMax<u64>,
     pub clock_step: u64,
+    pub skip_resume_reclock: bool,
 }
 
 impl Default for GpuLimits {
@@ -113,13 +116,33 @@ impl Default for GpuLimits {
             slow_ppt: MinMax { min: 1000000, max: 29_000_000 },
             ppt_divisor: 1_000_000,
             ppt_step: 1,
-            clock_min: MinMax { min: 200, max: 1600 },
-            clock_max: MinMax { min: 200, max: 1600 },
+            clock_min: MinMax { min: 400, max: 1600 },
+            clock_max: MinMax { min: 400, max: 1600 },
             clock_step: 100,
+            skip_resume_reclock: false,
         }
     }
 }
 
 fn oc_limits_filepath() -> std::path::PathBuf {
     crate::utility::settings_dir().join(OC_LIMITS_FILEPATH)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn load_pt_oc() {
+        let mut file = std::fs::File::open("../pt_oc.json").unwrap();
+        let settings: OverclockLimits = serde_json::from_reader(&mut file).unwrap();
+        assert!(settings.cpus.cpus.len() == 8);
+    }
+
+    #[cfg(feature = "dev_stuff")]
+    #[test]
+    fn emit_default_pt_oc() {
+        let mut file = std::fs::File::create("../pt_oc.json").unwrap();
+        serde_json::to_writer_pretty(&mut file, &OverclockLimits::default()).unwrap();
+    }
 }

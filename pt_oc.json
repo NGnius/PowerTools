@@ -1,59 +1,131 @@
 {
-    "battery": {
-        "charge_rate": {"min": 250, "max": 2500}
-    },
-    "cpus": {
-        "cpus": [
-            {
-                "clock_min": {"min": 1400, "max": 3500},
-                "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
-            },
-            {
-                "clock_min": {"min": 1400, "max": 3500},
-                "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
-            },
-            {
-                "clock_min": {"min": 1400, "max": 3500},
-                "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
-            },
-            {
-                "clock_min": {"min": 1400, "max": 3500},
-                "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
-            },
-            {
-                "clock_min": {"min": 1400, "max": 3500},
-                "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
-            },
-            {
-                "clock_min": {"min": 1400, "max": 3500},
-                "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
-            },
-            {
-                "clock_min": {"min": 1400, "max": 3500},
-                "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
-            },
-            {
-                "clock_min": {"min": 1400, "max": 3500},
-                "clock_max": {"min": 500, "max": 3500},
-                "clock_step": 100
-            }
-        ],
-        "global_governors": false
-    },
-    "gpu": {
-        "fast_ppt": {"min": 1000000, "max": 30000000},
-        "slow_ppt": {"min": 1000000, "max": 29000000},
-        "ppt_divisor": 1000000,
-        "ppt_step": 1,
-        "clock_min": {"min": 200, "max": 1600},
-        "clock_max": {"min": 200, "max": 1600},
-        "clock_step": 100
+  "battery": {
+    "charge_rate": {
+      "min": 250,
+      "max": 2500
     }
+  },
+  "cpus": {
+    "cpus": [
+      {
+        "clock_min": {
+          "min": 1400,
+          "max": 3500
+        },
+        "clock_max": {
+          "min": 400,
+          "max": 3500
+        },
+        "clock_step": 100,
+        "skip_resume_reclock": false
+      },
+      {
+        "clock_min": {
+          "min": 1400,
+          "max": 3500
+        },
+        "clock_max": {
+          "min": 400,
+          "max": 3500
+        },
+        "clock_step": 100,
+        "skip_resume_reclock": false
+      },
+      {
+        "clock_min": {
+          "min": 1400,
+          "max": 3500
+        },
+        "clock_max": {
+          "min": 400,
+          "max": 3500
+        },
+        "clock_step": 100,
+        "skip_resume_reclock": false
+      },
+      {
+        "clock_min": {
+          "min": 1400,
+          "max": 3500
+        },
+        "clock_max": {
+          "min": 400,
+          "max": 3500
+        },
+        "clock_step": 100,
+        "skip_resume_reclock": false
+      },
+      {
+        "clock_min": {
+          "min": 1400,
+          "max": 3500
+        },
+        "clock_max": {
+          "min": 400,
+          "max": 3500
+        },
+        "clock_step": 100,
+        "skip_resume_reclock": false
+      },
+      {
+        "clock_min": {
+          "min": 1400,
+          "max": 3500
+        },
+        "clock_max": {
+          "min": 400,
+          "max": 3500
+        },
+        "clock_step": 100,
+        "skip_resume_reclock": false
+      },
+      {
+        "clock_min": {
+          "min": 1400,
+          "max": 3500
+        },
+        "clock_max": {
+          "min": 400,
+          "max": 3500
+        },
+        "clock_step": 100,
+        "skip_resume_reclock": false
+      },
+      {
+        "clock_min": {
+          "min": 1400,
+          "max": 3500
+        },
+        "clock_max": {
+          "min": 400,
+          "max": 3500
+        },
+        "clock_step": 100,
+        "skip_resume_reclock": false
+      }
+    ],
+    "global_governors": true
+  },
+  "gpu": {
+    "fast_ppt": {
+      "min": 1000000,
+      "max": 30000000
+    },
+    "slow_ppt": {
+      "min": 1000000,
+      "max": 29000000
+    },
+    "ppt_divisor": 1000000,
+    "ppt_step": 1,
+    "clock_min": {
+      "min": 400,
+      "max": 1600
+    },
+    "clock_max": {
+      "min": 400,
+      "max": 1600
+    },
+    "clock_step": 100,
+    "skip_resume_reclock": false
+  }
 }

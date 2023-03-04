@@ -24,14 +24,14 @@ impl Cpus {
 }
 
 impl OnResume for Cpus {
-    fn on_resume(&self) -> Result<(), SettingError> {
+    fn on_resume(&self) -> Result<(), Vec<SettingError>> {
         self.generic.on_resume()
         // TODO
     }
 }
 
 impl OnSet for Cpus {
-    fn on_set(&mut self) -> Result<(), SettingError> {
+    fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
         self.generic.on_set()
         // TODO
     }
@@ -97,14 +97,14 @@ impl AsMut<GenericCpu> for Cpu {
 }
 
 impl OnResume for Cpu {
-    fn on_resume(&self) -> Result<(), SettingError> {
+    fn on_resume(&self) -> Result<(), Vec<SettingError>> {
         self.generic.on_resume()
         // TODO
     }
 }
 
 impl OnSet for Cpu {
-    fn on_set(&mut self) -> Result<(), SettingError> {
+    fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
         self.generic.on_set()
         // TODO
     }

@@ -1,6 +1,6 @@
 [package]
-name = "powertools-rs"
-version = "1.1.1"
+name = "powertools"
+version = "1.2.0"
 edition = "2021"
 authors = ["NGnius (Graham) <ngniusness@gmail.com>"]
 description = "Backend (superuser) functionality for PowerTools"
@@ -12,7 +12,7 @@ readme = "../README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-usdpl-back = { version = "0.9.1", features = ["blocking"] }#, path = "../../usdpl-rs/usdpl-back"}
+usdpl-back = { version = "0.10.1", features = ["blocking"] }#, path = "../../usdpl-rs/usdpl-back"}
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
@@ -32,11 +32,12 @@ ryzenadj-rs = { version = "0.1" }
 ureq = { version = "2.5", features = ["json", "gzip", "brotli", "charset"], default-features = false, optional = true }
 
 [features]
-default = ["online"]
+default = ["online", "decky"]
 decky = ["usdpl-back/decky"]
 crankshaft = ["usdpl-back/crankshaft"]
 encrypt = ["usdpl-back/encrypt"]
 online = ["ureq"]
+dev_stuff = []
 
 [profile.release]
 debug = false

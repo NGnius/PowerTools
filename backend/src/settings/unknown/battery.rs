@@ -18,13 +18,13 @@ impl Into<BatteryJson> for Battery {
 }
 
 impl OnSet for Battery {
-    fn on_set(&mut self) -> Result<(), SettingError> {
+    fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
         Ok(())
     }
 }
 
 impl OnResume for Battery {
-    fn on_resume(&self) -> Result<(), SettingError> {
+    fn on_resume(&self) -> Result<(), Vec<SettingError>> {
         Ok(())
     }
 }

@@ -175,9 +175,9 @@ export class Cpus extends Component<backend.IdcProps, CpuState> {
                             set_value(CLOCK_MIN_CPU, freq);
                             for (let i = 0; i < total_cpus; i++) {
                                 backend.resolve(backend.setCpuClockLimits(i, freq, get_value(CLOCK_MAX_CPU)),
-                                                (limits: number[]) => {
-                                set_value(CLOCK_MIN_CPU, limits[0]);
-                                set_value(CLOCK_MAX_CPU, limits[1]);
+                                                (_limits: number[]) => {
+                                //set_value(CLOCK_MIN_CPU, limits[0]);
+                                //set_value(CLOCK_MAX_CPU, limits[1]);
                                 syncPlebClockToAdvanced();
                                 });
                             }
@@ -206,9 +206,9 @@ export class Cpus extends Component<backend.IdcProps, CpuState> {
                             set_value(CLOCK_MAX_CPU, freq);
                             for (let i = 0; i < total_cpus; i++) {
                                 backend.resolve(backend.setCpuClockLimits(i, get_value(CLOCK_MIN_CPU), freq),
-                                                (limits: number[]) => {
-                                set_value(CLOCK_MIN_CPU, limits[0]);
-                                set_value(CLOCK_MAX_CPU, limits[1]);
+                                                (_limits: number[]) => {
+                                //set_value(CLOCK_MIN_CPU, limits[0]);
+                                //set_value(CLOCK_MAX_CPU, limits[1]);
                                 syncPlebClockToAdvanced();
                                 });
                             }
@@ -238,7 +238,7 @@ export class Cpus extends Component<backend.IdcProps, CpuState> {
                             const governors = get_value(GOVERNOR_CPU);
                             for (let i = 0; i < total_cpus; i++) {
                                 governors[i] = elem.data as string;
-                                backend.resolve(backend.setCpuGovernor(i, elem.data as string), (_: string) => {});
+                                backend.resolve(backend.setCpuGovernor(i, governors[i]), (_: string) => {});
                             }
                             set_value(GOVERNOR_CPU, governors);
                             reloadGUI("CPUGlobalGovernor");
@@ -273,14 +273,14 @@ export class Cpus extends Component<backend.IdcProps, CpuState> {
                     onChange={(status: boolean) => {
                         backend.log(backend.LogLevel.Debug, "CPU " + advancedCpu.toString() + " is now " + status.toString());
                         if (!get_value(SMT_CPU)) {
-                        backend.resolve(backend.setCpuSmt(true), (_newVal: boolean[]) => {
-                            set_value(SMT_CPU, true);
-                        });
+                            backend.resolve(backend.setCpuSmt(true), (_newVal: boolean[]) => {
+                                set_value(SMT_CPU, true);
+                            });
                         }
                         backend.resolve(backend.setCpuOnline(advancedCpuIndex, status), (newVal: boolean) => {
-                        const onlines = get_value(ONLINE_STATUS_CPUS);
-                        onlines[advancedCpuIndex] = newVal;
-                        set_value(ONLINE_STATUS_CPUS, onlines);
+                            const onlines = get_value(ONLINE_STATUS_CPUS);
+                            onlines[advancedCpuIndex] = newVal;
+                            set_value(ONLINE_STATUS_CPUS, onlines);
                         });
                     }}
                     />
@@ -292,24 +292,24 @@ export class Cpus extends Component<backend.IdcProps, CpuState> {
                     description={tr("Set bounds on clock speed")}
                     onChange={(value: boolean) => {
                         if (value) {
-                        const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
-                        if ((get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_min_limits != null) {
-                            clocks[advancedCpuIndex].min = (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_min_limits!.min;
-                        }
+                            const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
+                            if ((get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_min_limits != null) {
+                                clocks[advancedCpuIndex].min = (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_min_limits!.min;
+                            }
 
-                        if ((get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_max_limits != null) {
-                            clocks[advancedCpuIndex].max = (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_max_limits!.max;
-                        }
-                        set_value(CLOCK_MIN_MAX_CPU, clocks);
-                        reloadGUI("CPUFreqToggle");
+                            if ((get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_max_limits != null) {
+                                clocks[advancedCpuIndex].max = (get_value(LIMITS_INFO) as backend.SettingsLimits).cpu.cpus[advancedCpuIndex].clock_max_limits!.max;
+                            }
+                            set_value(CLOCK_MIN_MAX_CPU, clocks);
+                            reloadGUI("CPUFreqToggle");
                         } else {
-                        const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
-                        clocks[advancedCpuIndex].min = null;
-                        clocks[advancedCpuIndex].max = null;
-                        set_value(CLOCK_MIN_MAX_CPU, clocks);
-                        backend.resolve(backend.unsetCpuClockLimits(advancedCpuIndex), (_idc: any[]) => {
-                            reloadGUI("CPUUnsetFreq");
-                        });
+                            const clocks = get_value(CLOCK_MIN_MAX_CPU) as MinMax[];
+                            clocks[advancedCpuIndex].min = null;
+                            clocks[advancedCpuIndex].max = null;
+                            set_value(CLOCK_MIN_MAX_CPU, clocks);
+                            backend.resolve(backend.unsetCpuClockLimits(advancedCpuIndex), (_idc: any[]) => {
+                                reloadGUI("CPUUnsetFreq");
+                            });
                         }
                     }}
                     />

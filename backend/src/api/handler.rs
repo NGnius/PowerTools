@@ -1,4 +1,5 @@
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::fmt::Write;
 
 use crate::settings::{Settings, TCpus, TGpu, TBattery, TGeneral, OnSet, OnResume, MinMax};
 use crate::persist::SettingsJson;
@@ -216,6 +217,12 @@ pub struct ApiMessageHandler {
     on_empty: Vec<Callback<()>>,
 }
 
+fn print_errors(call_name: &str, errors: Vec<crate::settings::SettingError>) {
+    let mut err_list = String::new();
+    errors.iter().for_each(|e| write!(err_list, "\t{},\n", e).unwrap_or(()));
+    log::error!("Settings {}() err:\n{}", call_name, err_list);
+}
+
 impl ApiMessageHandler {
     pub fn process_forever(&mut self, settings: &mut Settings) {
         let mut dirty_echo = true; // set everything twice, to make sure PowerTools wins on race conditions
@@ -228,7 +235,7 @@ impl ApiMessageHandler {
                 dirty_echo = dirty; // echo only once
                 // run on_set
                 if let Err(e) = settings.on_set() {
-                    log::error!("Settings on_set() err: {}", e);
+                    print_errors("on_set", e);
                 }
                 // do callbacks
                 for func in self.on_empty.drain(..) {
@@ -244,6 +251,9 @@ impl ApiMessageHandler {
                     let save_json: SettingsJson = settings_clone.into();
                     unwrap_maybe_fatal(save_json.save(&save_path), "Failed to save settings");
                     log::debug!("Saved settings to {}", save_path.display());
+                    if let Err(e) = crate::utility::chown_settings_dir() {
+                        log::error!("Failed to change config dir permissions: {}", e);
+                    }
                 } else {
                     if save_path.exists() {
                         if let Err(e) = std::fs::remove_file(&save_path) {
@@ -269,7 +279,7 @@ impl ApiMessageHandler {
             ApiMessage::General(x) => x.process(settings.general.as_mut()),
             ApiMessage::OnResume => {
                 if let Err(e) = settings.on_resume() {
-                    log::error!("Settings on_resume() err: {}", e);
+                    print_errors("on_resume", e);
                 }
                 false
             }

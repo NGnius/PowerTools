@@ -37,13 +37,13 @@ pub struct General {
 }
 
 impl OnSet for General {
-    fn on_set(&mut self) -> Result<(), SettingError> {
+    fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
         Ok(())
     }
 }
 
 impl OnResume for General {
-    fn on_resume(&self) -> Result<(), SettingError> {
+    fn on_resume(&self) -> Result<(), Vec<SettingError>> {
         Ok(())
     }
 }
@@ -91,7 +91,7 @@ pub struct Settings {
 }
 
 impl OnSet for Settings {
-    fn on_set(&mut self) -> Result<(), SettingError> {
+    fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
         self.battery.on_set()?;
         self.cpus.on_set()?;
         self.gpu.on_set()?;
@@ -224,7 +224,7 @@ impl Settings {
 }
 
 impl OnResume for Settings {
-    fn on_resume(&self) -> Result<(), SettingError> {
+    fn on_resume(&self) -> Result<(), Vec<SettingError>> {
         log::debug!("Applying settings for on_resume");
         self.battery.on_resume()?;
         log::debug!("Resumed battery");

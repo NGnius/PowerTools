@@ -18,7 +18,6 @@ use usdpl_back::core::serdes::Primitive;
 use usdpl_back::Instance;
 
 fn main() -> Result<(), ()> {
-
     #[cfg(debug_assertions)]
     let log_filepath = usdpl_back::api::dirs::home()
         .unwrap_or_else(|| "/tmp/".into())
@@ -46,6 +45,7 @@ fn main() -> Result<(), ()> {
         },
         Default::default(),
         std::fs::File::create(&log_filepath).unwrap(),
+        //std::fs::File::create("/home/deck/powertools-rs.log").unwrap(),
     )
     .unwrap();
     log::debug!("Logging to: {:?}.", log_filepath);
@@ -54,6 +54,8 @@ fn main() -> Result<(), ()> {
     println!("Starting back-end ({} v{})", PACKAGE_NAME, PACKAGE_VERSION);
     log::info!("Current dir `{}`", std::env::current_dir().unwrap().display());
     println!("Current dir `{}`", std::env::current_dir().unwrap().display());
+
+    log::info!("home dir: {:?}", usdpl_back::api::dirs::home());
 
     let _limits_handle = crate::settings::limits_worker_spawn();
     log::info!("Detected device automatically, starting with driver: {:?} (This can be overriden)", crate::settings::auto_detect_provider());
@@ -71,7 +73,13 @@ fn main() -> Result<(), ()> {
 
     let instance = Instance::new(PORT)
         .register("V_INFO", |_: Vec<Primitive>| {
-            vec![format!("{} v{}", PACKAGE_NAME, PACKAGE_VERSION).into()]
+            #[cfg(debug_assertions)]
+            {vec![format!("v{}-dbg", PACKAGE_VERSION).into()]}
+            #[cfg(not(debug_assertions))]
+            {vec![format!("v{}-rls", PACKAGE_VERSION).into()]}
+        })
+        .register("NAME", |_: Vec<Primitive>| {
+            vec![PACKAGE_NAME.into()]
         })
         .register("LOG", api::general::log_it())
         // battery API functions
@@ -222,9 +230,13 @@ fn main() -> Result<(), ()> {
         .register("GENERAL_idk", api::general::gunter);
 
     if let Err(e) = loaded_settings.on_set() {
-        log::error!("Startup Settings.on_set() error: {}", e);
+        e.iter().for_each(|e| log::error!("Startup Settings.on_set() error: {}", e));
     } else {
         log::info!("Startup Settings.on_set() success");
+    }
+
+    if let Err(e) = utility::chown_settings_dir() {
+        log::warn!("Failed to change config dir permissions: {}", e);
     }
 
     api_worker::spawn(loaded_settings, api_handler);

@@ -53,53 +53,8 @@ impl Gpu {
         }
     }
 
-    fn set_all(&mut self) -> Result<(), SettingError> {
-        // set fast PPT
-        if let Some(fast_ppt) = &self.fast_ppt {
-            let fast_ppt_path = gpu_power_path(FAST_PPT);
-            usdpl_back::api::files::write_single(&fast_ppt_path, fast_ppt).map_err(|e| {
-                SettingError {
-                    msg: format!(
-                        "Failed to write `{}` to `{}`: {}",
-                        fast_ppt, &fast_ppt_path, e
-                    ),
-                    setting: crate::settings::SettingVariant::Gpu,
-                }
-            })?;
-        }
-        // set slow PPT
-        if let Some(slow_ppt) = &self.slow_ppt {
-            let slow_ppt_path = gpu_power_path(SLOW_PPT);
-            usdpl_back::api::files::write_single(&slow_ppt_path, slow_ppt).map_err(|e| {
-                SettingError {
-                    msg: format!(
-                        "Failed to write `{}` to `{}`: {}",
-                        slow_ppt, &slow_ppt_path, e
-                    ),
-                    setting: crate::settings::SettingVariant::Gpu,
-                }
-            })?;
-        }
-        // settings using force_performance_level
-        let mode: String = usdpl_back::api::files::read_single(GPU_FORCE_LIMITS_PATH.to_owned()).unwrap();
-        if mode != "manual" {
-            // set manual control
-            usdpl_back::api::files::write_single(GPU_FORCE_LIMITS_PATH, "manual").map_err(|e| {
-                SettingError {
-                    msg: format!(
-                        "Failed to write `manual` to `{}`: {}",
-                        GPU_FORCE_LIMITS_PATH, e
-                    ),
-                    setting: crate::settings::SettingVariant::Gpu,
-                }
-            })?;
-        }
-        // enable/disable downclock of GPU memory (to 400Mhz?)
-        usdpl_back::api::files::write_single(GPU_MEMORY_DOWNCLOCK_PATH, self.slow_memory as u8)
-            .map_err(|e| SettingError {
-                msg: format!("Failed to write to `{}`: {}", GPU_MEMORY_DOWNCLOCK_PATH, e),
-                setting: crate::settings::SettingVariant::Gpu,
-            })?;
+    fn set_clocks(&mut self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
         if let Some(clock_limits) = &self.clock_limits {
             // set clock limits
             self.state.clock_limits_set = true;
@@ -113,7 +68,7 @@ impl Gpu {
                     ),
                     setting: crate::settings::SettingVariant::Gpu,
                 },
-            )?;
+            ).unwrap_or_else(|e| errors.push(e));
             // min clock
             let payload_min = format!("s 0 {}\n", clock_limits.min);
             usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
@@ -124,8 +79,8 @@ impl Gpu {
                     ),
                     setting: crate::settings::SettingVariant::Gpu,
                 },
-            )?;
-        } else if self.state.clock_limits_set || self.state.is_resuming {
+            ).unwrap_or_else(|e| errors.push(e));
+        } else if self.state.clock_limits_set || (self.state.is_resuming && !self.limits.skip_resume_reclock) {
             self.state.clock_limits_set = false;
             // disable manual clock limits
             // max clock
@@ -138,7 +93,7 @@ impl Gpu {
                     ),
                     setting: crate::settings::SettingVariant::Gpu,
                 },
-            )?;
+            ).unwrap_or_else(|e| errors.push(e));
             // min clock
             let payload_min = format!("s 0 {}\n", self.limits.clock_min.min);
             usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
@@ -149,17 +104,89 @@ impl Gpu {
                     ),
                     setting: crate::settings::SettingVariant::Gpu,
                 },
-            )?;
+            ).unwrap_or_else(|e| errors.push(e));
         }
-        // commit changes
-        usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
-            SettingError {
-                msg: format!("Failed to write `c` to `{}`: {}", GPU_CLOCK_LIMITS_PATH, e),
-                setting: crate::settings::SettingVariant::Gpu,
-            }
-        })?;
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
 
-        Ok(())
+    fn set_force_performance_related(&mut self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
+        // settings using force_performance_level
+        let mode: String = usdpl_back::api::files::read_single(GPU_FORCE_LIMITS_PATH.to_owned()).unwrap();
+        if mode != "manual" {
+            // set manual control
+            usdpl_back::api::files::write_single(GPU_FORCE_LIMITS_PATH, "manual").map_err(|e| {
+                vec![SettingError {
+                    msg: format!(
+                        "Failed to write `manual` to `{}`: {}",
+                        GPU_FORCE_LIMITS_PATH, e
+                    ),
+                    setting: crate::settings::SettingVariant::Gpu,
+                }]
+            })?;
+        }
+        // enable/disable downclock of GPU memory (to 400Mhz?)
+        usdpl_back::api::files::write_single(GPU_MEMORY_DOWNCLOCK_PATH, self.slow_memory as u8)
+            .unwrap_or_else(|e| {
+                errors.push(SettingError {
+                    msg: format!("Failed to write to `{}`: {}", GPU_MEMORY_DOWNCLOCK_PATH, e),
+                    setting: crate::settings::SettingVariant::Gpu,
+                });
+            });
+        self.set_clocks()
+            .unwrap_or_else(|mut e| errors.append(&mut e));
+        // commit changes (if no errors have already occured)
+        if errors.is_empty() {
+            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
+                vec![SettingError {
+                    msg: format!("Failed to write `c` to `{}`: {}", GPU_CLOCK_LIMITS_PATH, e),
+                    setting: crate::settings::SettingVariant::Gpu,
+                }]
+            })
+        } else {
+            Err(errors)
+        }
+    }
+
+    fn set_all(&mut self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
+        // set fast PPT
+        if let Some(fast_ppt) = &self.fast_ppt {
+            let fast_ppt_path = gpu_power_path(FAST_PPT);
+            usdpl_back::api::files::write_single(&fast_ppt_path, fast_ppt).map_err(|e| {
+                SettingError {
+                    msg: format!(
+                        "Failed to write `{}` to `{}`: {}",
+                        fast_ppt, &fast_ppt_path, e
+                    ),
+                    setting: crate::settings::SettingVariant::Gpu,
+                }
+            }).unwrap_or_else(|e| {errors.push(e);});
+        }
+        // set slow PPT
+        if let Some(slow_ppt) = &self.slow_ppt {
+            let slow_ppt_path = gpu_power_path(SLOW_PPT);
+            usdpl_back::api::files::write_single(&slow_ppt_path, slow_ppt).map_err(|e| {
+                SettingError {
+                    msg: format!(
+                        "Failed to write `{}` to `{}`: {}",
+                        slow_ppt, &slow_ppt_path, e
+                    ),
+                    setting: crate::settings::SettingVariant::Gpu,
+                }
+            }).unwrap_or_else(|e| {errors.push(e);});
+        }
+        self.set_force_performance_related()
+            .unwrap_or_else(|mut e| errors.append(&mut e));
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 
     fn clamp_all(&mut self) {
@@ -208,14 +235,14 @@ impl Into<GpuJson> for Gpu {
 }
 
 impl OnSet for Gpu {
-    fn on_set(&mut self) -> Result<(), SettingError> {
+    fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
         self.clamp_all();
         self.set_all()
     }
 }
 
 impl OnResume for Gpu {
-    fn on_resume(&self) -> Result<(), SettingError> {
+    fn on_resume(&self) -> Result<(), Vec<SettingError>> {
         let mut copy = self.clone();
         copy.state.is_resuming = true;
         copy.set_all()

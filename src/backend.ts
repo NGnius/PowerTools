@@ -29,14 +29,14 @@ export async function initBackend() {
     // init usdpl
     await init_embedded();
     init_usdpl(USDPL_PORT);
-    console.log("USDPL started for framework: " + target_usdpl());
+    console.log("POWERTOOLS: USDPL started for framework: " + target_usdpl());
     const user_locale =
         navigator.languages && navigator.languages.length
             ? navigator.languages[0]
             : navigator.language;
     console.log("POWERTOOLS: locale", user_locale);
-    let mo_path = "../plugins/PowerTools/translations/" + user_locale.toString() + ".mo";
-    await init_tr(mo_path);
+    //let mo_path = "../plugins/PowerTools/translations/" + user_locale.toString() + ".mo";
+    await init_tr(user_locale);
     //await init_tr("../plugins/PowerTools/translations/test.mo");
     //setReady(true);
 }
@@ -146,7 +146,7 @@ export async function setCpuSmt(status: boolean): Promise<boolean[]> {
 }
 
 export async function getCpuSmt(): Promise<boolean> {
-    return await call_backend("CPU_get_smt", []);
+    return (await call_backend("CPU_get_smt", []))[0];
 }
 
 /*export async function getCpuCount(): Promise<number> {

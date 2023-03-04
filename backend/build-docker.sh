@@ -8,7 +8,7 @@ cargo --version
 echo "--- Building plugin backend ---"
 cargo build --profile docker
 mkdir -p out
-cp target/release/powertools-rs out/backend
+cp target/release/powertools out/backend
 
 echo " --- Cleaning up ---"
 # remove root-owned target folder
