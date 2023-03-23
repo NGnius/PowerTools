@@ -194,6 +194,7 @@ pub enum GeneralMessage {
     SetPersistent(bool),
     GetPersistent(Callback<bool>),
     GetCurrentProfileName(Callback<String>),
+    ApplyNow,
 }
 
 impl GeneralMessage {
@@ -203,12 +204,13 @@ impl GeneralMessage {
             Self::SetPersistent(val) => *settings.persistent() = val,
             Self::GetPersistent(cb) => cb(*settings.persistent()),
             Self::GetCurrentProfileName(cb) => cb(settings.get_name().to_owned()),
+            Self::ApplyNow => {},
         }
         dirty
     }
 
     fn is_modify(&self) -> bool {
-        matches!(self, Self::SetPersistent(_))
+        matches!(self, Self::SetPersistent(_) | Self::ApplyNow)
     }
 }
 

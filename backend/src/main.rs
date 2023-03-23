@@ -227,7 +227,12 @@ fn main() -> Result<(), ()> {
             "GENERAL_get_provider",
             api::general::get_provider(api_sender.clone())
         )
-        .register("GENERAL_idk", api::general::gunter);
+        .register("GENERAL_idk", api::general::gunter)
+        // general API functions
+        .register(
+            "GENERAL_apply_now",
+            api::general::force_apply(api_sender.clone())
+        );
 
     if let Err(e) = loaded_settings.on_set() {
         e.iter().for_each(|e| log::error!("Startup Settings.on_set() error: {}", e));

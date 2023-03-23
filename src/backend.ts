@@ -272,3 +272,7 @@ export async function log(level: LogLevel, msg: string): Promise<boolean> {
 export async function idk(): Promise<boolean> {
     return (await call_backend("GENERAL_idk", []))[0];
 }
+
+export async function forceApplySettings(): Promise<boolean> {
+    return (await call_backend("GENERAL_apply_now", []))[0];
+}

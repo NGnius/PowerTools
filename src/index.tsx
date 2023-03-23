@@ -268,6 +268,18 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
         <ButtonItem
           layout="below"
           onClick={(_: MouseEvent) => {
+            backend.log(backend.LogLevel.Debug, "Reapplying PowerTools settings");
+            backend.forceApplySettings();
+          }}
+        >
+        {tr("Reapply settings")}
+        </ButtonItem>
+      </PanelSectionRow>
+
+      <PanelSectionRow>
+        <ButtonItem
+          layout="below"
+          onClick={(_: MouseEvent) => {
             backend.log(backend.LogLevel.Debug, "Loading default PowerTools settings");
             backend.resolve(
               backend.setGeneralPersistent(false),

@@ -20,9 +20,9 @@ const BATTERY_VOLTAGE: f64 = 7.7;
 
 const BATTERY_CHARGE_RATE_PATH: &str = "/sys/class/hwmon/hwmon5/maximum_battery_charge_rate"; // write-only
 const BATTERY_CURRENT_NOW_PATH: &str = "/sys/class/power_supply/BAT1/current_now"; // read-only
-const BATTERY_CHARGE_NOW_PATH: &str = "/sys/class/hwmon/hwmon2/device/charge_now"; // read-only
-const BATTERY_CHARGE_FULL_PATH: &str = "/sys/class/hwmon/hwmon2/device/charge_full"; // read-only
-const BATTERY_CHARGE_DESIGN_PATH: &str = "/sys/class/hwmon/hwmon2/device/charge_full_design"; // read-only
+const BATTERY_CHARGE_NOW_PATH: &str = "/sys/class/power_supply/BAT1/charge_now"; // read-only
+const BATTERY_CHARGE_FULL_PATH: &str = "/sys/class/power_supply/BAT1/charge_full"; // read-only
+const BATTERY_CHARGE_DESIGN_PATH: &str = "/sys/class/power_supply/BAT1/charge_full_design"; // read-only
 
 impl Battery {
     #[inline]

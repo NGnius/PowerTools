@@ -1,5 +1,5 @@
 use std::sync::Mutex;
-use ryzenadj_rs::RyzenAccess;
+use libryzenadj::RyzenAdj;
 
 use crate::persist::GpuJson;
 use crate::settings::MinMax;
@@ -7,8 +7,8 @@ use crate::settings::generic::Gpu as GenericGpu;
 use crate::settings::{OnResume, OnSet, SettingError, SettingVariant};
 use crate::settings::TGpu;
 
-fn ryzen_adj_or_log() -> Option<Mutex<RyzenAccess>> {
-    match RyzenAccess::new() {
+fn ryzen_adj_or_log() -> Option<Mutex<RyzenAdj>> {
+    match RyzenAdj::new() {
         Ok(x) => Some(Mutex::new(x)),
         Err(e) => {
             log::error!("RyzenAdj init error: {}", e);
@@ -17,11 +17,22 @@ fn ryzen_adj_or_log() -> Option<Mutex<RyzenAccess>> {
     }
 }
 
-#[derive(Debug)]
+unsafe impl Send for Gpu {} // implementor (RyzenAdj) may be unsafe
+
+//#[derive(Debug)]
 pub struct Gpu {
     generic: GenericGpu,
-    implementor: Option<Mutex<RyzenAccess>>,
+    implementor: Option<Mutex<RyzenAdj>>,
     state: crate::state::generic::Gpu, // NOTE this is re-used for simplicity
+}
+
+impl std::fmt::Debug for Gpu {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Gpu")
+            .field("generic", &self.generic)
+            .field("state", &self.state)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Gpu {
@@ -63,7 +74,15 @@ impl Gpu {
         let mut errors = Vec::new();
         if let Some(fast_ppt) = &self.generic.fast_ppt {
             if self.state.old_fast_ppt.is_none() {
-                self.state.old_fast_ppt = Some(lock.get_fast_value() as _);
+                match lock.get_fast_value() {
+                    Ok(val) => self.state.old_fast_ppt = Some(val as _),
+                    Err(e) => errors.push(
+                        SettingError {
+                            msg: format!("RyzenAdj get_fast_value() err: {}", e),
+                            setting: SettingVariant::Gpu,
+                        }
+                    )
+                }
             }
             lock.set_fast_limit(*fast_ppt as _).map_err(|e| SettingError {
                 msg: format!("RyzenAdj set_fast_limit({}) err: {}", *fast_ppt, e),
@@ -78,7 +97,15 @@ impl Gpu {
         }
         if let Some(slow_ppt) = &self.generic.slow_ppt {
             if self.state.old_slow_ppt.is_none() {
-                self.state.old_slow_ppt = Some(lock.get_slow_value() as _);
+                match lock.get_slow_value() {
+                    Ok(val) => self.state.old_fast_ppt = Some(val as _),
+                    Err(e) => errors.push(
+                        SettingError {
+                            msg: format!("RyzenAdj get_slow_value() err: {}", e),
+                            setting: SettingVariant::Gpu,
+                        }
+                    )
+                }
             }
             lock.set_slow_limit(*slow_ppt as _).map_err(|e| SettingError {
                 msg: format!("RyzenAdj set_slow_limit({}) err: {}", *slow_ppt, e),

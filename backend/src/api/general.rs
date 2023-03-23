@@ -248,3 +248,19 @@ fn log_msg_by_level(level: u8, msg: &str) {
     }
 }
 
+/// Generate set battery charge rate web method
+pub fn force_apply(
+    sender: Sender<ApiMessage>,
+) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let setter = move |_: ()|
+        sender.lock()
+            .unwrap()
+            .send(ApiMessage::General(GeneralMessage::ApplyNow))
+            .expect("force_apply send failed");
+    move |_params_in: super::ApiParameterType| {
+        setter(());
+        vec![true.into()]
+    }
+}
+
