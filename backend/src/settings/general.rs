@@ -136,6 +136,7 @@ impl Settings {
         self.cpus = driver.cpus;
         self.gpu = driver.gpu;
         self.battery = driver.battery;
+        self.general = driver.general;
     }
 
     pub fn load_file(&mut self, filename: PathBuf, name: String, system_defaults: bool) -> Result<bool, SettingError> {
