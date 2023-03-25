@@ -21,6 +21,7 @@ import {
 } from "decky-frontend-lib";
 import { VFC, useState } from "react";
 import { GiDrill, GiTimeBomb, GiTimeTrap, GiDynamite } from "react-icons/gi";
+import { HiRefresh, HiTrash } from "react-icons/hi";
 
 //import * as python from "./python";
 import * as backend from "./backend";
@@ -54,6 +55,7 @@ import {
 
   PERSISTENT_GEN,
   NAME_GEN,
+  PATH_GEN,
 } from "./consts";
 import { set_value, get_value } from "usdpl-front";
 import { Debug } from "./components/debug";
@@ -142,6 +144,7 @@ const reload = function() {
 
   backend.resolve(backend.getGeneralPersistent(), (value: boolean) => { set_value(PERSISTENT_GEN, value) });
   backend.resolve(backend.getGeneralSettingsName(), (name: string) => { set_value(NAME_GEN, name) });
+  backend.resolve(backend.getGeneralSettingsPath(), (path: string) => { set_value(PATH_GEN, path) });
 
   backend.resolve(backend.getInfo(), (info: string) => { set_value(BACKEND_INFO, info) });
   backend.resolve(backend.getDriverProviderName("gpu"), (driver: string) => { set_value(DRIVER_INFO, driver) });
@@ -151,7 +154,6 @@ const reload = function() {
 (async function(){
   await backend.initBackend();
   usdplReady = true;
-  set_value(NAME_GEN, "Default");
   reload(); // technically this is only a load
 
   // register Steam callbacks
@@ -186,11 +188,11 @@ const periodicals = function() {
   backend.resolve(backend.getBatteryChargeNow(), (rate: number) => { set_value(CHARGE_NOW_BATT, rate) });
   backend.resolve(backend.getBatteryChargeFull(), (rate: number) => { set_value(CHARGE_FULL_BATT, rate) });
 
-  backend.resolve(backend.getGeneralPersistent(), (value: boolean) => { set_value(PERSISTENT_GEN, value) });
-  backend.resolve(backend.getGeneralSettingsName(), (name: string) => {
-    const oldValue = get_value(NAME_GEN);
-    set_value(NAME_GEN, name);
-    if (name != oldValue) {
+  backend.resolve(backend.getGeneralSettingsPath(), (path: string) => {
+    const oldValue = get_value(PATH_GEN);
+    set_value(PATH_GEN, path);
+    if (path != oldValue) {
+      backend.log(backend.LogLevel.Info, "Frontend values reload triggered by path change: " + oldValue + " -> " + path);
       reload();
     }
   });
@@ -272,7 +274,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             backend.forceApplySettings();
           }}
         >
-        {tr("Reapply settings")}
+        <HiRefresh /> {tr("Reapply settings")}
         </ButtonItem>
       </PanelSectionRow>
 
@@ -293,7 +295,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             );
           }}
         >
-        {tr("Defaults")}
+        <HiTrash /> {tr("Defaults")}
         </ButtonItem>
       </PanelSectionRow>
     </PanelSection>

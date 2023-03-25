@@ -140,7 +140,7 @@ impl Settings {
     }
 
     pub fn load_file(&mut self, filename: PathBuf, name: String, system_defaults: bool) -> Result<bool, SettingError> {
-        let json_path = crate::utility::settings_dir().join(filename);
+        let json_path = crate::utility::settings_dir().join(&filename);
         if json_path.exists() {
             let settings_json = SettingsJson::open(&json_path).map_err(|e| SettingError {
                 msg: e.to_string(),
@@ -176,7 +176,7 @@ impl Settings {
             }
             *self.general.persistent() = false;
         }
-        self.general.path(json_path);
+        self.general.path(filename);
         Ok(*self.general.persistent())
     }
     

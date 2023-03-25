@@ -194,6 +194,7 @@ pub enum GeneralMessage {
     SetPersistent(bool),
     GetPersistent(Callback<bool>),
     GetCurrentProfileName(Callback<String>),
+    GetPath(Callback<std::path::PathBuf>),
     ApplyNow,
 }
 
@@ -204,6 +205,7 @@ impl GeneralMessage {
             Self::SetPersistent(val) => *settings.persistent() = val,
             Self::GetPersistent(cb) => cb(*settings.persistent()),
             Self::GetCurrentProfileName(cb) => cb(settings.get_name().to_owned()),
+            Self::GetPath(cb) => cb(settings.get_path().to_owned()),
             Self::ApplyNow => {},
         }
         dirty

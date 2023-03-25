@@ -140,6 +140,28 @@ pub fn get_name(
     }
 }
 
+/// Generate get current settings name
+pub fn get_path(
+    sender: Sender<ApiMessage>,
+) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move || {
+            let (tx, rx) = mpsc::channel();
+            let callback = move |name: std::path::PathBuf| tx.send(name).expect("get_path callback send failed");
+            sender2.lock().unwrap().send(ApiMessage::General(GeneralMessage::GetPath(Box::new(callback)))).expect("get_name send failed");
+            rx.recv().expect("get_path callback recv failed")
+        }
+    };
+    super::async_utils::AsyncIshGetter {
+        set_get: getter,
+        trans_getter: |result| {
+            vec![result.to_string_lossy().to_string().into()]
+        }
+    }
+}
+
 /// Generate wait for all locks to be available web method
 pub fn lock_unlock_all(
     sender: Sender<ApiMessage>,

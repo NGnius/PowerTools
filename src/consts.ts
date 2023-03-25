@@ -27,3 +27,5 @@ export const SLOW_MEMORY_GPU = "GPU_slow_memory";
 
 export const PERSISTENT_GEN = "GENERAL_persistent";
 export const NAME_GEN = "GENERAL_name";
+export const PATH_GEN = "GENERAL_path";
+

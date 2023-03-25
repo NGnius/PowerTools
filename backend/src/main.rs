@@ -216,6 +216,10 @@ fn main() -> Result<(), ()> {
             api::general::get_name(api_sender.clone())
         )
         .register_async(
+            "GENERAL_get_path",
+            api::general::get_path(api_sender.clone())
+        )
+        .register_async(
             "GENERAL_wait_for_unlocks",
             api::general::lock_unlock_all(api_sender.clone())
         )

@@ -245,6 +245,10 @@ export async function getGeneralSettingsName(): Promise<string> {
     return (await call_backend("GENERAL_get_name", []))[0];
 }
 
+export async function getGeneralSettingsPath(): Promise<string> {
+    return (await call_backend("GENERAL_get_path", []))[0];
+}
+
 export async function waitForComplete(): Promise<boolean> {
     return (await call_backend("GENERAL_wait_for_unlocks", []))[0];
 }
