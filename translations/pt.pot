@@ -99,6 +99,21 @@ msgstr ""
 msgid "Current"
 msgstr ""
 
+#: components/battery.tsx:141
+# (Battery charging maximum)
+msgid "Charge Limit"
+msgstr ""
+
+#: components/battery.tsx:142
+# (Battery charging maximum description)
+msgid "Limit battery charge when awake"
+msgstr ""
+
+#: components/battery.tsx:156
+# (Battery charging maximum slider)
+msgid "Maximum (%)"
+msgstr ""
+
 # -- components/cpus.tsx --
 
 #: components/cpus.tsx:64

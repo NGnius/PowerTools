@@ -26,6 +26,8 @@ pub struct BatteryLimits {
     pub charge_current: Option<RangeLimit<u64>>,
     pub charge_current_step: u64,
     pub charge_modes: Vec<String>,
+    pub charge_limit: Option<RangeLimit<f64>>,
+    pub charge_limit_step: f64,
 }
 
 #[derive(Serialize, Deserialize)]

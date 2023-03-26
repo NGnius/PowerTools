@@ -193,3 +193,83 @@ pub fn unset_charge_mode(
         vec![true.into()]
     }
 }
+
+/// Generate unplugged event receiver web method
+pub fn on_unplugged(
+    sender: Sender<ApiMessage>,
+) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    move |_| {
+        sender.lock().unwrap().send(ApiMessage::OnUnplugged).expect("on_unplugged send failed");
+        vec![true.into()]
+    }
+}
+
+/// Generate plugged in event receiver web method
+pub fn on_plugged(
+    sender: Sender<ApiMessage>,
+) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    move |_| {
+        sender.lock().unwrap().send(ApiMessage::OnPluggedIn).expect("on_plugged send failed");
+        vec![true.into()]
+    }
+}
+
+/// Generate set battery charge limit web method
+pub fn set_charge_limit(
+    sender: Sender<ApiMessage>,
+) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let setter = move |limit: f64|
+        sender.lock()
+            .unwrap()
+            .send(ApiMessage::Battery(BatteryMessage::SetChargeLimit(Some(limit))))
+            .expect("set_charge_limit send failed");
+    move |params_in: super::ApiParameterType| {
+        if let Some(&Primitive::F64(new_val)) = params_in.get(0) {
+            setter(new_val);
+            vec![new_val.into()]
+        } else {
+            vec!["set_charge_limit missing parameter".into()]
+        }
+    }
+}
+
+/// Generate unset battery charge limit web method
+pub fn unset_charge_limit(
+    sender: Sender<ApiMessage>,
+) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let unsetter = move ||
+        sender.lock()
+            .unwrap()
+            .send(ApiMessage::Battery(BatteryMessage::SetChargeLimit(None)))
+            .expect("unset_charge_limit send failed");
+    move |_: super::ApiParameterType| {
+        unsetter();
+        vec![true.into()]
+    }
+}
+
+/// Charge design web method
+pub fn get_charge_limit(
+    sender: Sender<ApiMessage>,
+) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move || {
+            let (tx, rx) = mpsc::channel();
+            let callback = move |val: Option<f64>| tx.send(val).expect("get_charge_limit callback send failed");
+            sender2.lock().unwrap().send(ApiMessage::Battery(BatteryMessage::GetChargeLimit(Box::new(callback)))).expect("get_charge_limit send failed");
+            rx.recv().expect("get_charge_limit callback recv failed")
+        }
+    };
+    super::async_utils::AsyncIshGetter {
+        set_get: getter,
+        trans_getter: |result| {
+            super::utility::map_optional_result(Ok(result))
+        }
+    }
+}

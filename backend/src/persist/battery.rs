@@ -7,6 +7,15 @@ use serde::{Deserialize, Serialize};
 pub struct BatteryJson {
     pub charge_rate: Option<u64>,
     pub charge_mode: Option<String>,
+    #[serde(default)]
+    pub events: Vec<BatteryEventJson>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct BatteryEventJson {
+    pub trigger: String,
+    pub charge_rate: Option<u64>,
+    pub charge_mode: Option<String>,
 }
 
 impl Default for BatteryJson {
@@ -14,6 +23,7 @@ impl Default for BatteryJson {
         Self {
             charge_rate: None,
             charge_mode: None,
+            events: Vec::new(),
         }
     }
 }

@@ -10,12 +10,37 @@ pub trait OnResume {
     fn on_resume(&self) -> Result<(), Vec<SettingError>>;
 }
 
-pub trait SettingsRange {
-    fn max() -> Self;
-    fn min() -> Self;
+#[repr(u8)]
+#[derive(Clone, Copy, Debug)]
+pub enum PowerMode {
+    PluggedIn,
+    PluggedOut, // unplugged
+    BatteryCharge(f64), // battery fill amount: 0 = empty, 1 = full
 }
 
-pub trait TGpu: OnResume + OnSet + Debug + Send {
+pub trait OnPowerEvent {
+    fn on_plugged_in(&mut self) -> Result<(), Vec<SettingError>> {
+        Ok(())
+    }
+
+    fn on_plugged_out(&mut self) -> Result<(), Vec<SettingError>> {
+        Ok(())
+    }
+
+    fn on_charge_amount(&mut self, _amount: f64) -> Result<(), Vec<SettingError>> {
+        Ok(())
+    }
+
+    fn on_power_event(&mut self, new_mode: PowerMode) -> Result<(), Vec<SettingError>> {
+        match new_mode {
+            PowerMode::PluggedIn => self.on_plugged_in(),
+            PowerMode::PluggedOut => self.on_plugged_out(),
+            PowerMode::BatteryCharge(now) => self.on_charge_amount(now),
+        }
+    }
+}
+
+pub trait TGpu: OnSet + OnResume + OnPowerEvent + Debug + Send {
     fn limits(&self) -> crate::api::GpuLimits;
 
     fn json(&self) -> crate::persist::GpuJson;
@@ -35,7 +60,7 @@ pub trait TGpu: OnResume + OnSet + Debug + Send {
     }
 }
 
-pub trait TCpus: OnResume + OnSet + Debug + Send {
+pub trait TCpus: OnSet + OnResume + OnPowerEvent + Debug + Send {
     fn limits(&self) -> crate::api::CpusLimits;
 
     fn json(&self) -> Vec<crate::persist::CpuJson>;
@@ -63,7 +88,7 @@ pub trait TCpu: Debug + Send {
     fn get_clock_limits(&self) -> Option<&MinMax<u64>>;
 }
 
-pub trait TGeneral: OnResume + OnSet + Debug + Send {
+pub trait TGeneral: OnSet + OnResume + OnPowerEvent + Debug + Send {
     fn limits(&self) -> crate::api::GeneralLimits;
 
     fn get_persistent(&self) -> bool;
@@ -81,7 +106,7 @@ pub trait TGeneral: OnResume + OnSet + Debug + Send {
     fn provider(&self) -> crate::persist::DriverJson;
 }
 
-pub trait TBattery: OnResume + OnSet + Debug + Send {
+pub trait TBattery: OnSet + OnResume + OnPowerEvent + Debug + Send {
     fn limits(&self) -> crate::api::BatteryLimits;
 
     fn json(&self) -> crate::persist::BatteryJson;
@@ -101,6 +126,19 @@ pub trait TBattery: OnResume + OnSet + Debug + Send {
     fn read_charge_design(&self) -> Option<f64>;
 
     fn read_current_now(&self) -> Option<f64>;
+
+    fn charge_limit(&mut self, limit: Option<f64>);
+
+    fn get_charge_limit(&self) -> Option<f64>;
+
+    fn check_power(&mut self) -> Result<Vec<PowerMode>, Vec<SettingError>> {
+        log::warn!("Power event check using default trait implementation");
+        let mut events = Vec::new();
+        if let (Some(full), Some(now)) = (self.read_charge_full(), self.read_charge_now()) {
+            events.push(PowerMode::BatteryCharge(now/full));
+        }
+        Ok(events)
+    }
 
     fn provider(&self) -> crate::persist::DriverJson {
         crate::persist::DriverJson::AutoDetect

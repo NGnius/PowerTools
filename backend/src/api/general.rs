@@ -47,14 +47,14 @@ pub fn load_settings(
     sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
-    let setter = move |path: String, name: String|
+    let setter = move |path: i64, name: String|
         sender.lock()
             .unwrap()
             .send(ApiMessage::LoadSettings(path, name)).expect("load_settings send failed");
     move |params_in: super::ApiParameterType| {
-        if let Some(Primitive::String(path)) = params_in.get(0) {
+        if let Some(Primitive::F64(id)) = params_in.get(0) {
             if let Some(Primitive::String(name)) = params_in.get(1) {
-                setter(path.to_owned(), name.to_owned());
+                setter(*id as i64, name.to_owned());
                 vec![true.into()]
             } else {
                 vec!["load_settings missing name parameter".into()]

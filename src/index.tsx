@@ -35,6 +35,7 @@ import {
   CURRENT_BATT,
   CHARGE_RATE_BATT,
   CHARGE_MODE_BATT,
+  CHARGE_LIMIT_BATT,
   CHARGE_NOW_BATT,
   CHARGE_FULL_BATT,
   CHARGE_DESIGN_BATT,
@@ -108,6 +109,7 @@ const reload = function() {
   backend.resolve(backend.getBatteryCurrent(), (rate: number) => { set_value(CURRENT_BATT, rate) });
   backend.resolve_nullable(backend.getBatteryChargeRate(), (rate: number | null) => { set_value(CHARGE_RATE_BATT, rate) });
   backend.resolve_nullable(backend.getBatteryChargeMode(), (mode: string | null) => { set_value(CHARGE_MODE_BATT, mode) });
+  backend.resolve_nullable(backend.getBatteryChargeLimit(), (limit: number | null) => { set_value(CHARGE_LIMIT_BATT, limit) });
   backend.resolve(backend.getBatteryChargeNow(), (rate: number) => { set_value(CHARGE_NOW_BATT, rate) });
   backend.resolve(backend.getBatteryChargeFull(), (rate: number) => { set_value(CHARGE_FULL_BATT, rate) });
   backend.resolve(backend.getBatteryChargeDesign(), (rate: number) => { set_value(CHARGE_DESIGN_BATT, rate) });
@@ -175,7 +177,7 @@ const reload = function() {
       let gameInfo: any = appStore.GetAppOverviewByGameID(id);
       // don't use gameInfo.appid, haha
       backend.resolve(
-        backend.loadGeneralSettings(id.toString() + ".json", gameInfo.display_name),
+        backend.loadGeneralSettings(id, gameInfo.display_name),
         (ok: boolean) => {backend.log(backend.LogLevel.Debug, "Loading settings ok? " + ok)}
       );
   });

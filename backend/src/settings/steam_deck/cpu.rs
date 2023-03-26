@@ -158,6 +158,8 @@ impl Cpus {
     }
 }
 
+impl crate::settings::OnPowerEvent for Cpus {}
+
 impl TCpus for Cpus {
     fn limits(&self) -> crate::api::CpusLimits {
         crate::api::CpusLimits {

@@ -48,6 +48,8 @@ impl OnResume for General {
     }
 }
 
+impl crate::settings::OnPowerEvent for General {}
+
 impl TGeneral for General {
     fn limits(&self) -> crate::api::GeneralLimits {
         crate::api::GeneralLimits {  }
@@ -92,11 +94,23 @@ pub struct Settings {
 
 impl OnSet for Settings {
     fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
-        self.battery.on_set()?;
-        self.cpus.on_set()?;
-        self.gpu.on_set()?;
-        self.general.on_set()?;
-        Ok(())
+        let mut errors = Vec::new();
+
+        log::debug!("Applying settings for on_resume");
+        self.general.on_set().unwrap_or_else(|mut e| errors.append(&mut e));
+        log::debug!("Resumed general");
+        self.battery.on_set().unwrap_or_else(|mut e| errors.append(&mut e));
+        log::debug!("Resumed battery");
+        self.cpus.on_set().unwrap_or_else(|mut e| errors.append(&mut e));
+        log::debug!("Resumed CPUs");
+        self.gpu.on_set().unwrap_or_else(|mut e| errors.append(&mut e));
+        log::debug!("Resumed GPU");
+
+        if errors.is_empty() {
+           Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 
@@ -226,14 +240,40 @@ impl Settings {
 
 impl OnResume for Settings {
     fn on_resume(&self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
+
         log::debug!("Applying settings for on_resume");
-        self.battery.on_resume()?;
+        self.general.on_resume().unwrap_or_else(|mut e| errors.append(&mut e));
+        log::debug!("Resumed general");
+        self.battery.on_resume().unwrap_or_else(|mut e| errors.append(&mut e));
         log::debug!("Resumed battery");
-        self.cpus.on_resume()?;
+        self.cpus.on_resume().unwrap_or_else(|mut e| errors.append(&mut e));
         log::debug!("Resumed CPUs");
-        self.gpu.on_resume()?;
+        self.gpu.on_resume().unwrap_or_else(|mut e| errors.append(&mut e));
         log::debug!("Resumed GPU");
-        Ok(())
+
+        if errors.is_empty() {
+           Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+}
+
+impl crate::settings::OnPowerEvent for Settings {
+    fn on_power_event(&mut self, new_mode: super::PowerMode) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
+
+        self.general.on_power_event(new_mode).unwrap_or_else(|mut e| errors.append(&mut e));
+        self.battery.on_power_event(new_mode).unwrap_or_else(|mut e| errors.append(&mut e));
+        self.cpus.on_power_event(new_mode).unwrap_or_else(|mut e| errors.append(&mut e));
+        self.gpu.on_power_event(new_mode).unwrap_or_else(|mut e| errors.append(&mut e));
+
+        if errors.is_empty() {
+           Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 

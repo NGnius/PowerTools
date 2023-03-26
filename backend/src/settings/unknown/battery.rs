@@ -13,6 +13,7 @@ impl Into<BatteryJson> for Battery {
         BatteryJson {
             charge_rate: None,
             charge_mode: None,
+            events: Vec::default(),
         }
     }
 }
@@ -29,12 +30,16 @@ impl OnResume for Battery {
     }
 }
 
+impl crate::settings::OnPowerEvent for Battery {}
+
 impl TBattery for Battery {
     fn limits(&self) -> crate::api::BatteryLimits {
         crate::api::BatteryLimits {
             charge_current: None,
             charge_current_step: 50,
             charge_modes: vec![],
+            charge_limit: None,
+            charge_limit_step: 1.0,
         }
     }
 
@@ -63,6 +68,10 @@ impl TBattery for Battery {
     fn read_charge_design(&self) -> Option<f64> { None }
 
     fn read_current_now(&self) -> Option<f64> { None }
+
+    fn charge_limit(&mut self, _limit: Option<f64>) {}
+
+    fn get_charge_limit(&self) -> Option<f64> { None }
 
     fn provider(&self) -> crate::persist::DriverJson {
         crate::persist::DriverJson::Unknown

@@ -138,7 +138,21 @@ impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + FromGenericCpuInfo> Cpus<C> {
     }
 }
 
-impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + OnResume + OnSet> TCpus for Cpus<C> {
+impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + crate::settings::OnPowerEvent> crate::settings::OnPowerEvent for Cpus<C> {
+    fn on_power_event(&mut self, new_mode: crate::settings::PowerMode) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
+        for cpu in &mut self.cpus {
+            cpu.on_power_event(new_mode).unwrap_or_else(|mut e| errors.append(&mut e));
+        }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+}
+
+impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + OnResume + OnSet + crate::settings::OnPowerEvent> TCpus for Cpus<C> {
     fn limits(&self) -> crate::api::CpusLimits {
         crate::api::CpusLimits {
             cpus: self.cpus.iter().map(|x| x.as_ref().limits()).collect(),
@@ -332,6 +346,8 @@ impl OnResume for Cpu {
         copy.set_all()
     }
 }
+
+impl crate::settings::OnPowerEvent for Cpu {}
 
 impl TCpu for Cpu {
     fn online(&mut self) -> &mut bool {

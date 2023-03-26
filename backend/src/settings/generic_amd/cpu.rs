@@ -37,6 +37,8 @@ impl OnSet for Cpus {
     }
 }
 
+impl crate::settings::OnPowerEvent for Cpus {}
+
 impl TCpus for Cpus {
     fn limits(&self) -> crate::api::CpusLimits {
         self.generic.limits()
@@ -109,6 +111,8 @@ impl OnSet for Cpu {
         // TODO
     }
 }
+
+impl crate::settings::OnPowerEvent for Cpu {}
 
 impl TCpu for Cpu {
     fn online(&mut self) -> &mut bool {

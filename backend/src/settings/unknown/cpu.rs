@@ -68,6 +68,8 @@ impl OnResume for Cpus {
     }
 }
 
+impl crate::settings::OnPowerEvent for Cpus {}
+
 impl Cpus {
     pub fn cpu_count() -> Option<usize> {
         let mut data: String = usdpl_back::api::files::read_single(CPU_PRESENT_PATH)

@@ -213,6 +213,8 @@ impl OnSet for Gpu {
     }
 }
 
+impl crate::settings::OnPowerEvent for Gpu {}
+
 impl TGpu for Gpu {
     fn limits(&self) -> crate::api::GpuLimits {
         self.generic.limits()

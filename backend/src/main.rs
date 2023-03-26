@@ -5,6 +5,7 @@ mod state;
 
 mod consts;
 use consts::*;
+mod power_worker;
 mod resume_worker;
 //mod save_worker;
 mod api_worker;
@@ -70,6 +71,7 @@ fn main() -> Result<(), ()> {
 
     //let (_save_handle, save_sender) = save_worker::spawn(loaded_settings.clone());
     let _resume_handle = resume_worker::spawn(api_sender.clone());
+    let _power_handle = power_worker::spawn(api_sender.clone());
 
     let instance = Instance::new(PORT)
         .register("V_INFO", |_: Vec<Primitive>| {
@@ -110,6 +112,18 @@ fn main() -> Result<(), ()> {
         .register(
             "BATTERY_unset_charge_mode",
             api::battery::unset_charge_mode(api_sender.clone()),
+        )
+        .register(
+            "BATTERY_set_charge_limit",
+            api::battery::set_charge_limit(api_sender.clone()),
+        )
+        .register(
+            "BATTERY_unset_charge_limit",
+            api::battery::unset_charge_limit(api_sender.clone()),
+        )
+        .register_async(
+            "BATTERY_get_charge_limit",
+            api::battery::get_charge_limit(api_sender.clone()),
         )
         // cpu API functions
         .register("CPU_count", api::cpu::max_cpus)
@@ -232,10 +246,17 @@ fn main() -> Result<(), ()> {
             api::general::get_provider(api_sender.clone())
         )
         .register("GENERAL_idk", api::general::gunter)
-        // general API functions
         .register(
             "GENERAL_apply_now",
             api::general::force_apply(api_sender.clone())
+        )
+        .register(
+            "GENERAL_on_pluggedin",
+            api::battery::on_plugged(api_sender.clone())
+        )
+        .register(
+            "GENERAL_on_unplugged",
+            api::battery::on_unplugged(api_sender.clone())
         );
 
     if let Err(e) = loaded_settings.on_set() {

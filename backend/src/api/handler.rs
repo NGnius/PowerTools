@@ -1,7 +1,7 @@
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::fmt::Write;
 
-use crate::settings::{Settings, TCpus, TGpu, TBattery, TGeneral, OnSet, OnResume, MinMax};
+use crate::settings::{Settings, TCpus, TGpu, TBattery, TGeneral, OnSet, OnResume, MinMax, OnPowerEvent, PowerMode};
 use crate::persist::SettingsJson;
 use crate::utility::unwrap_maybe_fatal;
 
@@ -13,8 +13,15 @@ pub enum ApiMessage {
     Gpu(GpuMessage),
     General(GeneralMessage),
     OnResume,
+    #[allow(dead_code)]
+    OnPluggedIn,
+    #[allow(dead_code)]
+    OnUnplugged,
+    #[allow(dead_code)]
+    OnChargeChange(f64), // battery fill amount: 0 = empty, 1 = full
+    PowerVibeCheck,
     WaitForEmptyQueue(Callback<()>),
-    LoadSettings(String, String), // (path, name)
+    LoadSettings(i64, String), // (path, name)
     LoadMainSettings,
     LoadSystemSettings,
     GetLimits(Callback<super::SettingsLimits>),
@@ -30,6 +37,8 @@ pub enum BatteryMessage {
     ReadChargeNow(Callback<Option<f64>>),
     ReadChargeDesign(Callback<Option<f64>>),
     ReadCurrentNow(Callback<Option<f64>>),
+    SetChargeLimit(Option<f64>),
+    GetChargeLimit(Callback<Option<f64>>),
 }
 
 impl BatteryMessage {
@@ -44,6 +53,8 @@ impl BatteryMessage {
             Self::ReadChargeNow(cb) => cb(settings.read_charge_now()),
             Self::ReadChargeDesign(cb) => cb(settings.read_charge_design()),
             Self::ReadCurrentNow(cb) => cb(settings.read_current_now()),
+            Self::SetChargeLimit(limit) => settings.charge_limit(limit),
+            Self::GetChargeLimit(cb) => cb(settings.get_charge_limit()),
         }
         dirty
     }
@@ -287,11 +298,44 @@ impl ApiMessageHandler {
                 }
                 false
             }
+            ApiMessage::OnPluggedIn => {
+                if let Err(e) = settings.on_power_event(PowerMode::PluggedIn) {
+                    print_errors("on_power_event(PluggedIn)", e);
+                }
+                true
+            }
+            ApiMessage::OnUnplugged => {
+                if let Err(e) = settings.on_power_event(PowerMode::PluggedOut) {
+                    print_errors("on_power_event(PluggedOut)", e);
+                }
+                true
+            }
+            ApiMessage::OnChargeChange(charge) => {
+                if let Err(e) = settings.on_power_event(PowerMode::BatteryCharge(charge)) {
+                    print_errors(&format!("on_power_event(BatteryCharge={:#0.5})", charge), e);
+                }
+                true
+            }
+            ApiMessage::PowerVibeCheck => {
+                match settings.battery.check_power() {
+                    Err(e) => print_errors("check_power()", e),
+                    Ok(events) => {
+                        for ev in events {
+                            let name = format!("on_power_event([vibe]{:?})", ev);
+                            if let Err(e) = settings.on_power_event(ev) {
+                                print_errors(&name, e);
+                            }
+                        }
+                    }
+                }
+                true
+            }
             ApiMessage::WaitForEmptyQueue(callback) => {
                 self.on_empty.push(callback);
                 false
             },
-            ApiMessage::LoadSettings(path, name) => {
+            ApiMessage::LoadSettings(id, name) => {
+                let path = format!("{}.json", id);
                 match settings.load_file(path.into(), name, false) {
                     Ok(success) => log::info!("Loaded settings file? {}", success),
                     Err(e) => log::warn!("Load file err: {}", e),

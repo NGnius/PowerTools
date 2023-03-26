@@ -19,6 +19,7 @@ import {
     CHARGE_RATE_BATT,
     CHARGE_MODE_BATT,
     CURRENT_BATT,
+    CHARGE_LIMIT_BATT,
 } from "../consts";
 import { set_value, get_value} from "usdpl-front";
 
@@ -53,6 +54,12 @@ export class Battery extends Component<backend.IdcProps> {
           {get_value(CHARGE_FULL_BATT).toFixed(1)} Wh ({(100 * get_value(CHARGE_FULL_BATT) / get_value(CHARGE_DESIGN_BATT)).toFixed(1)}%)
         </Field>
       </PanelSectionRow>}
+      <PanelSectionRow>
+        <Field
+          label={tr("Current")}>
+          {get_value(CURRENT_BATT)} mA
+        </Field>
+      </PanelSectionRow>
       {(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_current != null && <PanelSectionRow>
         <ToggleField
           checked={get_value(CHARGE_RATE_BATT) != null}
@@ -60,7 +67,7 @@ export class Battery extends Component<backend.IdcProps> {
           description={tr("Control battery charge rate when awake")}
           onChange={(value: boolean) => {
             if (value) {
-              set_value(CHARGE_RATE_BATT, 2500);
+              set_value(CHARGE_RATE_BATT, (get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_current!.max);
               reloadGUI("BATTChargeRateToggle");
             } else {
               set_value(CHARGE_RATE_BATT, null);
@@ -128,12 +135,44 @@ export class Battery extends Component<backend.IdcProps> {
           />
         </Field>}
       </PanelSectionRow>}
-      <PanelSectionRow>
-        <Field
-          label={tr("Current")}>
-          {get_value(CURRENT_BATT)} mA
-        </Field>
-      </PanelSectionRow>
+      {(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_limit != null && <PanelSectionRow>
+        <ToggleField
+          checked={get_value(CHARGE_LIMIT_BATT) != null}
+          label={tr("Charge Limit")}
+          description={tr("Limit battery charge when awake")}
+          onChange={(value: boolean) => {
+            if (value) {
+              set_value(CHARGE_LIMIT_BATT, (get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_limit!.max);
+              reloadGUI("BATTChargeLimitToggle");
+            } else {
+              set_value(CHARGE_LIMIT_BATT, null);
+              backend.resolve(backend.unsetBatteryChargeLimit(), (_: any[]) => {
+                reloadGUI("BATTUnsetChargeRate");
+              });
+            }
+          }}
+        />
+        { get_value(CHARGE_LIMIT_BATT) != null && <SliderField
+          label={tr("Maximum (%)")}
+          value={get_value(CHARGE_LIMIT_BATT)}
+          max={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_limit!.max}
+          min={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_limit!.min}
+          step={(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_limit_step}
+          showValue={true}
+          disabled={get_value(CHARGE_LIMIT_BATT) == null}
+          onChange={(val: number) => {
+            backend.log(backend.LogLevel.Debug, "Charge limit is now " + val.toString());
+            const rateNow = get_value(CHARGE_LIMIT_BATT);
+            if (val != rateNow) {
+              backend.resolve(backend.setBatteryChargeLimit(val),
+                              (rate: number) => {
+                set_value(CHARGE_LIMIT_BATT, rate);
+                reloadGUI("BATTChargeLimit");
+              });
+            }
+          }}
+        />}
+      </PanelSectionRow>}
             </Fragment>);
     }
 }
