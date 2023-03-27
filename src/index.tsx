@@ -161,6 +161,7 @@ const reload = function() {
   // register Steam callbacks
   //@ts-ignore
   lifetimeHook = SteamClient.GameSessions.RegisterForAppLifetimeNotifications((update) => {
+      backend.log(backend.LogLevel.Info, "RegisterForAppLifetimeNotifications callback(" + JSON.stringify(update, null, 2) + ")");
       if (update.bRunning) {
           //backend.log(backend.LogLevel.Debug, "AppID " + update.unAppID.toString() + " is now running");
       } else {
@@ -175,9 +176,11 @@ const reload = function() {
   startHook = SteamClient.Apps.RegisterForGameActionStart((actionType, id) => {
       //@ts-ignore
       let gameInfo: any = appStore.GetAppOverviewByGameID(id);
+
+      backend.log(backend.LogLevel.Info, "RegisterForGameActionStart callback(" + actionType + ", " + id + ")");
       // don't use gameInfo.appid, haha
       backend.resolve(
-        backend.loadGeneralSettings(id, gameInfo.display_name),
+        backend.loadGeneralSettings(Number(id), gameInfo.display_name),
         (ok: boolean) => {backend.log(backend.LogLevel.Debug, "Loading settings ok? " + ok)}
       );
   });

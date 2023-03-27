@@ -57,11 +57,13 @@ pub fn load_settings(
                 setter(*id as i64, name.to_owned());
                 vec![true.into()]
             } else {
+                log::warn!("load_settings missing name parameter");
                 vec!["load_settings missing name parameter".into()]
             }
             //let mut general_lock = unwrap_lock(settings.general.lock(), "general");
         } else {
-            vec!["load_settings missing path parameter".into()]
+            log::warn!("load_settings missing id parameter");
+            vec!["load_settings missing id parameter".into()]
         }
     }
 }
