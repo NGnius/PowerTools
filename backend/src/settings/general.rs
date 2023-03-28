@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 //use super::{Battery, Cpus, Gpu};
 use super::{OnResume, OnSet, SettingError};
-use super::{TGeneral, TGpu, TCpus, TBattery};
+use super::{TBattery, TCpus, TGeneral, TGpu};
 use crate::persist::SettingsJson;
 //use crate::utility::unwrap_lock;
 
@@ -52,7 +52,7 @@ impl crate::settings::OnPowerEvent for General {}
 
 impl TGeneral for General {
     fn limits(&self) -> crate::api::GeneralLimits {
-        crate::api::GeneralLimits {  }
+        crate::api::GeneralLimits {}
     }
 
     fn get_persistent(&self) -> bool {
@@ -97,17 +97,25 @@ impl OnSet for Settings {
         let mut errors = Vec::new();
 
         log::debug!("Applying settings for on_resume");
-        self.general.on_set().unwrap_or_else(|mut e| errors.append(&mut e));
+        self.general
+            .on_set()
+            .unwrap_or_else(|mut e| errors.append(&mut e));
         log::debug!("Resumed general");
-        self.battery.on_set().unwrap_or_else(|mut e| errors.append(&mut e));
+        self.battery
+            .on_set()
+            .unwrap_or_else(|mut e| errors.append(&mut e));
         log::debug!("Resumed battery");
-        self.cpus.on_set().unwrap_or_else(|mut e| errors.append(&mut e));
+        self.cpus
+            .on_set()
+            .unwrap_or_else(|mut e| errors.append(&mut e));
         log::debug!("Resumed CPUs");
-        self.gpu.on_set().unwrap_or_else(|mut e| errors.append(&mut e));
+        self.gpu
+            .on_set()
+            .unwrap_or_else(|mut e| errors.append(&mut e));
         log::debug!("Resumed GPU");
 
         if errors.is_empty() {
-           Ok(())
+            Ok(())
         } else {
             Err(errors)
         }
@@ -120,14 +128,20 @@ impl Settings {
         let name_bup = other.name.clone();
         match super::Driver::init(other, json_path.clone()) {
             Ok(x) => {
-                log::info!("Loaded settings with drivers general:{:?},cpus:{:?},gpu:{:?},battery:{:?}", x.general.provider(), x.cpus.provider(), x.gpu.provider(), x.battery.provider());
+                log::info!(
+                    "Loaded settings with drivers general:{:?},cpus:{:?},gpu:{:?},battery:{:?}",
+                    x.general.provider(),
+                    x.cpus.provider(),
+                    x.gpu.provider(),
+                    x.battery.provider()
+                );
                 Self {
                     general: x.general,
                     cpus: x.cpus,
                     gpu: x.gpu,
                     battery: x.battery,
                 }
-            },
+            }
             Err(e) => {
                 log::error!("Driver init error: {}", e);
                 Self::system_default(json_path, name_bup)
@@ -153,7 +167,12 @@ impl Settings {
         self.general = driver.general;
     }
 
-    pub fn load_file(&mut self, filename: PathBuf, name: String, system_defaults: bool) -> Result<bool, SettingError> {
+    pub fn load_file(
+        &mut self,
+        filename: PathBuf,
+        name: String,
+        system_defaults: bool,
+    ) -> Result<bool, SettingError> {
         let json_path = crate::utility::settings_dir().join(&filename);
         if json_path.exists() {
             let settings_json = SettingsJson::open(&json_path).map_err(|e| SettingError {
@@ -161,7 +180,11 @@ impl Settings {
                 setting: SettingVariant::General,
             })?;
             if !settings_json.persistent {
-                log::warn!("Loaded persistent config `{}` ({}) with persistent=false", &settings_json.name, json_path.display());
+                log::warn!(
+                    "Loaded persistent config `{}` ({}) with persistent=false",
+                    &settings_json.name,
+                    json_path.display()
+                );
                 *self.general.persistent() = false;
                 self.general.name(name);
             } else {
@@ -172,7 +195,7 @@ impl Settings {
                         self.cpus = x.cpus;
                         self.gpu = x.gpu;
                         self.battery = x.battery;
-                    },
+                    }
                     Err(e) => {
                         log::error!("Driver init error: {}", e);
                         self.general.name(name);
@@ -193,7 +216,7 @@ impl Settings {
         self.general.path(filename);
         Ok(*self.general.persistent())
     }
-    
+
     /*
     pub fn load_file(&mut self, filename: PathBuf, name: String, system_defaults: bool) -> Result<bool, SettingError> {
         let json_path = crate::utility::settings_dir().join(filename);
@@ -243,17 +266,25 @@ impl OnResume for Settings {
         let mut errors = Vec::new();
 
         log::debug!("Applying settings for on_resume");
-        self.general.on_resume().unwrap_or_else(|mut e| errors.append(&mut e));
+        self.general
+            .on_resume()
+            .unwrap_or_else(|mut e| errors.append(&mut e));
         log::debug!("Resumed general");
-        self.battery.on_resume().unwrap_or_else(|mut e| errors.append(&mut e));
+        self.battery
+            .on_resume()
+            .unwrap_or_else(|mut e| errors.append(&mut e));
         log::debug!("Resumed battery");
-        self.cpus.on_resume().unwrap_or_else(|mut e| errors.append(&mut e));
+        self.cpus
+            .on_resume()
+            .unwrap_or_else(|mut e| errors.append(&mut e));
         log::debug!("Resumed CPUs");
-        self.gpu.on_resume().unwrap_or_else(|mut e| errors.append(&mut e));
+        self.gpu
+            .on_resume()
+            .unwrap_or_else(|mut e| errors.append(&mut e));
         log::debug!("Resumed GPU");
 
         if errors.is_empty() {
-           Ok(())
+            Ok(())
         } else {
             Err(errors)
         }
@@ -264,13 +295,21 @@ impl crate::settings::OnPowerEvent for Settings {
     fn on_power_event(&mut self, new_mode: super::PowerMode) -> Result<(), Vec<SettingError>> {
         let mut errors = Vec::new();
 
-        self.general.on_power_event(new_mode).unwrap_or_else(|mut e| errors.append(&mut e));
-        self.battery.on_power_event(new_mode).unwrap_or_else(|mut e| errors.append(&mut e));
-        self.cpus.on_power_event(new_mode).unwrap_or_else(|mut e| errors.append(&mut e));
-        self.gpu.on_power_event(new_mode).unwrap_or_else(|mut e| errors.append(&mut e));
+        self.general
+            .on_power_event(new_mode)
+            .unwrap_or_else(|mut e| errors.append(&mut e));
+        self.battery
+            .on_power_event(new_mode)
+            .unwrap_or_else(|mut e| errors.append(&mut e));
+        self.cpus
+            .on_power_event(new_mode)
+            .unwrap_or_else(|mut e| errors.append(&mut e));
+        self.gpu
+            .on_power_event(new_mode)
+            .unwrap_or_else(|mut e| errors.append(&mut e));
 
         if errors.is_empty() {
-           Ok(())
+            Ok(())
         } else {
             Err(errors)
         }

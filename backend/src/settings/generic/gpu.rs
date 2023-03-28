@@ -2,10 +2,10 @@ use std::convert::Into;
 
 use limits_core::json::GenericGpuLimit;
 
-use crate::settings::{MinMax, min_max_from_json};
-use crate::settings::{OnResume, OnSet, SettingError};
-use crate::settings::TGpu;
 use crate::persist::GpuJson;
+use crate::settings::TGpu;
+use crate::settings::{min_max_from_json, MinMax};
+use crate::settings::{OnResume, OnSet, SettingError};
 
 #[derive(Debug, Clone)]
 pub struct Gpu {
@@ -40,7 +40,11 @@ impl Gpu {
         }
     }
 
-    pub fn from_json_and_limits(other: GpuJson, version: u64, limits: limits_core::json::GenericGpuLimit) -> Self {
+    pub fn from_json_and_limits(
+        other: GpuJson,
+        version: u64,
+        limits: limits_core::json::GenericGpuLimit,
+    ) -> Self {
         let clock_lims = if limits.clock_min.is_some() && limits.clock_max.is_some() {
             other.clock_limits.map(|x| min_max_from_json(x, version))
         } else {
@@ -48,8 +52,16 @@ impl Gpu {
         };
         Self {
             slow_memory: false,
-            fast_ppt: if limits.fast_ppt.is_some() {other.fast_ppt} else {None},
-            slow_ppt: if limits.slow_ppt.is_some() {other.slow_ppt} else {None},
+            fast_ppt: if limits.fast_ppt.is_some() {
+                other.fast_ppt
+            } else {
+                None
+            },
+            slow_ppt: if limits.slow_ppt.is_some() {
+                other.slow_ppt
+            } else {
+                None
+            },
             clock_limits: clock_lims,
             limits,
         }

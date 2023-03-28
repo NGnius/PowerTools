@@ -1,6 +1,6 @@
-use std::fmt::Debug;
-use super::SettingError;
 use super::MinMax;
+use super::SettingError;
+use std::fmt::Debug;
 
 pub trait OnSet {
     fn on_set(&mut self) -> Result<(), Vec<SettingError>>;
@@ -14,7 +14,7 @@ pub trait OnResume {
 #[derive(Clone, Copy, Debug)]
 pub enum PowerMode {
     PluggedIn,
-    PluggedOut, // unplugged
+    PluggedOut,         // unplugged
     BatteryCharge(f64), // battery fill amount: 0 = empty, 1 = full
 }
 
@@ -135,7 +135,7 @@ pub trait TBattery: OnSet + OnResume + OnPowerEvent + Debug + Send {
         log::warn!("Power event check using default trait implementation");
         let mut events = Vec::new();
         if let (Some(full), Some(now)) = (self.read_charge_full(), self.read_charge_now()) {
-            events.push(PowerMode::BatteryCharge(now/full));
+            events.push(PowerMode::BatteryCharge(now / full));
         }
         Ok(events)
     }

@@ -1,9 +1,9 @@
 use std::convert::Into;
 
-use crate::settings::MinMax;
-use crate::settings::{OnResume, OnSet, SettingError};
-use crate::settings::TGpu;
 use crate::persist::GpuJson;
+use crate::settings::MinMax;
+use crate::settings::TGpu;
+use crate::settings::{OnResume, OnSet, SettingError};
 
 #[derive(Debug, Clone)]
 pub struct Gpu {
@@ -13,15 +13,11 @@ pub struct Gpu {
 impl Gpu {
     #[inline]
     pub fn from_json(_other: GpuJson, _version: u64) -> Self {
-        Self {
-            slow_memory: false,
-        }
+        Self { slow_memory: false }
     }
 
     pub fn system_default() -> Self {
-        Self {
-            slow_memory: false,
-        }
+        Self { slow_memory: false }
     }
 }
 
@@ -71,15 +67,13 @@ impl TGpu for Gpu {
         self.clone().into()
     }
 
-    fn ppt(&mut self, _fast: Option<u64>, _slow: Option<u64>) {
-    }
+    fn ppt(&mut self, _fast: Option<u64>, _slow: Option<u64>) {}
 
     fn get_ppt(&self) -> (Option<u64>, Option<u64>) {
         (None, None)
     }
 
-    fn clock_limits(&mut self, _limits: Option<MinMax<u64>>) {
-    }
+    fn clock_limits(&mut self, _limits: Option<MinMax<u64>>) {}
 
     fn get_clock_limits(&self) -> Option<&MinMax<u64>> {
         None

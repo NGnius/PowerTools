@@ -1,8 +1,8 @@
 use std::convert::Into;
 
-use crate::settings::{OnResume, OnSet, SettingError};
-use crate::settings::TBattery;
 use crate::persist::BatteryJson;
+use crate::settings::TBattery;
+use crate::settings::{OnResume, OnSet, SettingError};
 
 #[derive(Debug, Clone)]
 pub struct Battery;
@@ -47,31 +47,39 @@ impl TBattery for Battery {
         self.clone().into()
     }
 
-    fn charge_rate(&mut self, _rate: Option<u64>) {
-    }
+    fn charge_rate(&mut self, _rate: Option<u64>) {}
 
     fn get_charge_rate(&self) -> Option<u64> {
         None
     }
 
-    fn charge_mode(&mut self, _rate: Option<String>) {
-    }
+    fn charge_mode(&mut self, _rate: Option<String>) {}
 
     fn get_charge_mode(&self) -> Option<String> {
         None
     }
 
-    fn read_charge_full(&self) -> Option<f64> { None }
+    fn read_charge_full(&self) -> Option<f64> {
+        None
+    }
 
-    fn read_charge_now(&self) -> Option<f64> { None }
+    fn read_charge_now(&self) -> Option<f64> {
+        None
+    }
 
-    fn read_charge_design(&self) -> Option<f64> { None }
+    fn read_charge_design(&self) -> Option<f64> {
+        None
+    }
 
-    fn read_current_now(&self) -> Option<f64> { None }
+    fn read_current_now(&self) -> Option<f64> {
+        None
+    }
 
     fn charge_limit(&mut self, _limit: Option<f64>) {}
 
-    fn get_charge_limit(&self) -> Option<f64> { None }
+    fn get_charge_limit(&self) -> Option<f64> {
+        None
+    }
 
     fn provider(&self) -> crate::persist::DriverJson {
         crate::persist::DriverJson::Unknown

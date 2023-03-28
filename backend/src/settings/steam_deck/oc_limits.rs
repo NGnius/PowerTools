@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::settings::MinMax;
+use serde::{Deserialize, Serialize};
 
 const OC_LIMITS_FILEPATH: &str = "pt_oc.json";
 
@@ -29,22 +29,36 @@ impl OverclockLimits {
             let mut file = match std::fs::File::open(&path) {
                 Ok(f) => f,
                 Err(e) => {
-                    log::warn!("Steam Deck limits file {} err: {} (using default fallback)", path.display(), e);
+                    log::warn!(
+                        "Steam Deck limits file {} err: {} (using default fallback)",
+                        path.display(),
+                        e
+                    );
                     return (Self::default(), true);
-                },
+                }
             };
             match serde_json::from_reader(&mut file) {
                 Ok(result) => {
-                    log::debug!("Steam Deck limits file {} successfully loaded", path.display());
+                    log::debug!(
+                        "Steam Deck limits file {} successfully loaded",
+                        path.display()
+                    );
                     (result, false)
-                },
+                }
                 Err(e) => {
-                    log::warn!("Steam Deck limits file {} json err: {} (using default fallback)", path.display(), e);
+                    log::warn!(
+                        "Steam Deck limits file {} json err: {} (using default fallback)",
+                        path.display(),
+                        e
+                    );
                     (Self::default(), true)
                 }
             }
         } else {
-            log::info!("Steam Deck limits file {} not found (using default fallback)", path.display());
+            log::info!(
+                "Steam Deck limits file {} not found (using default fallback)",
+                path.display()
+            );
             (Self::default(), true)
         }
     }
@@ -58,7 +72,10 @@ pub(super) struct BatteryLimits {
 impl Default for BatteryLimits {
     fn default() -> Self {
         Self {
-            charge_rate: MinMax { min: 250, max: 2500 },
+            charge_rate: MinMax {
+                min: 250,
+                max: 2500,
+            },
         }
     }
 }
@@ -89,8 +106,14 @@ pub(super) struct CpuLimits {
 impl Default for CpuLimits {
     fn default() -> Self {
         Self {
-            clock_min: MinMax { min: 1400, max: 3500 },
-            clock_max: MinMax { min: 400, max: 3500 },
+            clock_min: MinMax {
+                min: 1400,
+                max: 3500,
+            },
+            clock_max: MinMax {
+                min: 400,
+                max: 3500,
+            },
             clock_step: 100,
             skip_resume_reclock: false,
         }
@@ -112,12 +135,24 @@ pub(super) struct GpuLimits {
 impl Default for GpuLimits {
     fn default() -> Self {
         Self {
-            fast_ppt: MinMax { min: 1000000, max: 30_000_000 },
-            slow_ppt: MinMax { min: 1000000, max: 29_000_000 },
+            fast_ppt: MinMax {
+                min: 1000000,
+                max: 30_000_000,
+            },
+            slow_ppt: MinMax {
+                min: 1000000,
+                max: 29_000_000,
+            },
             ppt_divisor: 1_000_000,
             ppt_step: 1,
-            clock_min: MinMax { min: 400, max: 1600 },
-            clock_max: MinMax { min: 400, max: 1600 },
+            clock_min: MinMax {
+                min: 400,
+                max: 1600,
+            },
+            clock_max: MinMax {
+                min: 400,
+                max: 1600,
+            },
             clock_step: 100,
             skip_resume_reclock: false,
         }

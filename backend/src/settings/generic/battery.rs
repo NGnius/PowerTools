@@ -2,9 +2,9 @@ use std::convert::Into;
 
 use limits_core::json::GenericBatteryLimit;
 
-use crate::settings::{OnResume, OnSet, SettingError};
-use crate::settings::TBattery;
 use crate::persist::BatteryJson;
+use crate::settings::TBattery;
+use crate::settings::{OnResume, OnSet, SettingError};
 
 #[derive(Debug, Clone)]
 pub struct Battery {
@@ -39,16 +39,16 @@ impl Battery {
 
     pub fn from_limits(limits: limits_core::json::GenericBatteryLimit) -> Self {
         // TODO
-        Self {
-            limits
-        }
+        Self { limits }
     }
 
-    pub fn from_json_and_limits(_other: BatteryJson, _version: u64, limits: limits_core::json::GenericBatteryLimit) -> Self {
+    pub fn from_json_and_limits(
+        _other: BatteryJson,
+        _version: u64,
+        limits: limits_core::json::GenericBatteryLimit,
+    ) -> Self {
         // TODO
-        Self {
-            limits
-        }
+        Self { limits }
     }
 }
 
@@ -83,15 +83,13 @@ impl TBattery for Battery {
         self.clone().into()
     }
 
-    fn charge_rate(&mut self, _rate: Option<u64>) {
-    }
+    fn charge_rate(&mut self, _rate: Option<u64>) {}
 
     fn get_charge_rate(&self) -> Option<u64> {
         None
     }
 
-    fn charge_mode(&mut self, _rate: Option<String>) {
-    }
+    fn charge_mode(&mut self, _rate: Option<String>) {}
 
     fn get_charge_mode(&self) -> Option<String> {
         None
@@ -133,7 +131,9 @@ impl TBattery for Battery {
 
     fn charge_limit(&mut self, _limit: Option<f64>) {}
 
-    fn get_charge_limit(&self) -> Option<f64> { None }
+    fn get_charge_limit(&self) -> Option<f64> {
+        None
+    }
 
     fn provider(&self) -> crate::persist::DriverJson {
         crate::persist::DriverJson::Generic

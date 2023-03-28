@@ -1,11 +1,11 @@
 use std::convert::Into;
 
-use crate::api::RangeLimit;
-use crate::settings::{OnResume, OnSet, SettingError, OnPowerEvent, PowerMode};
-use crate::settings::TBattery;
-use crate::persist::{BatteryJson, BatteryEventJson};
-use super::util::ChargeMode;
 use super::oc_limits::{BatteryLimits, OverclockLimits};
+use super::util::ChargeMode;
+use crate::api::RangeLimit;
+use crate::persist::{BatteryEventJson, BatteryJson};
+use crate::settings::TBattery;
+use crate::settings::{OnPowerEvent, OnResume, OnSet, PowerMode, SettingError};
 
 #[derive(Debug, Clone)]
 pub struct Battery {
@@ -40,11 +40,11 @@ impl OnPowerEvent for EventInstruction {
             (EventTrigger::PluggedIn, PowerMode::PluggedIn) => {
                 log::info!("Steam Deck plugged in event handled");
                 self.set_all()
-            },
+            }
             (EventTrigger::PluggedOut, PowerMode::PluggedOut) => {
                 log::info!("Steam Deck plugged out event handled");
                 self.set_all()
-            },
+            }
             (EventTrigger::BatteryAbove(exp), PowerMode::BatteryCharge(act)) => {
                 if act > *exp {
                     if self.is_triggered {
@@ -58,7 +58,7 @@ impl OnPowerEvent for EventInstruction {
                     self.is_triggered = false;
                     Ok(())
                 }
-            },
+            }
             (EventTrigger::BatteryBelow(exp), PowerMode::BatteryCharge(act)) => {
                 if act < *exp {
                     if self.is_triggered {
@@ -72,8 +72,8 @@ impl OnPowerEvent for EventInstruction {
                     self.is_triggered = false;
                     Ok(())
                 }
-            },
-            _ => Ok(())
+            }
+            _ => Ok(()),
         }
     }
 }
@@ -95,8 +95,16 @@ impl EventInstruction {
         match s {
             "normal" => Some(EventTrigger::PluggedIn),
             "idle" => Some(EventTrigger::PluggedOut),
-            s if s.starts_with('>') => s.trim_start_matches('>').parse::<f64>().ok().map(|x| EventTrigger::BatteryAbove(x)),
-            s if s.starts_with('<') => s.trim_start_matches('<').parse::<f64>().ok().map(|x| EventTrigger::BatteryBelow(x)),
+            s if s.starts_with('>') => s
+                .trim_start_matches('>')
+                .parse::<f64>()
+                .ok()
+                .map(|x| EventTrigger::BatteryAbove(x)),
+            s if s.starts_with('<') => s
+                .trim_start_matches('<')
+                .parse::<f64>()
+                .ok()
+                .map(|x| EventTrigger::BatteryBelow(x)),
             _ => None,
         }
     }
@@ -105,19 +113,22 @@ impl EventInstruction {
         Self {
             trigger: Self::str_to_trigger(&other.trigger).unwrap_or(EventTrigger::Ignored),
             charge_rate: other.charge_rate,
-            charge_mode: other.charge_mode.map(|x| Battery::str_to_charge_mode(&x)).flatten(),
+            charge_mode: other
+                .charge_mode
+                .map(|x| Battery::str_to_charge_mode(&x))
+                .flatten(),
             is_triggered: false,
         }
     }
 
     fn set_charge_mode(&self) -> Result<(), SettingError> {
         if let Some(charge_mode) = self.charge_mode {
-            super::util::set(super::util::Setting::ChargeMode, charge_mode as _).map_err(
-                |e| SettingError {
+            super::util::set(super::util::Setting::ChargeMode, charge_mode as _)
+                .map_err(|e| SettingError {
                     msg: format!("Failed to set charge mode: {}", e),
                     setting: crate::settings::SettingVariant::Battery,
-                },
-            ).map(|_| ())
+                })
+                .map(|_| ())
         } else {
             Ok(())
         }
@@ -125,18 +136,18 @@ impl EventInstruction {
 
     fn set_charge_rate(&self) -> Result<(), SettingError> {
         if let Some(charge_rate) = self.charge_rate {
-            usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, charge_rate).map_err(
-                |e| SettingError {
+            usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, charge_rate)
+                .map_err(|e| SettingError {
                     msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
                     setting: crate::settings::SettingVariant::Battery,
-                },
-            ).map(|_| ())
+                })
+                .map(|_| ())
         } else {
             Ok(())
         }
     }
 
-    fn set_all(&self)  -> Result<(), Vec<SettingError>> {
+    fn set_all(&self) -> Result<(), Vec<SettingError>> {
         let mut errors = Vec::new();
 
         self.set_charge_rate().unwrap_or_else(|e| errors.push(e));
@@ -174,20 +185,38 @@ impl Battery {
     pub fn from_json(other: BatteryJson, version: u64) -> Self {
         let (oc_limits, is_default) = OverclockLimits::load_or_default();
         let oc_limits = oc_limits.battery;
-        let driver = if is_default { crate::persist::DriverJson::SteamDeck } else { crate::persist::DriverJson::SteamDeckAdvance };
+        let driver = if is_default {
+            crate::persist::DriverJson::SteamDeck
+        } else {
+            crate::persist::DriverJson::SteamDeckAdvance
+        };
         match version {
             0 => Self {
                 charge_rate: other.charge_rate,
-                charge_mode: other.charge_mode.map(|x| Self::str_to_charge_mode(&x)).flatten(),
-                events: other.events.into_iter().map(|x| EventInstruction::from_json(x, version)).collect(),
+                charge_mode: other
+                    .charge_mode
+                    .map(|x| Self::str_to_charge_mode(&x))
+                    .flatten(),
+                events: other
+                    .events
+                    .into_iter()
+                    .map(|x| EventInstruction::from_json(x, version))
+                    .collect(),
                 limits: oc_limits,
                 state: crate::state::steam_deck::Battery::default(),
                 driver_mode: driver,
             },
             _ => Self {
                 charge_rate: other.charge_rate,
-                charge_mode: other.charge_mode.map(|x| Self::str_to_charge_mode(&x)).flatten(),
-                events: other.events.into_iter().map(|x| EventInstruction::from_json(x, version)).collect(),
+                charge_mode: other
+                    .charge_mode
+                    .map(|x| Self::str_to_charge_mode(&x))
+                    .flatten(),
+                events: other
+                    .events
+                    .into_iter()
+                    .map(|x| EventInstruction::from_json(x, version))
+                    .collect(),
                 limits: oc_limits,
                 state: crate::state::steam_deck::Battery::default(),
                 driver_mode: driver,
@@ -201,7 +230,8 @@ impl Battery {
             ChargeMode::Normal => "normal",
             ChargeMode::Idle => "idle",
             ChargeMode::Discharge => "discharge",
-        }.to_owned()
+        }
+        .to_owned()
     }
 
     #[inline]
@@ -217,20 +247,20 @@ impl Battery {
     fn set_charge_mode(&mut self) -> Result<(), SettingError> {
         if let Some(charge_mode) = self.charge_mode {
             self.state.charge_mode_set = true;
-            super::util::set(super::util::Setting::ChargeMode, charge_mode as _).map_err(
-                |e| SettingError {
+            super::util::set(super::util::Setting::ChargeMode, charge_mode as _)
+                .map_err(|e| SettingError {
                     msg: format!("Failed to set charge mode: {}", e),
                     setting: crate::settings::SettingVariant::Battery,
-                },
-            ).map(|_| ())
+                })
+                .map(|_| ())
         } else if self.state.charge_mode_set {
             self.state.charge_mode_set = false;
-            super::util::set(super::util::Setting::ChargeMode, ChargeMode::Normal as _).map_err(
-                |e| SettingError {
+            super::util::set(super::util::Setting::ChargeMode, ChargeMode::Normal as _)
+                .map_err(|e| SettingError {
                     msg: format!("Failed to set charge mode: {}", e),
                     setting: crate::settings::SettingVariant::Battery,
-                },
-            ).map(|_| ())
+                })
+                .map(|_| ())
         } else {
             Ok(())
         }
@@ -240,20 +270,23 @@ impl Battery {
         let mut errors = Vec::new();
         if let Some(charge_rate) = self.charge_rate {
             self.state.charge_rate_set = true;
-            usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, charge_rate).map_err(
-                |e| SettingError {
+            usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, charge_rate)
+                .map_err(|e| SettingError {
                     msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
                     setting: crate::settings::SettingVariant::Battery,
-                },
-            ).unwrap_or_else(|e| errors.push(e));
+                })
+                .unwrap_or_else(|e| errors.push(e));
         } else if self.state.charge_rate_set {
             self.state.charge_rate_set = false;
-            usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, self.limits.charge_rate.max).map_err(
-                |e| SettingError {
-                    msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
-                    setting: crate::settings::SettingVariant::Battery,
-                },
-            ).unwrap_or_else(|e| errors.push(e));
+            usdpl_back::api::files::write_single(
+                BATTERY_CHARGE_RATE_PATH,
+                self.limits.charge_rate.max,
+            )
+            .map_err(|e| SettingError {
+                msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
+                setting: crate::settings::SettingVariant::Battery,
+            })
+            .unwrap_or_else(|e| errors.push(e));
         }
         self.set_charge_mode().unwrap_or_else(|e| errors.push(e));
         if errors.is_empty() {
@@ -265,7 +298,8 @@ impl Battery {
 
     fn clamp_all(&mut self) {
         if let Some(charge_rate) = &mut self.charge_rate {
-            *charge_rate = (*charge_rate).clamp(self.limits.charge_rate.min, self.limits.charge_rate.max);
+            *charge_rate =
+                (*charge_rate).clamp(self.limits.charge_rate.min, self.limits.charge_rate.max);
         }
     }
 
@@ -306,7 +340,10 @@ impl Battery {
     pub fn read_charge_design() -> Result<f64, SettingError> {
         match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_DESIGN_PATH) {
             Err(e) => Err(SettingError {
-                msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_DESIGN_PATH, e),
+                msg: format!(
+                    "Failed to read from `{}`: {}",
+                    BATTERY_CHARGE_DESIGN_PATH, e
+                ),
                 setting: crate::settings::SettingVariant::Battery,
             }),
             // convert to Wh
@@ -321,14 +358,18 @@ impl Battery {
                 setting: crate::settings::SettingVariant::Battery,
             }),
             // convert to V (from mV)
-            Ok(val) => Ok((val as f64)/1000.0),
+            Ok(val) => Ok((val as f64) / 1000.0),
         }
     }
 
     pub fn system_default() -> Self {
         let (oc_limits, is_default) = OverclockLimits::load_or_default();
         let oc_limits = oc_limits.battery;
-        let driver = if is_default { crate::persist::DriverJson::SteamDeck } else { crate::persist::DriverJson::SteamDeckAdvance };
+        let driver = if is_default {
+            crate::persist::DriverJson::SteamDeck
+        } else {
+            crate::persist::DriverJson::SteamDeckAdvance
+        };
         Self {
             charge_rate: None,
             charge_mode: None,
@@ -346,8 +387,8 @@ impl Battery {
                     if event.charge_mode.is_some() {
                         return Some(i);
                     }
-                },
-                _ => {},
+                }
+                _ => {}
             }
         }
         None
@@ -360,8 +401,8 @@ impl Battery {
                     if event.charge_mode.is_some() {
                         return Some(i);
                     }
-                },
-                _ => {},
+                }
+                _ => {}
             }
         }
         None
@@ -374,7 +415,7 @@ impl Into<BatteryJson> for Battery {
         BatteryJson {
             charge_rate: self.charge_rate,
             charge_mode: self.charge_mode.map(Self::charge_mode_to_str),
-            events: self.events.into_iter().map(|x| x.into()).collect()
+            events: self.events.into_iter().map(|x| x.into()).collect(),
         }
     }
 }
@@ -398,20 +439,24 @@ impl OnPowerEvent for Battery {
         match new_mode {
             PowerMode::PluggedIn => {
                 // plug event resets battery settings
-                self.events.iter_mut().for_each(|ev| ev.is_triggered = false);
-                self.set_charge_mode()
-                    .map_err(|e| vec![e])
-            },
+                self.events
+                    .iter_mut()
+                    .for_each(|ev| ev.is_triggered = false);
+                self.set_charge_mode().map_err(|e| vec![e])
+            }
             PowerMode::PluggedOut => {
                 // plug event resets battery settings
-                self.events.iter_mut().for_each(|ev| ev.is_triggered = false);
-                self.set_charge_mode()
-                    .map_err(|e| vec![e])
-            },
-            PowerMode::BatteryCharge(_) => Ok(())
-        }.unwrap_or_else(|mut e| errors.append(&mut e));
+                self.events
+                    .iter_mut()
+                    .for_each(|ev| ev.is_triggered = false);
+                self.set_charge_mode().map_err(|e| vec![e])
+            }
+            PowerMode::BatteryCharge(_) => Ok(()),
+        }
+        .unwrap_or_else(|mut e| errors.append(&mut e));
         for ev in &mut self.events {
-            ev.on_power_event(new_mode).unwrap_or_else(|mut e| errors.append(&mut e));
+            ev.on_power_event(new_mode)
+                .unwrap_or_else(|mut e| errors.append(&mut e));
         }
         if errors.is_empty() {
             Ok(())
@@ -424,12 +469,16 @@ impl OnPowerEvent for Battery {
 impl TBattery for Battery {
     fn limits(&self) -> crate::api::BatteryLimits {
         crate::api::BatteryLimits {
-            charge_current: Some(RangeLimit{
+            charge_current: Some(RangeLimit {
                 min: self.limits.charge_rate.min,
-                max: self.limits.charge_rate.max
+                max: self.limits.charge_rate.max,
             }),
             charge_current_step: 50,
-            charge_modes: vec!["normal".to_owned(), "discharge".to_owned(), "idle".to_owned()],
+            charge_modes: vec![
+                "normal".to_owned(),
+                "discharge".to_owned(),
+                "idle".to_owned(),
+            ],
             charge_limit: Some(RangeLimit {
                 min: 10.0,
                 max: 90.0,
@@ -503,9 +552,12 @@ impl TBattery for Battery {
         let index = self.find_limit_event();
         if let Some(index) = index {
             if let Some(limit) = limit {
-                log::info!("Updating Steam Deck charge limit event instruction to >{}", limit);
+                log::info!(
+                    "Updating Steam Deck charge limit event instruction to >{}",
+                    limit
+                );
                 self.events[index] = EventInstruction {
-                    trigger: EventTrigger::BatteryAbove(limit/100.0),
+                    trigger: EventTrigger::BatteryAbove(limit / 100.0),
                     charge_rate: None,
                     charge_mode: Some(ChargeMode::Idle),
                     is_triggered: false,
@@ -514,24 +566,28 @@ impl TBattery for Battery {
                 self.events.remove(index);
             }
         } else if let Some(limit) = limit {
-            log::info!("Creating Steam Deck charge limit event instruction of >{}", limit);
-            self.events.push(
-                EventInstruction {
-                    trigger: EventTrigger::BatteryAbove(limit/100.0),
-                    charge_rate: None,
-                    charge_mode: Some(ChargeMode::Idle),
-                    is_triggered: false,
-                }
+            log::info!(
+                "Creating Steam Deck charge limit event instruction of >{}",
+                limit
             );
+            self.events.push(EventInstruction {
+                trigger: EventTrigger::BatteryAbove(limit / 100.0),
+                charge_rate: None,
+                charge_mode: Some(ChargeMode::Idle),
+                is_triggered: false,
+            });
         }
         // lower limit
         let index = self.find_unlimit_event();
         if let Some(index) = index {
             if let Some(limit) = limit {
                 let limit = (limit - 10.0).clamp(0.0, 100.0);
-                log::info!("Updating Steam Deck charge limit event instruction to <{}", limit);
+                log::info!(
+                    "Updating Steam Deck charge limit event instruction to <{}",
+                    limit
+                );
                 self.events[index] = EventInstruction {
-                    trigger: EventTrigger::BatteryBelow(limit/100.0),
+                    trigger: EventTrigger::BatteryBelow(limit / 100.0),
                     charge_rate: None,
                     charge_mode: Some(ChargeMode::Normal),
                     is_triggered: false,
@@ -541,15 +597,16 @@ impl TBattery for Battery {
             }
         } else if let Some(limit) = limit {
             let limit = (limit - 10.0).clamp(0.0, 100.0);
-            log::info!("Creating Steam Deck charge limit event instruction of <{}", limit);
-            self.events.push(
-                EventInstruction {
-                    trigger: EventTrigger::BatteryBelow(limit/100.0),
-                    charge_rate: None,
-                    charge_mode: Some(ChargeMode::Normal),
-                    is_triggered: false,
-                }
+            log::info!(
+                "Creating Steam Deck charge limit event instruction of <{}",
+                limit
             );
+            self.events.push(EventInstruction {
+                trigger: EventTrigger::BatteryBelow(limit / 100.0),
+                charge_rate: None,
+                charge_mode: Some(ChargeMode::Normal),
+                is_triggered: false,
+            });
         }
     }
 
@@ -572,24 +629,28 @@ impl TBattery for Battery {
         let mut errors = Vec::new();
         let mut events = Vec::new();
         match (Self::read_charge_full(), Self::read_charge_now()) {
-            (Ok(full), Ok(now)) => events.push(PowerMode::BatteryCharge(now/full)),
+            (Ok(full), Ok(now)) => events.push(PowerMode::BatteryCharge(now / full)),
             (Err(e1), Err(e2)) => {
                 errors.push(e1);
                 errors.push(e2);
-            },
+            }
             (Err(e), _) => errors.push(e),
             (_, Err(e)) => errors.push(e),
         }
         match Self::read_usb_voltage() {
             Ok(voltage) => {
-                if voltage > 0.0 && self.state.charger_state != crate::state::steam_deck::ChargeState::PluggedIn {
+                if voltage > 0.0
+                    && self.state.charger_state != crate::state::steam_deck::ChargeState::PluggedIn
+                {
                     events.push(PowerMode::PluggedIn);
                     self.state.charger_state = crate::state::steam_deck::ChargeState::PluggedIn;
-                } else if voltage == 0.0 && self.state.charger_state != crate::state::steam_deck::ChargeState::Unplugged {
+                } else if voltage == 0.0
+                    && self.state.charger_state != crate::state::steam_deck::ChargeState::Unplugged
+                {
                     events.push(PowerMode::PluggedOut);
                     self.state.charger_state = crate::state::steam_deck::ChargeState::Unplugged;
                 }
-            },
+            }
             Err(e) => errors.push(e),
         }
         if errors.is_empty() {

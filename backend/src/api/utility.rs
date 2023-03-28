@@ -10,12 +10,14 @@ pub fn map_result<T: Into<Primitive>>(result: Result<T, SettingError>) -> super:
         Err(e) => {
             log::debug!("Mapping error to primitive: {}", e);
             vec![e.msg.into()]
-        },
+        }
     }
 }
 
 #[inline]
-pub fn map_optional_result<T: Into<Primitive>>(result: Result<Option<T>, SettingError>) -> super::ApiParameterType {
+pub fn map_optional_result<T: Into<Primitive>>(
+    result: Result<Option<T>, SettingError>,
+) -> super::ApiParameterType {
     match result {
         Ok(val) => match val {
             Some(val) => vec![val.into()],
@@ -24,7 +26,7 @@ pub fn map_optional_result<T: Into<Primitive>>(result: Result<Option<T>, Setting
         Err(e) => {
             log::debug!("Mapping error to primitive: {}", e);
             vec![e.msg.into()]
-        },
+        }
     }
 }
 

@@ -1,8 +1,10 @@
-use std::sync::mpsc::{self, Receiver, Sender};
 use std::fmt::Write;
+use std::sync::mpsc::{self, Receiver, Sender};
 
-use crate::settings::{Settings, TCpus, TGpu, TBattery, TGeneral, OnSet, OnResume, MinMax, OnPowerEvent, PowerMode};
 use crate::persist::SettingsJson;
+use crate::settings::{
+    MinMax, OnPowerEvent, OnResume, OnSet, PowerMode, Settings, TBattery, TCpus, TGeneral, TGpu,
+};
 use crate::utility::unwrap_maybe_fatal;
 
 type Callback<T> = Box<dyn FnOnce(T) + Send>;
@@ -84,12 +86,14 @@ impl CpuMessage {
         // NOTE: "cpu" refers to the Linux kernel definition of a CPU, which is actually a hardware thread
         // not to be confused with a CPU chip, which usually has multiple hardware threads (cpu cores/threads) in the chip
         match self {
-            Self::SetCpuOnline(index, status) => {settings.cpus().get_mut(index).map(|c| *c.online() = status);},
+            Self::SetCpuOnline(index, status) => {
+                settings.cpus().get_mut(index).map(|c| *c.online() = status);
+            }
             Self::SetCpusOnline(cpus) => {
                 for i in 0..cpus.len() {
                     settings.cpus().get_mut(i).map(|c| *c.online() = cpus[i]);
                 }
-            },
+            }
             Self::SetSmt(status, cb) => {
                 if *settings.smt() == status {
                     // already set, do nothing
@@ -105,8 +109,8 @@ impl CpuMessage {
                             // for 1c:2t configs (i.e. anything with SMT2), the highest cpu core is always odd
                             // (e.g. 4c8t has CPUs 0-7, inclusive)
                             // this enables the """fake""" (i.e. odd) cpu which is disabled when SMT is set off
-                            if i % 2 == 0 && i+1 != cpu_count {
-                                *(settings.cpus()[i+1].online()) = true;
+                            if i % 2 == 0 && i + 1 != cpu_count {
+                                *(settings.cpus()[i + 1].online()) = true;
                             }
                         } else {
                             *settings.cpus()[i].online() = should_be_online;
@@ -118,7 +122,8 @@ impl CpuMessage {
                     for i in 0..settings.len() {
                         // this disables the """fake""" (odd) cpu for appearances' sake
                         // the kernel will automatically disable that same cpu when SMT is changed
-                        *settings.cpus()[i].online() = *settings.cpus()[i].online() && (status || i % 2 == 0);
+                        *settings.cpus()[i].online() =
+                            *settings.cpus()[i].online() && (status || i % 2 == 0);
                     }
                 }
                 let mut result = Vec::with_capacity(settings.len());
@@ -126,25 +131,40 @@ impl CpuMessage {
                     result.push(*settings.cpus()[i].online());
                 }
                 cb(result);
-            },
+            }
             Self::GetSmt(cb) => {
                 cb(*settings.smt());
-            },
+            }
             Self::GetCpusOnline(cb) => {
                 let mut result = Vec::with_capacity(settings.len());
                 for cpu in settings.cpus() {
                     result.push(*cpu.online());
                 }
                 cb(result);
-            },
-            Self::SetClockLimits(index, clocks) => {settings.cpus().get_mut(index).map(|c| c.clock_limits(clocks));},
-            Self::GetClockLimits(index, cb) => {settings.cpus().get(index).map(|c| cb(c.get_clock_limits().map(|x| x.to_owned())));},
-            Self::SetCpuGovernor(index, gov) => {settings.cpus().get_mut(index).map(|c| c.governor(gov));},
+            }
+            Self::SetClockLimits(index, clocks) => {
+                settings
+                    .cpus()
+                    .get_mut(index)
+                    .map(|c| c.clock_limits(clocks));
+            }
+            Self::GetClockLimits(index, cb) => {
+                settings
+                    .cpus()
+                    .get(index)
+                    .map(|c| cb(c.get_clock_limits().map(|x| x.to_owned())));
+            }
+            Self::SetCpuGovernor(index, gov) => {
+                settings.cpus().get_mut(index).map(|c| c.governor(gov));
+            }
             Self::SetCpusGovernor(govs) => {
                 for i in 0..govs.len() {
-                    settings.cpus().get_mut(i).map(|c| c.governor(govs[i].clone()));
+                    settings
+                        .cpus()
+                        .get_mut(i)
+                        .map(|c| c.governor(govs[i].clone()));
                 }
-            },
+            }
             Self::GetCpusGovernor(cb) => {
                 let mut result = Vec::with_capacity(settings.len());
                 for cpu in settings.cpus() {
@@ -158,13 +178,14 @@ impl CpuMessage {
 
     /// Message instructs the driver to modify settings
     fn is_modify(&self) -> bool {
-        matches!(self,
+        matches!(
+            self,
             Self::SetCpuOnline(_, _)
-            | Self::SetCpusOnline(_)
-            | Self::SetSmt(_, _)
-            | Self::SetClockLimits(_, _)
-            | Self::SetCpuGovernor(_, _)
-            | Self::SetCpusGovernor(_)
+                | Self::SetCpusOnline(_)
+                | Self::SetSmt(_, _)
+                | Self::SetClockLimits(_, _)
+                | Self::SetCpuGovernor(_, _)
+                | Self::SetCpusGovernor(_)
         )
     }
 }
@@ -193,10 +214,9 @@ impl GpuMessage {
     }
 
     fn is_modify(&self) -> bool {
-        matches!(self,
-            Self::SetPpt(_, _)
-            | Self::SetClockLimits(_)
-            | Self::SetSlowMemory(_)
+        matches!(
+            self,
+            Self::SetPpt(_, _) | Self::SetClockLimits(_) | Self::SetSlowMemory(_)
         )
     }
 }
@@ -217,7 +237,7 @@ impl GeneralMessage {
             Self::GetPersistent(cb) => cb(*settings.persistent()),
             Self::GetCurrentProfileName(cb) => cb(settings.get_name().to_owned()),
             Self::GetPath(cb) => cb(settings.get_path().to_owned()),
-            Self::ApplyNow => {},
+            Self::ApplyNow => {}
         }
         dirty
     }
@@ -234,7 +254,9 @@ pub struct ApiMessageHandler {
 
 fn print_errors(call_name: &str, errors: Vec<crate::settings::SettingError>) {
     let mut err_list = String::new();
-    errors.iter().for_each(|e| write!(err_list, "\t{},\n", e).unwrap_or(()));
+    errors
+        .iter()
+        .for_each(|e| write!(err_list, "\t{},\n", e).unwrap_or(()));
     log::error!("Settings {}() err:\n{}", call_name, err_list);
 }
 
@@ -248,7 +270,7 @@ impl ApiMessageHandler {
             }
             if dirty || dirty_echo {
                 dirty_echo = dirty; // echo only once
-                // run on_set
+                                    // run on_set
                 if let Err(e) = settings.on_set() {
                     print_errors("on_set", e);
                 }
@@ -259,8 +281,8 @@ impl ApiMessageHandler {
                 // save
                 log::debug!("api_worker is saving...");
                 let is_persistent = *settings.general.persistent();
-                let save_path = crate::utility::settings_dir()
-                    .join(settings.general.get_path().clone());
+                let save_path =
+                    crate::utility::settings_dir().join(settings.general.get_path().clone());
                 if is_persistent {
                     let settings_clone = settings.json();
                     let save_json: SettingsJson = settings_clone.into();
@@ -272,7 +294,11 @@ impl ApiMessageHandler {
                 } else {
                     if save_path.exists() {
                         if let Err(e) = std::fs::remove_file(&save_path) {
-                            log::warn!("Failed to delete persistent settings file {}: {}", save_path.display(), e);
+                            log::warn!(
+                                "Failed to delete persistent settings file {}: {}",
+                                save_path.display(),
+                                e
+                            );
                         } else {
                             log::debug!("Deleted persistent settings file {}", save_path.display());
                         }
@@ -333,7 +359,7 @@ impl ApiMessageHandler {
             ApiMessage::WaitForEmptyQueue(callback) => {
                 self.on_empty.push(callback);
                 false
-            },
+            }
             ApiMessage::LoadSettings(id, name) => {
                 let path = format!("{}.json", id);
                 match settings.load_file(path.into(), name, false) {
@@ -346,7 +372,7 @@ impl ApiMessageHandler {
                 match settings.load_file(
                     crate::consts::DEFAULT_SETTINGS_FILE.into(),
                     crate::consts::DEFAULT_SETTINGS_NAME.to_owned(),
-                    true
+                    true,
                 ) {
                     Ok(success) => log::info!("Loaded main settings file? {}", success),
                     Err(e) => log::warn!("Load file err: {}", e),
@@ -356,7 +382,7 @@ impl ApiMessageHandler {
             ApiMessage::LoadSystemSettings => {
                 settings.load_system_default(settings.general.get_name().to_owned());
                 true
-            },
+            }
             ApiMessage::GetLimits(cb) => {
                 cb(super::SettingsLimits {
                     battery: settings.battery.limits(),
@@ -365,7 +391,7 @@ impl ApiMessageHandler {
                     general: settings.general.limits(),
                 });
                 false
-            },
+            }
             ApiMessage::GetProvider(name, cb) => {
                 cb(match &name as &str {
                     "battery" => settings.battery.provider(),
@@ -380,9 +406,12 @@ impl ApiMessageHandler {
 
     pub fn new() -> (Self, Sender<ApiMessage>) {
         let (tx, rx) = mpsc::channel();
-        (Self {
-            intake: rx,
-            on_empty: Vec::with_capacity(4),
-        }, tx)
+        (
+            Self {
+                intake: rx,
+                on_empty: Vec::with_capacity(4),
+            },
+            tx,
+        )
     }
 }

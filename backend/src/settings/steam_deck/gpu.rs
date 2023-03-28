@@ -1,12 +1,12 @@
 use std::convert::Into;
 
-use crate::api::RangeLimit;
-use crate::settings::{MinMax, min_max_from_json};
-use crate::settings::{OnResume, OnSet, SettingError};
-use crate::settings::TGpu;
-use crate::persist::GpuJson;
-use super::oc_limits::{OverclockLimits, GpuLimits};
+use super::oc_limits::{GpuLimits, OverclockLimits};
 use super::POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT;
+use crate::api::RangeLimit;
+use crate::persist::GpuJson;
+use crate::settings::TGpu;
+use crate::settings::{min_max_from_json, MinMax};
+use crate::settings::{OnResume, OnSet, SettingError};
 
 const SLOW_PPT: u8 = 1;
 const FAST_PPT: u8 = 2;
@@ -30,7 +30,11 @@ impl Gpu {
     #[inline]
     pub fn from_json(other: GpuJson, version: u64) -> Self {
         let (oc_limits, is_default) = OverclockLimits::load_or_default();
-        let driver = if is_default { crate::persist::DriverJson::SteamDeck } else { crate::persist::DriverJson::SteamDeckAdvance };
+        let driver = if is_default {
+            crate::persist::DriverJson::SteamDeck
+        } else {
+            crate::persist::DriverJson::SteamDeckAdvance
+        };
         match version {
             0 => Self {
                 fast_ppt: other.fast_ppt,
@@ -62,70 +66,80 @@ impl Gpu {
             self.state.clock_limits_set = true;
             // max clock
             let payload_max = format!("s 1 {}\n", clock_limits.max);
-            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_max).map_err(
-                |e| SettingError {
+            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_max)
+                .map_err(|e| SettingError {
                     msg: format!(
                         "Failed to write `{}` to `{}`: {}",
                         &payload_max, GPU_CLOCK_LIMITS_PATH, e
                     ),
                     setting: crate::settings::SettingVariant::Gpu,
-                },
-            ).unwrap_or_else(|e| errors.push(e));
+                })
+                .unwrap_or_else(|e| errors.push(e));
             // min clock
             let payload_min = format!("s 0 {}\n", clock_limits.min);
-            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
-                |e| SettingError {
+            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_min)
+                .map_err(|e| SettingError {
                     msg: format!(
                         "Failed to write `{}` to `{}`: {}",
                         &payload_min, GPU_CLOCK_LIMITS_PATH, e
                     ),
                     setting: crate::settings::SettingVariant::Gpu,
-                },
-            ).unwrap_or_else(|e| errors.push(e));
-            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c\n").unwrap_or_else(|e| {
-                errors.push(SettingError {
-                    msg: format!("Failed to write `c` to `{}`: {}", GPU_CLOCK_LIMITS_PATH, e),
-                    setting: crate::settings::SettingVariant::Gpu,
                 })
-            });
-        } else if self.state.clock_limits_set ||
-            (self.state.is_resuming && !self.limits.skip_resume_reclock)
-            || POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual() {
+                .unwrap_or_else(|e| errors.push(e));
+            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c\n").unwrap_or_else(
+                |e| {
+                    errors.push(SettingError {
+                        msg: format!("Failed to write `c` to `{}`: {}", GPU_CLOCK_LIMITS_PATH, e),
+                        setting: crate::settings::SettingVariant::Gpu,
+                    })
+                },
+            );
+        } else if self.state.clock_limits_set
+            || (self.state.is_resuming && !self.limits.skip_resume_reclock)
+            || POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual()
+        {
             self.state.clock_limits_set = false;
             if POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual() {
                 POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level()?;
                 // disable manual clock limits
                 // max clock
                 let payload_max = format!("s 1 {}\n", self.limits.clock_max.max);
-                usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_max).map_err(
-                    |e| SettingError {
+                usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_max)
+                    .map_err(|e| SettingError {
                         msg: format!(
                             "Failed to write `{}` to `{}`: {}",
                             &payload_max, GPU_CLOCK_LIMITS_PATH, e
                         ),
                         setting: crate::settings::SettingVariant::Gpu,
-                    },
-                ).unwrap_or_else(|e| errors.push(e));
+                    })
+                    .unwrap_or_else(|e| errors.push(e));
                 // min clock
                 let payload_min = format!("s 0 {}\n", self.limits.clock_min.min);
-                usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
-                    |e| SettingError {
+                usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_min)
+                    .map_err(|e| SettingError {
                         msg: format!(
                             "Failed to write `{}` to `{}`: {}",
                             &payload_min, GPU_CLOCK_LIMITS_PATH, e
                         ),
                         setting: crate::settings::SettingVariant::Gpu,
-                    },
-                ).unwrap_or_else(|e| errors.push(e));
-                usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c\n").unwrap_or_else(|e| {
-                    errors.push(SettingError {
-                        msg: format!("Failed to write `c` to `{}`: {}", GPU_CLOCK_LIMITS_PATH, e),
-                        setting: crate::settings::SettingVariant::Gpu,
                     })
-                });
+                    .unwrap_or_else(|e| errors.push(e));
+                usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c\n").unwrap_or_else(
+                    |e| {
+                        errors.push(SettingError {
+                            msg: format!(
+                                "Failed to write `c` to `{}`: {}",
+                                GPU_CLOCK_LIMITS_PATH, e
+                            ),
+                            setting: crate::settings::SettingVariant::Gpu,
+                        })
+                    },
+                );
             }
             POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_gpu(self.slow_memory);
-            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level().unwrap_or_else(|mut e| errors.append(&mut e));
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT
+                .enforce_level()
+                .unwrap_or_else(|mut e| errors.append(&mut e));
         }
         if errors.is_empty() {
             Ok(())
@@ -139,24 +153,28 @@ impl Gpu {
         // enable/disable downclock of GPU memory (to 400Mhz?)
         if self.slow_memory {
             POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_gpu(true);
-            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level().unwrap_or_else(|mut e| errors.append(&mut e));
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT
+                .enforce_level()
+                .unwrap_or_else(|mut e| errors.append(&mut e));
             usdpl_back::api::files::write_single(GPU_MEMORY_DOWNCLOCK_PATH, self.slow_memory as u8)
-            .unwrap_or_else(|e| {
-                errors.push(SettingError {
-                    msg: format!("Failed to write to `{}`: {}", GPU_MEMORY_DOWNCLOCK_PATH, e),
-                    setting: crate::settings::SettingVariant::Gpu,
+                .unwrap_or_else(|e| {
+                    errors.push(SettingError {
+                        msg: format!("Failed to write to `{}`: {}", GPU_MEMORY_DOWNCLOCK_PATH, e),
+                        setting: crate::settings::SettingVariant::Gpu,
+                    });
                 });
-            });
         } else if POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual() {
             usdpl_back::api::files::write_single(GPU_MEMORY_DOWNCLOCK_PATH, self.slow_memory as u8)
-            .unwrap_or_else(|e| {
-                errors.push(SettingError {
-                    msg: format!("Failed to write to `{}`: {}", GPU_MEMORY_DOWNCLOCK_PATH, e),
-                    setting: crate::settings::SettingVariant::Gpu,
+                .unwrap_or_else(|e| {
+                    errors.push(SettingError {
+                        msg: format!("Failed to write to `{}`: {}", GPU_MEMORY_DOWNCLOCK_PATH, e),
+                        setting: crate::settings::SettingVariant::Gpu,
+                    });
                 });
-            });
             POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_gpu(self.clock_limits.is_some());
-            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level().unwrap_or_else(|mut e| errors.append(&mut e));
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT
+                .enforce_level()
+                .unwrap_or_else(|mut e| errors.append(&mut e));
         }
         self.set_clocks()
             .unwrap_or_else(|mut e| errors.append(&mut e));
@@ -182,28 +200,32 @@ impl Gpu {
         // set fast PPT
         if let Some(fast_ppt) = &self.fast_ppt {
             let fast_ppt_path = gpu_power_path(FAST_PPT);
-            usdpl_back::api::files::write_single(&fast_ppt_path, fast_ppt).map_err(|e| {
-                SettingError {
+            usdpl_back::api::files::write_single(&fast_ppt_path, fast_ppt)
+                .map_err(|e| SettingError {
                     msg: format!(
                         "Failed to write `{}` to `{}`: {}",
                         fast_ppt, &fast_ppt_path, e
                     ),
                     setting: crate::settings::SettingVariant::Gpu,
-                }
-            }).unwrap_or_else(|e| {errors.push(e);});
+                })
+                .unwrap_or_else(|e| {
+                    errors.push(e);
+                });
         }
         // set slow PPT
         if let Some(slow_ppt) = &self.slow_ppt {
             let slow_ppt_path = gpu_power_path(SLOW_PPT);
-            usdpl_back::api::files::write_single(&slow_ppt_path, slow_ppt).map_err(|e| {
-                SettingError {
+            usdpl_back::api::files::write_single(&slow_ppt_path, slow_ppt)
+                .map_err(|e| SettingError {
                     msg: format!(
                         "Failed to write `{}` to `{}`: {}",
                         slow_ppt, &slow_ppt_path, e
                     ),
                     setting: crate::settings::SettingVariant::Gpu,
-                }
-            }).unwrap_or_else(|e| {errors.push(e);});
+                })
+                .unwrap_or_else(|e| {
+                    errors.push(e);
+                });
         }
         self.set_force_performance_related()
             .unwrap_or_else(|mut e| errors.append(&mut e));
@@ -216,20 +238,18 @@ impl Gpu {
 
     fn clamp_all(&mut self) {
         if let Some(fast_ppt) = &mut self.fast_ppt {
-            *fast_ppt = (*fast_ppt).clamp(
-                self.limits.fast_ppt.min,
-                self.limits.fast_ppt.max,
-            );
+            *fast_ppt = (*fast_ppt).clamp(self.limits.fast_ppt.min, self.limits.fast_ppt.max);
         }
         if let Some(slow_ppt) = &mut self.slow_ppt {
-            *slow_ppt = (*slow_ppt).clamp(
-                self.limits.slow_ppt.min,
-                self.limits.slow_ppt.max,
-            );
+            *slow_ppt = (*slow_ppt).clamp(self.limits.slow_ppt.min, self.limits.slow_ppt.max);
         }
         if let Some(clock_limits) = &mut self.clock_limits {
-            clock_limits.min = clock_limits.min.clamp(self.limits.clock_min.min, self.limits.clock_min.max);
-            clock_limits.max = clock_limits.max.clamp(self.limits.clock_max.min, self.limits.clock_max.max);
+            clock_limits.min = clock_limits
+                .min
+                .clamp(self.limits.clock_min.min, self.limits.clock_min.max);
+            clock_limits.max = clock_limits
+                .max
+                .clamp(self.limits.clock_max.min, self.limits.clock_max.max);
         }
     }
 
@@ -242,7 +262,11 @@ impl Gpu {
             slow_memory: false,
             limits: oc_limits.gpu,
             state: crate::state::steam_deck::Gpu::default(),
-            driver_mode: if is_default { crate::persist::DriverJson::SteamDeck } else { crate::persist::DriverJson::SteamDeckAdvance },
+            driver_mode: if is_default {
+                crate::persist::DriverJson::SteamDeck
+            } else {
+                crate::persist::DriverJson::SteamDeckAdvance
+            },
         }
     }
 }
@@ -314,7 +338,10 @@ impl TGpu for Gpu {
     }
 
     fn get_ppt(&self) -> (Option<u64>, Option<u64>) {
-        (self.fast_ppt.map(|x| x / self.limits.ppt_divisor), self.slow_ppt.map(|x| x / self.limits.ppt_divisor))
+        (
+            self.fast_ppt.map(|x| x / self.limits.ppt_divisor),
+            self.slow_ppt.map(|x| x / self.limits.ppt_divisor),
+        )
     }
 
     fn clock_limits(&mut self, limits: Option<MinMax<u64>>) {

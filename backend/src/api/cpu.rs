@@ -1,9 +1,9 @@
-use std::sync::mpsc::{Sender, self};
+use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use usdpl_back::core::serdes::Primitive;
 use usdpl_back::AsyncCallable;
 
-use crate::settings::{SettingError, SettingVariant, MinMax};
+use crate::settings::{MinMax, SettingError, SettingVariant};
 //use crate::utility::{unwrap_lock, unwrap_maybe_fatal};
 use super::handler::{ApiMessage, CpuMessage};
 
@@ -12,13 +12,11 @@ pub fn max_cpus(_: super::ApiParameterType) -> super::ApiParameterType {
     super::utility::map_result(
         crate::settings::steam_deck::Cpus::cpu_count()
             .map(|x| x as u64)
-            .ok_or_else(
-                || SettingError {
-                    msg: "Failed to parse CPU count".to_owned(),
-                    setting: SettingVariant::Cpu,
-                    }
-            )
-        )
+            .ok_or_else(|| SettingError {
+                msg: "Failed to parse CPU count".to_owned(),
+                setting: SettingVariant::Cpu,
+            }),
+    )
 }
 
 /// Generate set CPU online web method
@@ -26,10 +24,13 @@ pub fn set_cpu_online(
     sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
-    let setter = move |index: usize, value: bool|
-        sender.lock()
+    let setter = move |index: usize, value: bool| {
+        sender
+            .lock()
             .unwrap()
-            .send(ApiMessage::Cpu(CpuMessage::SetCpuOnline(index, value))).expect("set_cpu_online send failed");
+            .send(ApiMessage::Cpu(CpuMessage::SetCpuOnline(index, value)))
+            .expect("set_cpu_online send failed")
+    };
     move |params_in: super::ApiParameterType| {
         if let Some(&Primitive::F64(index)) = params_in.get(0) {
             //let mut settings_lock = unwrap_lock(settings.lock(), "cpu");
@@ -49,10 +50,13 @@ pub fn set_cpus_online(
     sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
-    let setter = move |values: Vec<bool>|
-        sender.lock()
+    let setter = move |values: Vec<bool>| {
+        sender
+            .lock()
             .unwrap()
-            .send(ApiMessage::Cpu(CpuMessage::SetCpusOnline(values))).expect("set_cpus_online send failed");
+            .send(ApiMessage::Cpu(CpuMessage::SetCpusOnline(values)))
+            .expect("set_cpus_online send failed")
+    };
     move |params_in: super::ApiParameterType| {
         let mut result = Vec::with_capacity(params_in.len());
         let mut values = Vec::with_capacity(params_in.len());
@@ -90,16 +94,19 @@ pub fn set_cpus_online(
     }
 }*/
 
-pub fn set_smt(
-    sender: Sender<ApiMessage>,
-) -> impl AsyncCallable {
+pub fn set_smt(sender: Sender<ApiMessage>) -> impl AsyncCallable {
     let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
     let getter = move || {
         let sender2 = sender.clone();
         move |smt: bool| {
             let (tx, rx) = mpsc::channel();
-            let callback = move |values: Vec<bool>| tx.send(values).expect("set_smt callback send failed");
-            sender2.lock().unwrap().send(ApiMessage::Cpu(CpuMessage::SetSmt(smt, Box::new(callback)))).expect("set_smt send failed");
+            let callback =
+                move |values: Vec<bool>| tx.send(values).expect("set_smt callback send failed");
+            sender2
+                .lock()
+                .unwrap()
+                .send(ApiMessage::Cpu(CpuMessage::SetSmt(smt, Box::new(callback))))
+                .expect("set_smt send failed");
             rx.recv().expect("set_smt callback recv failed")
         }
     };
@@ -118,41 +125,48 @@ pub fn set_smt(
                 output.push(status.into());
             }
             output
-        }
+        },
     }
 }
 
-pub fn get_smt(
-    sender: Sender<ApiMessage>,
-) -> impl AsyncCallable {
+pub fn get_smt(sender: Sender<ApiMessage>) -> impl AsyncCallable {
     let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
     let getter = move || {
         let sender2 = sender.clone();
         move || {
             let (tx, rx) = mpsc::channel();
             let callback = move |value: bool| tx.send(value).expect("get_smt callback send failed");
-            sender2.lock().unwrap().send(ApiMessage::Cpu(CpuMessage::GetSmt(Box::new(callback)))).expect("get_smt send failed");
+            sender2
+                .lock()
+                .unwrap()
+                .send(ApiMessage::Cpu(CpuMessage::GetSmt(Box::new(callback))))
+                .expect("get_smt send failed");
             rx.recv().expect("get_smt callback recv failed")
         }
     };
     super::async_utils::AsyncIshGetter {
         set_get: getter,
-        trans_getter: |result| {
-            vec![result.into()]
-        }
+        trans_getter: |result| vec![result.into()],
     }
 }
 
-pub fn get_cpus_online(
-    sender: Sender<ApiMessage>,
-) -> impl AsyncCallable {
+pub fn get_cpus_online(sender: Sender<ApiMessage>) -> impl AsyncCallable {
     let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
     let getter = move || {
         let sender2 = sender.clone();
         move || {
             let (tx, rx) = mpsc::channel();
-            let callback = move |values: Vec<bool>| tx.send(values).expect("get_cpus_online callback send failed");
-            sender2.lock().unwrap().send(ApiMessage::Cpu(CpuMessage::GetCpusOnline(Box::new(callback)))).expect("get_cpus_online send failed");
+            let callback = move |values: Vec<bool>| {
+                tx.send(values)
+                    .expect("get_cpus_online callback send failed")
+            };
+            sender2
+                .lock()
+                .unwrap()
+                .send(ApiMessage::Cpu(CpuMessage::GetCpusOnline(Box::new(
+                    callback,
+                ))))
+                .expect("get_cpus_online send failed");
             rx.recv().expect("get_cpus_online callback recv failed")
         }
     };
@@ -164,7 +178,7 @@ pub fn get_cpus_online(
                 output.push(status.into());
             }
             output
-        }
+        },
     }
 }
 
@@ -172,25 +186,29 @@ pub fn set_clock_limits(
     sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
-    let setter = move |index: usize, value: MinMax<u64>|
-        sender.lock()
+    let setter = move |index: usize, value: MinMax<u64>| {
+        sender
+            .lock()
             .unwrap()
-            .send(ApiMessage::Cpu(CpuMessage::SetClockLimits(index, Some(value)))).expect("set_clock_limits send failed");
+            .send(ApiMessage::Cpu(CpuMessage::SetClockLimits(
+                index,
+                Some(value),
+            )))
+            .expect("set_clock_limits send failed")
+    };
     move |params_in: super::ApiParameterType| {
         if let Some(&Primitive::F64(index)) = params_in.get(0) {
             if let Some(&Primitive::F64(min)) = params_in.get(1) {
                 if let Some(&Primitive::F64(max)) = params_in.get(2) {
-                    let safe_max = if max < min {
-                        min
-                    } else {
-                        max
-                    };
-                    let safe_min = if min > max {
-                        max
-                    } else {
-                        min
-                    };
-                    setter(index as usize, MinMax {min: safe_min as u64, max: safe_max as u64});
+                    let safe_max = if max < min { min } else { max };
+                    let safe_min = if min > max { max } else { min };
+                    setter(
+                        index as usize,
+                        MinMax {
+                            min: safe_min as u64,
+                            max: safe_max as u64,
+                        },
+                    );
                     vec![safe_min.into(), safe_max.into()]
                 } else {
                     vec!["set_clock_limits missing parameter 2".into()]
@@ -210,8 +228,18 @@ pub fn get_clock_limits(
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
     let getter = move |index: usize| {
         let (tx, rx) = mpsc::channel();
-        let callback = move |values: Option<MinMax<u64>>| tx.send(values).expect("get_clock_limits callback send failed");
-        sender.lock().unwrap().send(ApiMessage::Cpu(CpuMessage::GetClockLimits(index, Box::new(callback)))).expect("get_clock_limits send failed");
+        let callback = move |values: Option<MinMax<u64>>| {
+            tx.send(values)
+                .expect("get_clock_limits callback send failed")
+        };
+        sender
+            .lock()
+            .unwrap()
+            .send(ApiMessage::Cpu(CpuMessage::GetClockLimits(
+                index,
+                Box::new(callback),
+            )))
+            .expect("get_clock_limits send failed");
         rx.recv().expect("get_clock_limits callback recv failed")
     };
     move |params_in: super::ApiParameterType| {
@@ -231,10 +259,13 @@ pub fn unset_clock_limits(
     sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
-    let setter = move |index: usize|
-        sender.lock()
+    let setter = move |index: usize| {
+        sender
+            .lock()
             .unwrap()
-            .send(ApiMessage::Cpu(CpuMessage::SetClockLimits(index, None))).expect("unset_clock_limits send failed");
+            .send(ApiMessage::Cpu(CpuMessage::SetClockLimits(index, None)))
+            .expect("unset_clock_limits send failed")
+    };
     move |params_in: super::ApiParameterType| {
         if let Some(&Primitive::F64(index)) = params_in.get(0) {
             setter(index as usize);
@@ -249,10 +280,13 @@ pub fn set_cpu_governor(
     sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
-    let setter = move |index: usize, governor: String|
-        sender.lock()
+    let setter = move |index: usize, governor: String| {
+        sender
+            .lock()
             .unwrap()
-            .send(ApiMessage::Cpu(CpuMessage::SetCpuGovernor(index, governor))).expect("set_cpu_governor send failed");
+            .send(ApiMessage::Cpu(CpuMessage::SetCpuGovernor(index, governor)))
+            .expect("set_cpu_governor send failed")
+    };
     move |params_in: super::ApiParameterType| {
         if let Some(&Primitive::F64(index)) = params_in.get(0) {
             if let Some(Primitive::String(governor)) = params_in.get(1) {
@@ -271,10 +305,13 @@ pub fn set_cpus_governors(
     sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
-    let setter = move |governors: Vec<String>|
-        sender.lock()
+    let setter = move |governors: Vec<String>| {
+        sender
+            .lock()
             .unwrap()
-            .send(ApiMessage::Cpu(CpuMessage::SetCpusGovernor(governors))).expect("set_cpus_governor send failed");
+            .send(ApiMessage::Cpu(CpuMessage::SetCpusGovernor(governors)))
+            .expect("set_cpus_governor send failed")
+    };
     move |params_in: super::ApiParameterType| {
         let mut result = Vec::with_capacity(params_in.len());
         let mut values = Vec::with_capacity(params_in.len());
@@ -298,8 +335,17 @@ pub fn get_cpu_governors(
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
     let getter = move || {
         let (tx, rx) = mpsc::channel();
-        let callback = move |values: Vec<String>| tx.send(values).expect("get_cpu_governors callback send failed");
-        sender.lock().unwrap().send(ApiMessage::Cpu(CpuMessage::GetCpusGovernor(Box::new(callback)))).expect("get_cpu_governors send failed");
+        let callback = move |values: Vec<String>| {
+            tx.send(values)
+                .expect("get_cpu_governors callback send failed")
+        };
+        sender
+            .lock()
+            .unwrap()
+            .send(ApiMessage::Cpu(CpuMessage::GetCpusGovernor(Box::new(
+                callback,
+            ))))
+            .expect("get_cpu_governors send failed");
         rx.recv().expect("get_cpu_governors callback recv failed")
     };
     move |_: super::ApiParameterType| {

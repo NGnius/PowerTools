@@ -3,7 +3,7 @@ use std::default::Default;
 use serde::{Deserialize, Serialize};
 
 use super::JsonError;
-use super::{BatteryJson, CpuJson, GpuJson, DriverJson};
+use super::{BatteryJson, CpuJson, DriverJson, GpuJson};
 
 #[derive(Serialize, Deserialize)]
 pub struct SettingsJson {

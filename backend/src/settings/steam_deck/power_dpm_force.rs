@@ -10,7 +10,8 @@ use crate::settings::SettingError;
 const DEFAULT_BITS: u64 = 0;
 
 /// Global usage tracker for the sysfs file by the same name
-pub static POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT: PDFPLManager = PDFPLManager(AtomicU64::new(DEFAULT_BITS));
+pub static POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT: PDFPLManager =
+    PDFPLManager(AtomicU64::new(DEFAULT_BITS));
 
 pub struct PDFPLManager(AtomicU64);
 
@@ -58,41 +59,45 @@ impl PDFPLManager {
     pub fn enforce_level(&self) -> Result<(), Vec<SettingError>> {
         let needs = self.needs_manual();
         let mut errors = Vec::new();
-        let mode: String = usdpl_back::api::files::read_single(DPM_FORCE_LIMITS_PATH.to_owned()).map_err(|e| {
-            vec![SettingError {
-                msg: format!(
-                    "Failed to read `{}`: {}",
-                    DPM_FORCE_LIMITS_PATH, e
-                ),
-                setting: crate::settings::SettingVariant::General,
-            }]
-        })?;
+        let mode: String = usdpl_back::api::files::read_single(DPM_FORCE_LIMITS_PATH.to_owned())
+            .map_err(|e| {
+                vec![SettingError {
+                    msg: format!("Failed to read `{}`: {}", DPM_FORCE_LIMITS_PATH, e),
+                    setting: crate::settings::SettingVariant::General,
+                }]
+            })?;
         if mode != "manual" && needs {
             log::info!("Setting `{}` to manual", DPM_FORCE_LIMITS_PATH);
             // set manual control
-            usdpl_back::api::files::write_single(DPM_FORCE_LIMITS_PATH, "manual").map_err(|e| {
-                errors.push(SettingError {
-                    msg: format!(
-                        "Failed to write `manual` to `{}`: {}",
-                        DPM_FORCE_LIMITS_PATH, e
-                    ),
-                    setting: crate::settings::SettingVariant::General,
+            usdpl_back::api::files::write_single(DPM_FORCE_LIMITS_PATH, "manual")
+                .map_err(|e| {
+                    errors.push(SettingError {
+                        msg: format!(
+                            "Failed to write `manual` to `{}`: {}",
+                            DPM_FORCE_LIMITS_PATH, e
+                        ),
+                        setting: crate::settings::SettingVariant::General,
+                    })
                 })
-            }).unwrap_or(());
+                .unwrap_or(());
         } else if mode != "auto" && !needs {
             log::info!("Setting `{}` to auto", DPM_FORCE_LIMITS_PATH);
             // unset manual control
-            usdpl_back::api::files::write_single(DPM_FORCE_LIMITS_PATH, "auto").map_err(|e| {
-                errors.push(SettingError {
-                    msg: format!(
-                        "Failed to write `auto` to `{}`: {}",
-                        DPM_FORCE_LIMITS_PATH, e
-                    ),
-                    setting: crate::settings::SettingVariant::General,
+            usdpl_back::api::files::write_single(DPM_FORCE_LIMITS_PATH, "auto")
+                .map_err(|e| {
+                    errors.push(SettingError {
+                        msg: format!(
+                            "Failed to write `auto` to `{}`: {}",
+                            DPM_FORCE_LIMITS_PATH, e
+                        ),
+                        setting: crate::settings::SettingVariant::General,
+                    })
                 })
-            }).unwrap_or(());
+                .unwrap_or(());
         }
-        if let Ok(mode_now) = usdpl_back::api::files::read_single::<_, String, _>(DPM_FORCE_LIMITS_PATH.to_owned()) {
+        if let Ok(mode_now) =
+            usdpl_back::api::files::read_single::<_, String, _>(DPM_FORCE_LIMITS_PATH.to_owned())
+        {
             log::debug!("Mode for `{}` is now `{}`", DPM_FORCE_LIMITS_PATH, mode_now);
         } else {
             log::debug!("Error getting new mode for debugging purposes");

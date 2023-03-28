@@ -1,6 +1,6 @@
+use std::sync::mpsc::Sender;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
-use std::sync::mpsc::Sender;
 
 use crate::api::handler::ApiMessage;
 //use crate::utility::unwrap_maybe_fatal;
@@ -11,7 +11,7 @@ pub fn spawn(sender: Sender<ApiMessage>) -> JoinHandle<()> {
     thread::spawn(move || {
         log::info!("resume_worker starting...");
         let duration = Duration::from_millis(10); // very low so it detects before Steam client does
-        // this allows PowerTools to set some values at wakeup and Steam to override them before user notices
+                                                  // this allows PowerTools to set some values at wakeup and Steam to override them before user notices
         let mut start = Instant::now();
         loop {
             let old_start = start.elapsed();
@@ -19,7 +19,9 @@ pub fn spawn(sender: Sender<ApiMessage>) -> JoinHandle<()> {
             if old_start.as_secs_f64() > duration.as_secs_f64() * (1.0 + ALLOWED_ERROR) {
                 // has just resumed from sleep
                 log::info!("Resume detected");
-                sender.send(ApiMessage::OnResume).expect("resume_worker send failed");
+                sender
+                    .send(ApiMessage::OnResume)
+                    .expect("resume_worker send failed");
                 log::debug!(
                     "OnResume completed after sleeping for {}s",
                     old_start.as_secs_f32()
