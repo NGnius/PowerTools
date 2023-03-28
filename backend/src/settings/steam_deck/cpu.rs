@@ -6,6 +6,7 @@ use crate::settings::{OnResume, OnSet, SettingError};
 use crate::settings::{TCpus, TCpu};
 use crate::persist::CpuJson;
 use super::oc_limits::{OverclockLimits, CpusLimits, CpuLimits};
+use super::POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT;
 
 const CPU_PRESENT_PATH: &str = "/sys/devices/system/cpu/present";
 const CPU_SMT_PATH: &str = "/sys/devices/system/cpu/smt/control";
@@ -94,6 +95,7 @@ impl Cpus {
     }
 
     pub fn system_default() -> Self {
+        POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.reset();
         let (oc_limits, is_default) = OverclockLimits::load_or_default();
         let oc_limits = oc_limits.cpus;
         let driver = if is_default { crate::persist::DriverJson::SteamDeck } else { crate::persist::DriverJson::SteamDeckAdvance };
@@ -123,6 +125,7 @@ impl Cpus {
 
     #[inline]
     pub fn from_json(mut other: Vec<CpuJson>, version: u64) -> Self {
+        POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.reset();
         let (oc_limits, is_default) = OverclockLimits::load_or_default();
         let oc_limits = oc_limits.cpus;
         let driver = if is_default { crate::persist::DriverJson::SteamDeck } else { crate::persist::DriverJson::SteamDeckAdvance };
@@ -208,7 +211,6 @@ pub struct Cpu {
 }
 
 const CPU_CLOCK_LIMITS_PATH: &str = "/sys/class/drm/card0/device/pp_od_clk_voltage";
-const CPU_FORCE_LIMITS_PATH: &str = "/sys/class/drm/card0/device/power_dpm_force_performance_level";
 
 impl Cpu {
     #[inline]
@@ -237,21 +239,11 @@ impl Cpu {
         let mut errors = Vec::new();
 
         // set clock limits
-        log::debug!("Setting {} to manual", CPU_FORCE_LIMITS_PATH);
-        let mode: String = usdpl_back::api::files::read_single(CPU_FORCE_LIMITS_PATH.to_owned()).unwrap();
-        if mode != "manual" {
-            // set manual control
-            usdpl_back::api::files::write_single(CPU_FORCE_LIMITS_PATH, "manual").map_err(|e| {
-                vec![SettingError {
-                    msg: format!(
-                        "Failed to write `manual` to `{}`: {}",
-                        CPU_FORCE_LIMITS_PATH, e
-                    ),
-                    setting: crate::settings::SettingVariant::Cpu,
-                }]
-            })?;
-        }
+        //log::debug!("Setting {} to manual", CPU_FORCE_LIMITS_PATH);
+        //let mode: String = usdpl_back::api::files::read_single(CPU_FORCE_LIMITS_PATH.to_owned()).unwrap();
         if let Some(clock_limits) = &self.clock_limits {
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_cpu(true, self.index);
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level()?;
             log::debug!("Setting CPU {} (min, max) clockspeed to ({}, {})", self.index, clock_limits.min, clock_limits.max);
             self.state.clock_limits_set = true;
             // max clock
@@ -277,41 +269,54 @@ impl Cpu {
                     setting: crate::settings::SettingVariant::Cpu,
                 },
             ).unwrap_or_else(|e| errors.push(e));
-        } else if self.state.clock_limits_set || (self.state.is_resuming && !self.limits.skip_resume_reclock) {
-            self.state.clock_limits_set = false;
-            // disable manual clock limits
-            log::debug!("Setting CPU {} to default clockspeed", self.index);
-            // max clock
-            let payload_max = format!("p {} 1 {}\n", self.index / 2, self.limits.clock_max.max);
-            usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_max).map_err(
-                |e| SettingError {
-                    msg: format!(
-                        "Failed to write `{}` to `{}`: {}",
-                        &payload_max, CPU_CLOCK_LIMITS_PATH, e
-                    ),
-                    setting: crate::settings::SettingVariant::Cpu,
-                },
-            ).unwrap_or_else(|e| errors.push(e));
-            // min clock
-            let payload_min = format!("p {} 0 {}\n", self.index / 2, self.limits.clock_min.min);
-            usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
-                |e| SettingError {
-                    msg: format!(
-                        "Failed to write `{}` to `{}`: {}",
-                        &payload_min, CPU_CLOCK_LIMITS_PATH, e
-                    ),
-                    setting: crate::settings::SettingVariant::Cpu,
-                },
-            ).unwrap_or_else(|e| errors.push(e));
-        }
-
-        usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n")
-            .unwrap_or_else(|e| {
-                errors.push(SettingError {
-                    msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
-                    setting: crate::settings::SettingVariant::Cpu,
+            usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n")
+                .unwrap_or_else(|e| {
+                    errors.push(SettingError {
+                        msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
+                        setting: crate::settings::SettingVariant::Cpu,
+                    });
                 });
-            });
+        } else if self.state.clock_limits_set ||
+            (self.state.is_resuming && !self.limits.skip_resume_reclock)
+            || POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual() {
+            self.state.clock_limits_set = false;
+            if POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual() {
+                POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level()?;
+                // disable manual clock limits
+                log::debug!("Setting CPU {} to default clockspeed", self.index);
+                // max clock
+                let payload_max = format!("p {} 1 {}\n", self.index / 2, self.limits.clock_max.max);
+                usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_max).map_err(
+                    |e| SettingError {
+                        msg: format!(
+                            "Failed to write `{}` to `{}`: {}",
+                            &payload_max, CPU_CLOCK_LIMITS_PATH, e
+                        ),
+                        setting: crate::settings::SettingVariant::Cpu,
+                    },
+                ).unwrap_or_else(|e| errors.push(e));
+                // min clock
+                let payload_min = format!("p {} 0 {}\n", self.index / 2, self.limits.clock_min.min);
+                usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
+                    |e| SettingError {
+                        msg: format!(
+                            "Failed to write `{}` to `{}`: {}",
+                            &payload_min, CPU_CLOCK_LIMITS_PATH, e
+                        ),
+                        setting: crate::settings::SettingVariant::Cpu,
+                    },
+                ).unwrap_or_else(|e| errors.push(e));
+                usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n")
+                    .unwrap_or_else(|e| {
+                        errors.push(SettingError {
+                            msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
+                            setting: crate::settings::SettingVariant::Cpu,
+                        });
+                    });
+            }
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_cpu(false, self.index);
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level().unwrap_or_else(|mut e| errors.append(&mut e));
+        }
         // commit changes (if no errors have already occured)
         if errors.is_empty() {
             usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {

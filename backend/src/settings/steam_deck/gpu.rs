@@ -6,6 +6,7 @@ use crate::settings::{OnResume, OnSet, SettingError};
 use crate::settings::TGpu;
 use crate::persist::GpuJson;
 use super::oc_limits::{OverclockLimits, GpuLimits};
+use super::POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT;
 
 const SLOW_PPT: u8 = 1;
 const FAST_PPT: u8 = 2;
@@ -23,7 +24,6 @@ pub struct Gpu {
 
 // same as CPU
 const GPU_CLOCK_LIMITS_PATH: &str = "/sys/class/drm/card0/device/pp_od_clk_voltage";
-const GPU_FORCE_LIMITS_PATH: &str = "/sys/class/drm/card0/device/power_dpm_force_performance_level";
 const GPU_MEMORY_DOWNCLOCK_PATH: &str = "/sys/class/drm/card0/device/pp_dpm_fclk";
 
 impl Gpu {
@@ -56,6 +56,8 @@ impl Gpu {
     fn set_clocks(&mut self) -> Result<(), Vec<SettingError>> {
         let mut errors = Vec::new();
         if let Some(clock_limits) = &self.clock_limits {
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_gpu(true);
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level()?;
             // set clock limits
             self.state.clock_limits_set = true;
             // max clock
@@ -80,31 +82,50 @@ impl Gpu {
                     setting: crate::settings::SettingVariant::Gpu,
                 },
             ).unwrap_or_else(|e| errors.push(e));
-        } else if self.state.clock_limits_set || (self.state.is_resuming && !self.limits.skip_resume_reclock) {
+            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c\n").unwrap_or_else(|e| {
+                errors.push(SettingError {
+                    msg: format!("Failed to write `c` to `{}`: {}", GPU_CLOCK_LIMITS_PATH, e),
+                    setting: crate::settings::SettingVariant::Gpu,
+                })
+            });
+        } else if self.state.clock_limits_set ||
+            (self.state.is_resuming && !self.limits.skip_resume_reclock)
+            || POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual() {
             self.state.clock_limits_set = false;
-            // disable manual clock limits
-            // max clock
-            let payload_max = format!("s 1 {}\n", self.limits.clock_max.max);
-            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_max).map_err(
-                |e| SettingError {
-                    msg: format!(
-                        "Failed to write `{}` to `{}`: {}",
-                        &payload_max, GPU_CLOCK_LIMITS_PATH, e
-                    ),
-                    setting: crate::settings::SettingVariant::Gpu,
-                },
-            ).unwrap_or_else(|e| errors.push(e));
-            // min clock
-            let payload_min = format!("s 0 {}\n", self.limits.clock_min.min);
-            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
-                |e| SettingError {
-                    msg: format!(
-                        "Failed to write `{}` to `{}`: {}",
-                        &payload_min, GPU_CLOCK_LIMITS_PATH, e
-                    ),
-                    setting: crate::settings::SettingVariant::Gpu,
-                },
-            ).unwrap_or_else(|e| errors.push(e));
+            if POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual() {
+                POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level()?;
+                // disable manual clock limits
+                // max clock
+                let payload_max = format!("s 1 {}\n", self.limits.clock_max.max);
+                usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_max).map_err(
+                    |e| SettingError {
+                        msg: format!(
+                            "Failed to write `{}` to `{}`: {}",
+                            &payload_max, GPU_CLOCK_LIMITS_PATH, e
+                        ),
+                        setting: crate::settings::SettingVariant::Gpu,
+                    },
+                ).unwrap_or_else(|e| errors.push(e));
+                // min clock
+                let payload_min = format!("s 0 {}\n", self.limits.clock_min.min);
+                usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, &payload_min).map_err(
+                    |e| SettingError {
+                        msg: format!(
+                            "Failed to write `{}` to `{}`: {}",
+                            &payload_min, GPU_CLOCK_LIMITS_PATH, e
+                        ),
+                        setting: crate::settings::SettingVariant::Gpu,
+                    },
+                ).unwrap_or_else(|e| errors.push(e));
+                usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c\n").unwrap_or_else(|e| {
+                    errors.push(SettingError {
+                        msg: format!("Failed to write `c` to `{}`: {}", GPU_CLOCK_LIMITS_PATH, e),
+                        setting: crate::settings::SettingVariant::Gpu,
+                    })
+                });
+            }
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_gpu(self.slow_memory);
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level().unwrap_or_else(|mut e| errors.append(&mut e));
         }
         if errors.is_empty() {
             Ok(())
@@ -115,38 +136,42 @@ impl Gpu {
 
     fn set_force_performance_related(&mut self) -> Result<(), Vec<SettingError>> {
         let mut errors = Vec::new();
-        // settings using force_performance_level
-        let mode: String = usdpl_back::api::files::read_single(GPU_FORCE_LIMITS_PATH.to_owned()).unwrap();
-        if mode != "manual" {
-            // set manual control
-            usdpl_back::api::files::write_single(GPU_FORCE_LIMITS_PATH, "manual").map_err(|e| {
-                vec![SettingError {
-                    msg: format!(
-                        "Failed to write `manual` to `{}`: {}",
-                        GPU_FORCE_LIMITS_PATH, e
-                    ),
-                    setting: crate::settings::SettingVariant::Gpu,
-                }]
-            })?;
-        }
         // enable/disable downclock of GPU memory (to 400Mhz?)
-        usdpl_back::api::files::write_single(GPU_MEMORY_DOWNCLOCK_PATH, self.slow_memory as u8)
+        if self.slow_memory {
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_gpu(true);
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level().unwrap_or_else(|mut e| errors.append(&mut e));
+            usdpl_back::api::files::write_single(GPU_MEMORY_DOWNCLOCK_PATH, self.slow_memory as u8)
             .unwrap_or_else(|e| {
                 errors.push(SettingError {
                     msg: format!("Failed to write to `{}`: {}", GPU_MEMORY_DOWNCLOCK_PATH, e),
                     setting: crate::settings::SettingVariant::Gpu,
                 });
             });
+        } else if POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual() {
+            usdpl_back::api::files::write_single(GPU_MEMORY_DOWNCLOCK_PATH, self.slow_memory as u8)
+            .unwrap_or_else(|e| {
+                errors.push(SettingError {
+                    msg: format!("Failed to write to `{}`: {}", GPU_MEMORY_DOWNCLOCK_PATH, e),
+                    setting: crate::settings::SettingVariant::Gpu,
+                });
+            });
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_gpu(self.clock_limits.is_some());
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level().unwrap_or_else(|mut e| errors.append(&mut e));
+        }
         self.set_clocks()
             .unwrap_or_else(|mut e| errors.append(&mut e));
         // commit changes (if no errors have already occured)
         if errors.is_empty() {
-            usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
-                vec![SettingError {
-                    msg: format!("Failed to write `c` to `{}`: {}", GPU_CLOCK_LIMITS_PATH, e),
-                    setting: crate::settings::SettingVariant::Gpu,
-                }]
-            })
+            if self.slow_memory || self.clock_limits.is_some() {
+                usdpl_back::api::files::write_single(GPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
+                    vec![SettingError {
+                        msg: format!("Failed to write `c` to `{}`: {}", GPU_CLOCK_LIMITS_PATH, e),
+                        setting: crate::settings::SettingVariant::Gpu,
+                    }]
+                })
+            } else {
+                Ok(())
+            }
         } else {
             Err(errors)
         }
