@@ -61,7 +61,7 @@ impl PDFPLManager {
         let mode: String = usdpl_back::api::files::read_single(DPM_FORCE_LIMITS_PATH.to_owned()).map_err(|e| {
             vec![SettingError {
                 msg: format!(
-                    "Failed to write `manual` to `{}`: {}",
+                    "Failed to read `{}`: {}",
                     DPM_FORCE_LIMITS_PATH, e
                 ),
                 setting: crate::settings::SettingVariant::General,
