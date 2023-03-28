@@ -1,5 +1,13 @@
 # PowerTools
 
+[![Decky store](https://img.shields.io/badge/dynamic/json?color=blue&label=release&query=%24%5B%3F%28%40.name%3D%3D%27PowerTools%27%29%5D.versions%5B0%5D.name&url=https%3A%2F%2Fplugins.deckbrew.xyz%2Fplugins&style=flat-square)](https://plugins.deckbrew.xyz/)
+[![Custom store](https://img.shields.io/badge/dynamic/json?color=blue&label=preview&query=%24%5B%3F%28%40.name%3D%3D%27PowerTools%27%29%5D.versions%5B0%5D.name&url=https%3A%2F%2Fnot-decky-alpha.ngni.us%2Fplugins&style=flat-square)](https://github.com/NGnius/PowerTools/wiki)
+
+[![Liberapay](https://img.shields.io/liberapay/patrons/NGnius?style=flat-square)](https://liberapay.com/NGnius)
+[![GitHub](https://img.shields.io/github/license/NGnius/PowerTools?style=flat-square)](https://github.com/NGnius/PowerTools/blob/main/LICENSE)
+[![GitHub package.json version](https://img.shields.io/github/package-json/v/NGnius/PowerTools?style=flat-square)](https://github.com/NGnius/PowerTools/blob/main/package.json)
+[![GitHub package.json dependency version (prod)](https://img.shields.io/github/package-json/dependency-version/NGnius/PowerTools/decky-frontend-lib?style=flat-square)](https://github.com/NGnius/PowerTools/blob/main/pnpm-lock.yaml)
+
 ![plugin_demo](./assets/ui.png)
 
 Steam Deck power tweaks for power users.
