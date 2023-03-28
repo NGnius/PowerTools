@@ -2,6 +2,7 @@ use std::fmt::Display;
 //use std::sync::{LockResult, MutexGuard};
 //use std::fs::{Permissions, metadata};
 use std::os::unix::fs::PermissionsExt;
+use std::io::{Write, Read};
 
 pub fn unwrap_maybe_fatal<T: Sized, E: Display>(result: Result<T, E>, message: &str) -> T {
     match result {
@@ -52,4 +53,34 @@ pub fn chown_settings_dir() -> std::io::Result<()> {
         .args(["-R", &format!("{}:{}", deck_user, deck_user), &dir.to_str().unwrap_or(".")])
         .output()?;
     Ok(())
+}
+
+fn version_filepath() -> std::path::PathBuf {
+    settings_dir().join(".version")
+}
+
+pub fn save_version_file() -> std::io::Result<usize> {
+    let path = version_filepath();
+    std::fs::File::create(path)?
+        .write(crate::consts::PACKAGE_VERSION.as_bytes())
+}
+
+pub fn read_version_file() -> String {
+    let path = version_filepath();
+    match std::fs::File::open(path) {
+        Ok(mut file) => {
+            let mut read_version = String::new();
+            match file.read_to_string(&mut read_version) {
+                Ok(_) => read_version,
+                Err(e) => {
+                    log::warn!("Cannot read version file str: {}", e);
+                    crate::consts::PACKAGE_VERSION.to_owned()
+                }
+            }
+        },
+        Err(e) => {
+            log::warn!("Cannot read version file: {}", e);
+            crate::consts::PACKAGE_VERSION.to_owned()
+        }
+    }
 }

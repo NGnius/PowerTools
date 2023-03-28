@@ -58,6 +58,13 @@ fn main() -> Result<(), ()> {
 
     log::info!("home dir: {:?}", usdpl_back::api::dirs::home());
 
+    log::info!("Last version file: {}", utility::read_version_file());
+    if let Err(e) = utility::save_version_file() {
+        log::error!("Error storing version: {}", e);
+    } else {
+        log::info!("Updated version file succesfully");
+    }
+
     let _limits_handle = crate::settings::limits_worker_spawn();
     log::info!("Detected device automatically, starting with driver: {:?} (This can be overriden)", crate::settings::auto_detect_provider());
 
