@@ -23,11 +23,11 @@ fn get_limits() -> limits_core::json::Base {
         },
         Err(e) => {
             log::warn!(
-                "Failed to open limits file `{}` (trying force refresh...): {}",
+                "Failed to open limits file `{}`: {}",
                 limits_path.display(),
                 e
             );
-            super::limits_worker::get_limits_blocking()
+            super::limits_worker::get_limits_cached()
         }
     }
 }
