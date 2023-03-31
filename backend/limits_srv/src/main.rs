@@ -66,3 +66,13 @@ async fn main() {
         .run(([0, 0, 0, 0], 8080))
         .await;
 }
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn generate_default_pt_limits() {
+        let limits = limits_core::json::Base::default();
+        let output_file = std::fs::File::create("./pt_limits.json").unwrap();
+        serde_json::to_writer_pretty(output_file, &limits).unwrap();
+    }
+}

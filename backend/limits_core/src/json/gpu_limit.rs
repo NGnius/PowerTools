@@ -11,7 +11,7 @@ pub enum GpuLimit {
     Unknown,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct GenericGpuLimit {
     pub fast_ppt: Option<RangeLimit<u64>>,
     pub slow_ppt: Option<RangeLimit<u64>>,
