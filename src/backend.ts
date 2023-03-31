@@ -243,7 +243,7 @@ export async function getGeneralPersistent(): Promise<boolean> {
     return (await call_backend("GENERAL_get_persistent", []))[0];
 }
 
-export async function loadGeneralSettings(id: number, name: string): Promise<boolean> {
+export async function loadGeneralSettings(id: string, name: string): Promise<boolean> {
     return (await call_backend("GENERAL_load_settings", [id, name]))[0];
 }
 

@@ -23,7 +23,7 @@ pub enum ApiMessage {
     OnChargeChange(f64), // battery fill amount: 0 = empty, 1 = full
     PowerVibeCheck,
     WaitForEmptyQueue(Callback<()>),
-    LoadSettings(i64, String), // (path, name)
+    LoadSettings(u64, String), // (path, name)
     LoadMainSettings,
     LoadSystemSettings,
     GetLimits(Callback<super::SettingsLimits>),
