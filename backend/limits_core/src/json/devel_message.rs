@@ -9,4 +9,6 @@ pub struct DeveloperMessage {
     pub title: String,
     /// Message content
     pub body: String,
+    /// Link for further information
+    pub url: Option<String>,
 }
