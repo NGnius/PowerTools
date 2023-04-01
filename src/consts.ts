@@ -6,6 +6,7 @@ export const LIMITS_INFO = "LIMITS_all";
 export const CURRENT_BATT = "BATTERY_current_now";
 export const CHARGE_RATE_BATT = "BATTERY_charge_rate";
 export const CHARGE_MODE_BATT = "BATTERY_charge_mode";
+export const CHARGE_LIMIT_BATT = "BATTERY_charge_limit";
 export const CHARGE_NOW_BATT = "BATTERY_charge_now";
 export const CHARGE_FULL_BATT = "BATTERY_charge_full";
 export const CHARGE_DESIGN_BATT = "BATTERY_charge_design";
@@ -27,3 +28,5 @@ export const SLOW_MEMORY_GPU = "GPU_slow_memory";
 
 export const PERSISTENT_GEN = "GENERAL_persistent";
 export const NAME_GEN = "GENERAL_name";
+export const PATH_GEN = "GENERAL_path";
+

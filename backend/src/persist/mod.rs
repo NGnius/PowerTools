@@ -5,7 +5,7 @@ mod error;
 mod general;
 mod gpu;
 
-pub use battery::BatteryJson;
+pub use battery::{BatteryEventJson, BatteryJson};
 pub use cpu::CpuJson;
 pub use driver::DriverJson;
 pub use general::{MinMaxJson, SettingsJson};

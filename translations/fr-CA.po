@@ -37,7 +37,12 @@ msgstr "Sauvegarder le profile et le charger la prochaine fois"
 # (Profile display)
 #: index.tsx:239
 msgid "Profile"
-msgstr "Profile"
+msgstr "Profil"
+
+#: index.tsx:276
+# (Button to set current profile settings again, in case they're screwed up)
+msgid "Reapply settings"
+msgstr "Réappliquer le profil"
 
 # (Button to reset everything to system defaults)
 #: index.tsx:266
@@ -78,7 +83,7 @@ msgstr "Maximum (mA)"
 # (Battery charge mode override toggle)
 #: components/battery.tsx:97,115
 msgid "Charge Mode"
-msgstr "Mode de Charge"
+msgstr "Mode de charge"
 
 # (Battery charge mode override toggle description)
 #: components/battery.tsx:98
@@ -94,6 +99,21 @@ msgstr "Mode"
 #: components/battery.tsx:133
 msgid "Current"
 msgstr "Courant"
+
+#: components/battery.tsx:141
+# (Battery charging maximum)
+msgid "Charge Limit"
+msgstr "Limite de charge"
+
+#: components/battery.tsx:142
+# (Battery charging maximum description)
+msgid "Limit battery charge when awake"
+msgstr "Limiter la charge de la batterie quand éveillé"
+
+#: components/battery.tsx:156
+# (Battery charging maximum slider)
+msgid "Maximum (%)"
+msgstr "Maximum (%)"
 
 # -- components/cpus.tsx --
 # (CPU section title)

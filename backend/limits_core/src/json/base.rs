@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 pub struct Base {
     /// System-specific configurations
     pub configs: Vec<super::Config>,
+    /// Server messages
+    pub messages: Vec<super::DeveloperMessage>,
     /// URL from which to grab the next update
     pub refresh: Option<String>,
 }
@@ -45,6 +47,114 @@ impl Default for Base {
                     ]
                 },
                 super::Config {
+                    name: "AMD R3 2300U".to_owned(),
+                    conditions: super::Conditions {
+                        dmi: None,
+                        cpuinfo: Some("model name\t+: AMD Ryzen 3 2300U\n".to_owned()),
+                        os: None,
+                        command: None,
+                        file_exists: None,
+                    },
+                    limits: vec![
+                        super::Limits::Cpu(super::CpuLimit::GenericAMD(super::GenericCpuLimit {
+                            clock_min: Some(super::RangeLimit { min: 1000, max: 3700 }),
+                            clock_max: Some(super::RangeLimit { min: 1000, max: 3700 }),
+                            clock_step: 100,
+                        })),
+                        super::Limits::Gpu(super::GpuLimit::GenericAMD(super::GenericGpuLimit {
+                            fast_ppt: Some(super::RangeLimit { min: 1_000_000, max: 25_000_000 }),
+                            slow_ppt: Some(super::RangeLimit { min: 1_000_000, max: 25_000_000 }),
+                            ppt_step: Some(1_000_000),
+                            clock_min: Some(super::RangeLimit { min: 400, max: 1100 }),
+                            clock_max: Some(super::RangeLimit { min: 400, max: 1100 }),
+                            clock_step: Some(100),
+                            ..Default::default()
+                        })),
+                        super::Limits::Battery(super::BatteryLimit::Generic(super::GenericBatteryLimit{})),
+                    ]
+                },
+                super::Config {
+                    name: "AMD R5 5560U".to_owned(),
+                    conditions: super::Conditions {
+                        dmi: None,
+                        cpuinfo: Some("model name\t+: AMD Ryzen 5 5560U\n".to_owned()),
+                        os: None,
+                        command: None,
+                        file_exists: None,
+                    },
+                    limits: vec![
+                        super::Limits::Cpu(super::CpuLimit::GenericAMD(super::GenericCpuLimit {
+                            clock_min: Some(super::RangeLimit { min: 1000, max: 4000 }),
+                            clock_max: Some(super::RangeLimit { min: 1000, max: 4000 }),
+                            clock_step: 100,
+                        })),
+                        super::Limits::Gpu(super::GpuLimit::GenericAMD(super::GenericGpuLimit {
+                            fast_ppt: Some(super::RangeLimit { min: 1_000_000, max: 25_000_000 }),
+                            slow_ppt: Some(super::RangeLimit { min: 1_000_000, max: 25_000_000 }),
+                            ppt_step: Some(1_000_000),
+                            clock_min: Some(super::RangeLimit { min: 400, max: 1600 }),
+                            clock_max: Some(super::RangeLimit { min: 400, max: 1600 }),
+                            clock_step: Some(100),
+                            ..Default::default()
+                        })),
+                        super::Limits::Battery(super::BatteryLimit::Generic(super::GenericBatteryLimit{})),
+                    ]
+                },
+                super::Config {
+                    name: "AMD R7 5825U".to_owned(),
+                    conditions: super::Conditions {
+                        dmi: None,
+                        cpuinfo: Some("model name\t+: AMD Ryzen 7 5825U\n".to_owned()),
+                        os: None,
+                        command: None,
+                        file_exists: None,
+                    },
+                    limits: vec![
+                        super::Limits::Cpu(super::CpuLimit::GenericAMD(super::GenericCpuLimit {
+                            clock_min: Some(super::RangeLimit { min: 1000, max: 4500 }),
+                            clock_max: Some(super::RangeLimit { min: 1000, max: 4500 }),
+                            clock_step: 100,
+                        })),
+                        super::Limits::Gpu(super::GpuLimit::GenericAMD(super::GenericGpuLimit {
+                            fast_ppt: Some(super::RangeLimit { min: 1_000_000, max: 25_000_000 }),
+                            slow_ppt: Some(super::RangeLimit { min: 1_000_000, max: 25_000_000 }),
+                            ppt_step: Some(1_000_000),
+                            clock_min: Some(super::RangeLimit { min: 400, max: 2000 }),
+                            clock_max: Some(super::RangeLimit { min: 400, max: 2000 }),
+                            clock_step: Some(100),
+                            ..Default::default()
+                        })),
+                        super::Limits::Battery(super::BatteryLimit::Generic(super::GenericBatteryLimit{})),
+                    ]
+                },
+                super::Config {
+                    name: "AMD R7 6800U".to_owned(),
+                    conditions: super::Conditions {
+                        dmi: None,
+                        cpuinfo: Some("model name\t+: AMD Ryzen 7 6800U\n".to_owned()),
+                        os: None,
+                        command: None,
+                        file_exists: None,
+                    },
+                    limits: vec![
+                        super::Limits::Cpu(super::CpuLimit::Generic(super::GenericCpuLimit {
+                            clock_min: Some(super::RangeLimit { min: 1000, max: 4700 }),
+                            clock_max: Some(super::RangeLimit { min: 1000, max: 4700 }),
+                            clock_step: 100,
+                        })),
+                        super::Limits::Gpu(super::GpuLimit::Generic(super::GenericGpuLimit {
+                            fast_ppt: Some(super::RangeLimit { min: 1_000_000, max: 28_000_000 }),
+                            slow_ppt: Some(super::RangeLimit { min: 1_000_000, max: 28_000_000 }),
+                            ppt_step: Some(1_000_000),
+                            clock_min: Some(super::RangeLimit { min: 400, max: 2200 }),
+                            clock_max: Some(super::RangeLimit { min: 400, max: 2200 }),
+                            clock_step: Some(100),
+                            ..Default::default()
+                        })),
+                        super::Limits::Battery(super::BatteryLimit::Generic(super::GenericBatteryLimit{})),
+                    ]
+                },
+                super::Config {
                     name: "Fallback".to_owned(),
                     conditions: super::Conditions {
                         dmi: None,
@@ -60,6 +170,7 @@ impl Default for Base {
                     ]
                 }
             ],
+            messages: Vec::new(),
             refresh: Some("http://limits.ngni.us:45000/powertools/v1".to_owned())
         }
     }

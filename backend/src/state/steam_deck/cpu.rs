@@ -8,7 +8,7 @@ pub struct Cpu {
 impl std::default::Default for Cpu {
     fn default() -> Self {
         Self {
-            clock_limits_set: false,
+            clock_limits_set: true,
             is_resuming: false,
             do_set_online: true,
         }

@@ -5,7 +5,8 @@ import {
   Field,
   PanelSectionRow,
   staticClasses,
-  Router,
+  //Router,
+  Navigation,
 } from "decky-frontend-lib";
 import * as backend from "../backend";
 import { tr } from "usdpl-front";
@@ -37,7 +38,7 @@ function buildDebug() {
             if (eggCount % 10 == 9) {
               // you know you're bored and/or conceited when you spend time adding an easter egg
               // that just sends people to your own project's repo
-              Router.NavigateToExternalWeb("https://github.com/NGnius/PowerTools/releases");
+              Navigation.NavigateToExternalWeb("https://github.com/NGnius/PowerTools/releases");
             }
             eggCount++;
           }}>
@@ -53,9 +54,9 @@ function buildDebug() {
       </PanelSectionRow>
       <PanelSectionRow>
         <Field
-          label={tr("Driver")}
+          label={ eggCount % 10 == 9 && tr("Driver") == "Driver" ? "Drive" : tr("Driver")}
           onClick={()=> eggCount++}>
-          {eggCount % 10 == 9 ? "Tracy Chapman" : get_value(DRIVER_INFO)}
+          {eggCount % 10 == 9 ? "Ryan Gosling" : get_value(DRIVER_INFO)}
         </Field>
       </PanelSectionRow>
       <PanelSectionRow>
@@ -65,7 +66,7 @@ function buildDebug() {
             if (eggCount % 10 == 9) {
               // you know you're bored and/or conceited when you spend time adding an easter egg
               // that just sends people to your own project's repo
-              Router.NavigateToExternalWeb("https://github.com/NGnius/usdpl-rs");
+              Navigation.NavigateToExternalWeb("https://github.com/NGnius/usdpl-rs");
             }
             eggCount++;
           }}>

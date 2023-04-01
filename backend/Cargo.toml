@@ -1,6 +1,6 @@
 [package]
 name = "powertools"
-version = "1.2.0"
+version = "1.3.0"
 edition = "2021"
 authors = ["NGnius (Graham) <ngniusness@gmail.com>"]
 description = "Backend (superuser) functionality for PowerTools"
@@ -25,9 +25,9 @@ log = "0.4"
 simplelog = "0.12"
 
 # limits & driver functionality
-limits_core = { version = "0.1.0", path = "./limits_core" }
+limits_core = { version = "1.0.0", path = "./limits_core" }
 regex = "1"
-ryzenadj-rs = { version = "0.1" }
+libryzenadj = { version = "0.12" }
 # ureq's tls feature does not like musl targets
 ureq = { version = "2.5", features = ["json", "gzip", "brotli", "charset"], default-features = false, optional = true }
 

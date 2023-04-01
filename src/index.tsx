@@ -21,6 +21,7 @@ import {
 } from "decky-frontend-lib";
 import { VFC, useState } from "react";
 import { GiDrill, GiTimeBomb, GiTimeTrap, GiDynamite } from "react-icons/gi";
+import { HiRefresh, HiTrash } from "react-icons/hi";
 
 //import * as python from "./python";
 import * as backend from "./backend";
@@ -34,6 +35,7 @@ import {
   CURRENT_BATT,
   CHARGE_RATE_BATT,
   CHARGE_MODE_BATT,
+  CHARGE_LIMIT_BATT,
   CHARGE_NOW_BATT,
   CHARGE_FULL_BATT,
   CHARGE_DESIGN_BATT,
@@ -54,6 +56,7 @@ import {
 
   PERSISTENT_GEN,
   NAME_GEN,
+  PATH_GEN,
 } from "./consts";
 import { set_value, get_value } from "usdpl-front";
 import { Debug } from "./components/debug";
@@ -106,6 +109,7 @@ const reload = function() {
   backend.resolve(backend.getBatteryCurrent(), (rate: number) => { set_value(CURRENT_BATT, rate) });
   backend.resolve_nullable(backend.getBatteryChargeRate(), (rate: number | null) => { set_value(CHARGE_RATE_BATT, rate) });
   backend.resolve_nullable(backend.getBatteryChargeMode(), (mode: string | null) => { set_value(CHARGE_MODE_BATT, mode) });
+  backend.resolve_nullable(backend.getBatteryChargeLimit(), (limit: number | null) => { set_value(CHARGE_LIMIT_BATT, limit) });
   backend.resolve(backend.getBatteryChargeNow(), (rate: number) => { set_value(CHARGE_NOW_BATT, rate) });
   backend.resolve(backend.getBatteryChargeFull(), (rate: number) => { set_value(CHARGE_FULL_BATT, rate) });
   backend.resolve(backend.getBatteryChargeDesign(), (rate: number) => { set_value(CHARGE_DESIGN_BATT, rate) });
@@ -142,6 +146,7 @@ const reload = function() {
 
   backend.resolve(backend.getGeneralPersistent(), (value: boolean) => { set_value(PERSISTENT_GEN, value) });
   backend.resolve(backend.getGeneralSettingsName(), (name: string) => { set_value(NAME_GEN, name) });
+  backend.resolve(backend.getGeneralSettingsPath(), (path: string) => { set_value(PATH_GEN, path) });
 
   backend.resolve(backend.getInfo(), (info: string) => { set_value(BACKEND_INFO, info) });
   backend.resolve(backend.getDriverProviderName("gpu"), (driver: string) => { set_value(DRIVER_INFO, driver) });
@@ -151,12 +156,12 @@ const reload = function() {
 (async function(){
   await backend.initBackend();
   usdplReady = true;
-  set_value(NAME_GEN, "Default");
   reload(); // technically this is only a load
 
   // register Steam callbacks
   //@ts-ignore
   lifetimeHook = SteamClient.GameSessions.RegisterForAppLifetimeNotifications((update) => {
+      backend.log(backend.LogLevel.Info, "RegisterForAppLifetimeNotifications callback(" + JSON.stringify(update, null, 2) + ")");
       if (update.bRunning) {
           //backend.log(backend.LogLevel.Debug, "AppID " + update.unAppID.toString() + " is now running");
       } else {
@@ -171,9 +176,11 @@ const reload = function() {
   startHook = SteamClient.Apps.RegisterForGameActionStart((actionType, id) => {
       //@ts-ignore
       let gameInfo: any = appStore.GetAppOverviewByGameID(id);
+
+      backend.log(backend.LogLevel.Info, "RegisterForGameActionStart callback(" + actionType + ", " + id + ")");
       // don't use gameInfo.appid, haha
       backend.resolve(
-        backend.loadGeneralSettings(id.toString() + ".json", gameInfo.display_name),
+        backend.loadGeneralSettings(id.toString(), gameInfo.display_name),
         (ok: boolean) => {backend.log(backend.LogLevel.Debug, "Loading settings ok? " + ok)}
       );
   });
@@ -186,11 +193,11 @@ const periodicals = function() {
   backend.resolve(backend.getBatteryChargeNow(), (rate: number) => { set_value(CHARGE_NOW_BATT, rate) });
   backend.resolve(backend.getBatteryChargeFull(), (rate: number) => { set_value(CHARGE_FULL_BATT, rate) });
 
-  backend.resolve(backend.getGeneralPersistent(), (value: boolean) => { set_value(PERSISTENT_GEN, value) });
-  backend.resolve(backend.getGeneralSettingsName(), (name: string) => {
-    const oldValue = get_value(NAME_GEN);
-    set_value(NAME_GEN, name);
-    if (name != oldValue) {
+  backend.resolve(backend.getGeneralSettingsPath(), (path: string) => {
+    const oldValue = get_value(PATH_GEN);
+    set_value(PATH_GEN, path);
+    if (path != oldValue) {
+      backend.log(backend.LogLevel.Info, "Frontend values reload triggered by path change: " + oldValue + " -> " + path);
       reload();
     }
   });
@@ -268,6 +275,18 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
         <ButtonItem
           layout="below"
           onClick={(_: MouseEvent) => {
+            backend.log(backend.LogLevel.Debug, "Reapplying PowerTools settings");
+            backend.forceApplySettings();
+          }}
+        >
+        <HiRefresh /> {tr("Reapply settings")}
+        </ButtonItem>
+      </PanelSectionRow>
+
+      <PanelSectionRow>
+        <ButtonItem
+          layout="below"
+          onClick={(_: MouseEvent) => {
             backend.log(backend.LogLevel.Debug, "Loading default PowerTools settings");
             backend.resolve(
               backend.setGeneralPersistent(false),
@@ -281,7 +300,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
             );
           }}
         >
-        {tr("Defaults")}
+        <HiTrash /> {tr("Defaults")}
         </ButtonItem>
       </PanelSectionRow>
     </PanelSection>

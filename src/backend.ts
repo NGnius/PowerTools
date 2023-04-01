@@ -63,6 +63,8 @@ export type BatteryLimits = {
     charge_current: RangeLimit | null;
     charge_current_step: number;
     charge_modes: string[];
+    charge_limit: RangeLimit | null;
+    charge_limit_step: number;
 };
 
 export type CpuLimits = {
@@ -137,6 +139,18 @@ export async function setBatteryChargeMode(val: string): Promise<string> {
 
 export async function unsetBatteryChargeMode(): Promise<any[]> {
     return await call_backend("BATTERY_unset_charge_mode", []);
+}
+
+export async function getBatteryChargeLimit(): Promise<number | null> {
+    return (await call_backend("BATTERY_get_charge_limit", []))[0];
+}
+
+export async function setBatteryChargeLimit(val: number): Promise<number> {
+    return (await call_backend("BATTERY_set_charge_limit", [val]))[0];
+}
+
+export async function unsetBatteryChargeLimit(): Promise<any[]> {
+    return await call_backend("BATTERY_unset_charge_limit", []);
 }
 
 // CPU
@@ -229,8 +243,8 @@ export async function getGeneralPersistent(): Promise<boolean> {
     return (await call_backend("GENERAL_get_persistent", []))[0];
 }
 
-export async function loadGeneralSettings(path: string, name: string): Promise<boolean> {
-    return (await call_backend("GENERAL_load_settings", [path, name]))[0];
+export async function loadGeneralSettings(id: string, name: string): Promise<boolean> {
+    return (await call_backend("GENERAL_load_settings", [id, name]))[0];
 }
 
 export async function loadGeneralDefaultSettings(): Promise<boolean> {
@@ -243,6 +257,10 @@ export async function loadGeneralSystemSettings(): Promise<boolean> {
 
 export async function getGeneralSettingsName(): Promise<string> {
     return (await call_backend("GENERAL_get_name", []))[0];
+}
+
+export async function getGeneralSettingsPath(): Promise<string> {
+    return (await call_backend("GENERAL_get_path", []))[0];
 }
 
 export async function waitForComplete(): Promise<boolean> {
@@ -271,4 +289,16 @@ export async function log(level: LogLevel, msg: string): Promise<boolean> {
 
 export async function idk(): Promise<boolean> {
     return (await call_backend("GENERAL_idk", []))[0];
+}
+
+export async function forceApplySettings(): Promise<boolean> {
+    return (await call_backend("GENERAL_apply_now", []))[0];
+}
+
+export async function onPluggedIn(): Promise<boolean> {
+    return (await call_backend("GENERAL_on_pluggedin", []))[0];
+}
+
+export async function onUnplugged(): Promise<boolean> {
+    return (await call_backend("GENERAL_on_unplugged", []))[0];
 }

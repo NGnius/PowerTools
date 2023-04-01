@@ -9,7 +9,10 @@ pub struct RangeLimit<T> {
 impl<T> From<limits_core::json::RangeLimit<T>> for RangeLimit<T> {
     #[inline]
     fn from(other: limits_core::json::RangeLimit<T>) -> Self {
-        RangeLimit { min: other.min, max: other.max }
+        RangeLimit {
+            min: other.min,
+            max: other.max,
+        }
     }
 }
 
@@ -26,6 +29,8 @@ pub struct BatteryLimits {
     pub charge_current: Option<RangeLimit<u64>>,
     pub charge_current_step: u64,
     pub charge_modes: Vec<String>,
+    pub charge_limit: Option<RangeLimit<f64>>,
+    pub charge_limit_step: f64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -45,8 +50,7 @@ pub struct CpuLimits {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct GeneralLimits {
-}
+pub struct GeneralLimits {}
 
 #[derive(Serialize, Deserialize)]
 pub struct GpuLimits {

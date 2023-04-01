@@ -7,7 +7,7 @@ pub struct Gpu {
 impl std::default::Default for Gpu {
     fn default() -> Self {
         Self {
-            clock_limits_set: false,
+            clock_limits_set: true,
             is_resuming: false,
         }
     }

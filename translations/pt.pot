@@ -37,7 +37,12 @@ msgstr ""
 msgid "Profile"
 msgstr ""
 
-#: index.tsx:266
+#: index.tsx:276
+# (Button to reset everything to system defaults)
+msgid "Reapply settings"
+msgstr ""
+
+#: index.tsx:297
 # (Button to reset everything to system defaults)
 msgid "Defaults"
 msgstr ""
@@ -92,6 +97,21 @@ msgstr ""
 #: components/battery.tsx:133
 # (Battery electrical current display)
 msgid "Current"
+msgstr ""
+
+#: components/battery.tsx:141
+# (Battery charging maximum)
+msgid "Charge Limit"
+msgstr ""
+
+#: components/battery.tsx:142
+# (Battery charging maximum description)
+msgid "Limit battery charge when awake"
+msgstr ""
+
+#: components/battery.tsx:156
+# (Battery charging maximum slider)
+msgid "Maximum (%)"
 msgstr ""
 
 # -- components/cpus.tsx --

@@ -1,9 +1,9 @@
 use std::convert::Into;
 
+use crate::persist::CpuJson;
 use crate::settings::MinMax;
 use crate::settings::{OnResume, OnSet, SettingError};
-use crate::settings::{TCpus, TCpu};
-use crate::persist::CpuJson;
+use crate::settings::{TCpu, TCpus};
 
 const CPU_PRESENT_PATH: &str = "/sys/devices/system/cpu/present";
 const CPU_SMT_PATH: &str = "/sys/devices/system/cpu/smt/control";
@@ -21,25 +21,23 @@ impl OnSet for Cpus {
         if self.smt_capable {
             // toggle SMT
             if self.smt {
-                usdpl_back::api::files::write_single(CPU_SMT_PATH, "on").map_err(|e| {
-                    SettingError {
-                        msg: format!(
-                            "Failed to write `on` to `{}`: {}",
-                            CPU_SMT_PATH, e
-                        ),
+                usdpl_back::api::files::write_single(CPU_SMT_PATH, "on")
+                    .map_err(|e| SettingError {
+                        msg: format!("Failed to write `on` to `{}`: {}", CPU_SMT_PATH, e),
                         setting: crate::settings::SettingVariant::Cpu,
-                    }
-                }).unwrap_or_else(|e| {errors.push(e);});
+                    })
+                    .unwrap_or_else(|e| {
+                        errors.push(e);
+                    });
             } else {
-                usdpl_back::api::files::write_single(CPU_SMT_PATH, "off").map_err(|e| {
-                    SettingError {
-                        msg: format!(
-                            "Failed to write `off` to `{}`: {}",
-                            CPU_SMT_PATH, e
-                        ),
+                usdpl_back::api::files::write_single(CPU_SMT_PATH, "off")
+                    .map_err(|e| SettingError {
+                        msg: format!("Failed to write `off` to `{}`: {}", CPU_SMT_PATH, e),
                         setting: crate::settings::SettingVariant::Cpu,
-                    }
-                }).unwrap_or_else(|e| {errors.push(e);});
+                    })
+                    .unwrap_or_else(|e| {
+                        errors.push(e);
+                    });
             }
         }
         for (i, cpu) in self.cpus.as_mut_slice().iter_mut().enumerate() {
@@ -58,7 +56,8 @@ impl OnResume for Cpus {
     fn on_resume(&self) -> Result<(), Vec<SettingError>> {
         let mut errors = Vec::new();
         for cpu in &self.cpus {
-            cpu.on_resume().unwrap_or_else(|mut e| errors.append(&mut e));
+            cpu.on_resume()
+                .unwrap_or_else(|mut e| errors.append(&mut e));
         }
         if errors.is_empty() {
             Ok(())
@@ -67,6 +66,8 @@ impl OnResume for Cpus {
         }
     }
 }
+
+impl crate::settings::OnPowerEvent for Cpus {}
 
 impl Cpus {
     pub fn cpu_count() -> Option<usize> {
@@ -85,7 +86,7 @@ impl Cpus {
     fn system_smt_capabilities() -> (bool, bool) {
         match usdpl_back::api::files::read_single::<_, String, _>(CPU_SMT_PATH) {
             Ok(val) => (val.trim().to_lowercase() == "on", true),
-            Err(_) => (false, false)
+            Err(_) => (false, false),
         }
     }
 
@@ -181,7 +182,6 @@ pub struct Cpu {
     state: crate::state::steam_deck::Cpu,
 }
 
-
 impl Cpu {
     #[inline]
     pub fn from_json(other: CpuJson, version: u64, i: usize) -> Self {
@@ -204,28 +204,29 @@ impl Cpu {
     fn set_all(&mut self) -> Result<(), Vec<SettingError>> {
         let mut errors = Vec::new();
         // set cpu online/offline
-        if self.index != 0 && self.state.do_set_online { // cpu0 cannot be disabled
+        if self.index != 0 && self.state.do_set_online {
+            // cpu0 cannot be disabled
             let online_path = cpu_online_path(self.index);
-            usdpl_back::api::files::write_single(&online_path, self.online as u8).map_err(|e| {
-                SettingError {
+            usdpl_back::api::files::write_single(&online_path, self.online as u8)
+                .map_err(|e| SettingError {
                     msg: format!("Failed to write to `{}`: {}", &online_path, e),
                     setting: crate::settings::SettingVariant::Cpu,
-                }
-            }).unwrap_or_else(|e| errors.push(e));
+                })
+                .unwrap_or_else(|e| errors.push(e));
         }
 
         // set governor
         if self.index == 0 || self.online {
             let governor_path = cpu_governor_path(self.index);
-            usdpl_back::api::files::write_single(&governor_path, &self.governor).map_err(|e| {
-                SettingError {
+            usdpl_back::api::files::write_single(&governor_path, &self.governor)
+                .map_err(|e| SettingError {
                     msg: format!(
                         "Failed to write `{}` to `{}`: {}",
                         &self.governor, &governor_path, e
                     ),
                     setting: crate::settings::SettingVariant::Cpu,
-                }
-            }).unwrap_or_else(|e| errors.push(e));
+                })
+                .unwrap_or_else(|e| errors.push(e));
         }
         if errors.is_empty() {
             Ok(())
@@ -236,7 +237,8 @@ impl Cpu {
 
     fn from_sys(cpu_index: usize) -> Self {
         Self {
-            online: usdpl_back::api::files::read_single(cpu_online_path(cpu_index)).unwrap_or(1u8) != 0,
+            online: usdpl_back::api::files::read_single(cpu_online_path(cpu_index)).unwrap_or(1u8)
+                != 0,
             governor: usdpl_back::api::files::read_single(cpu_governor_path(cpu_index))
                 .unwrap_or("schedutil".to_owned()),
             index: cpu_index,
@@ -293,8 +295,7 @@ impl TCpu for Cpu {
         &self.governor
     }
 
-    fn clock_limits(&mut self, _limits: Option<MinMax<u64>>) {
-    }
+    fn clock_limits(&mut self, _limits: Option<MinMax<u64>>) {}
 
     fn get_clock_limits(&self) -> Option<&MinMax<u64>> {
         None

@@ -1,12 +1,12 @@
-use std::convert::{Into, AsMut, AsRef};
+use std::convert::{AsMut, AsRef, Into};
 
 use limits_core::json::GenericCpuLimit;
 
-use crate::settings::{MinMax, min_max_from_json};
-use crate::settings::{OnResume, OnSet, SettingError};
-use crate::settings::{TCpus, TCpu};
-use crate::persist::CpuJson;
 use super::FromGenericCpuInfo;
+use crate::persist::CpuJson;
+use crate::settings::{min_max_from_json, MinMax};
+use crate::settings::{OnResume, OnSet, SettingError};
+use crate::settings::{TCpu, TCpus};
 
 const CPU_PRESENT_PATH: &str = "/sys/devices/system/cpu/present";
 const CPU_SMT_PATH: &str = "/sys/devices/system/cpu/smt/control";
@@ -24,25 +24,19 @@ impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + OnSet> OnSet for Cpus<C> {
         if self.smt_capable {
             // toggle SMT
             if self.smt {
-                usdpl_back::api::files::write_single(CPU_SMT_PATH, "on").map_err(|e| {
-                    SettingError {
-                        msg: format!(
-                            "Failed to write `on` to `{}`: {}",
-                            CPU_SMT_PATH, e
-                        ),
+                usdpl_back::api::files::write_single(CPU_SMT_PATH, "on")
+                    .map_err(|e| SettingError {
+                        msg: format!("Failed to write `on` to `{}`: {}", CPU_SMT_PATH, e),
                         setting: crate::settings::SettingVariant::Cpu,
-                    }
-                }).unwrap_or_else(|e| errors.push(e));
+                    })
+                    .unwrap_or_else(|e| errors.push(e));
             } else {
-                usdpl_back::api::files::write_single(CPU_SMT_PATH, "off").map_err(|e| {
-                    SettingError {
-                        msg: format!(
-                            "Failed to write `off` to `{}`: {}",
-                            CPU_SMT_PATH, e
-                        ),
+                usdpl_back::api::files::write_single(CPU_SMT_PATH, "off")
+                    .map_err(|e| SettingError {
+                        msg: format!("Failed to write `off` to `{}`: {}", CPU_SMT_PATH, e),
                         setting: crate::settings::SettingVariant::Cpu,
-                    }
-                }).unwrap_or_else(|e| errors.push(e));
+                    })
+                    .unwrap_or_else(|e| errors.push(e));
             }
         }
         for (i, cpu) in self.cpus.as_mut_slice().iter_mut().enumerate() {
@@ -61,7 +55,8 @@ impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + OnResume> OnResume for Cpus<C> {
     fn on_resume(&self) -> Result<(), Vec<SettingError>> {
         let mut errors = Vec::new();
         for cpu in &self.cpus {
-            cpu.on_resume().unwrap_or_else(|mut e| errors.append(&mut e));
+            cpu.on_resume()
+                .unwrap_or_else(|mut e| errors.append(&mut e));
         }
         if errors.is_empty() {
             Ok(())
@@ -88,7 +83,7 @@ impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + FromGenericCpuInfo> Cpus<C> {
     fn system_smt_capabilities() -> (bool, bool) {
         match usdpl_back::api::files::read_single::<_, String, _>(CPU_SMT_PATH) {
             Ok(val) => (val.trim().to_lowercase() == "on", true),
-            Err(_) => (false, false)
+            Err(_) => (false, false),
         }
     }
 
@@ -107,7 +102,11 @@ impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + FromGenericCpuInfo> Cpus<C> {
         }
     }
 
-    pub fn from_json_and_limits(mut other: Vec<CpuJson>, version: u64, limits: limits_core::json::GenericCpuLimit) -> Self {
+    pub fn from_json_and_limits(
+        mut other: Vec<CpuJson>,
+        version: u64,
+        limits: limits_core::json::GenericCpuLimit,
+    ) -> Self {
         let (_, can_smt) = Self::system_smt_capabilities();
         let mut result = Vec::with_capacity(other.len());
         let max_cpus = Self::cpu_count();
@@ -138,7 +137,29 @@ impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + FromGenericCpuInfo> Cpus<C> {
     }
 }
 
-impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + OnResume + OnSet> TCpus for Cpus<C> {
+impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + crate::settings::OnPowerEvent>
+    crate::settings::OnPowerEvent for Cpus<C>
+{
+    fn on_power_event(
+        &mut self,
+        new_mode: crate::settings::PowerMode,
+    ) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
+        for cpu in &mut self.cpus {
+            cpu.on_power_event(new_mode)
+                .unwrap_or_else(|mut e| errors.append(&mut e));
+        }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+}
+
+impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + OnResume + OnSet + crate::settings::OnPowerEvent> TCpus
+    for Cpus<C>
+{
     fn limits(&self) -> crate::api::CpusLimits {
         crate::api::CpusLimits {
             cpus: self.cpus.iter().map(|x| x.as_ref().limits()).collect(),
@@ -149,7 +170,10 @@ impl<C: AsMut<Cpu> + AsRef<Cpu> + TCpu + OnResume + OnSet> TCpus for Cpus<C> {
     }
 
     fn json(&self) -> Vec<crate::persist::CpuJson> {
-        self.cpus.iter().map(|x| x.as_ref().to_owned().into()).collect()
+        self.cpus
+            .iter()
+            .map(|x| x.as_ref().to_owned().into())
+            .collect()
     }
 
     fn cpus(&mut self) -> Vec<&mut dyn TCpu> {
@@ -214,7 +238,12 @@ impl FromGenericCpuInfo for Cpu {
     }
 
     #[inline]
-    fn from_json_and_limits(other: CpuJson, version: u64, i: usize, limits: GenericCpuLimit) -> Self {
+    fn from_json_and_limits(
+        other: CpuJson,
+        version: u64,
+        i: usize,
+        limits: GenericCpuLimit,
+    ) -> Self {
         let clock_lims = if limits.clock_min.is_some() && limits.clock_max.is_some() {
             other.clock_limits.map(|x| min_max_from_json(x, version))
         } else {
@@ -245,28 +274,29 @@ impl Cpu {
     fn set_all(&mut self) -> Result<(), Vec<SettingError>> {
         let mut errors = Vec::new();
         // set cpu online/offline
-        if self.index != 0 && self.state.do_set_online { // cpu0 cannot be disabled
+        if self.index != 0 && self.state.do_set_online {
+            // cpu0 cannot be disabled
             let online_path = cpu_online_path(self.index);
-            usdpl_back::api::files::write_single(&online_path, self.online as u8).map_err(|e| {
-                SettingError {
+            usdpl_back::api::files::write_single(&online_path, self.online as u8)
+                .map_err(|e| SettingError {
                     msg: format!("Failed to write to `{}`: {}", &online_path, e),
                     setting: crate::settings::SettingVariant::Cpu,
-                }
-            }).unwrap_or_else(|e| errors.push(e));
+                })
+                .unwrap_or_else(|e| errors.push(e));
         }
 
         // set governor
         if self.index == 0 || self.online {
             let governor_path = cpu_governor_path(self.index);
-            usdpl_back::api::files::write_single(&governor_path, &self.governor).map_err(|e| {
-                SettingError {
+            usdpl_back::api::files::write_single(&governor_path, &self.governor)
+                .map_err(|e| SettingError {
                     msg: format!(
                         "Failed to write `{}` to `{}`: {}",
                         &self.governor, &governor_path, e
                     ),
                     setting: crate::settings::SettingVariant::Cpu,
-                }
-            }).unwrap_or_else(|e| errors.push(e));
+                })
+                .unwrap_or_else(|e| errors.push(e));
         }
         if errors.is_empty() {
             Ok(())
@@ -287,13 +317,14 @@ impl Cpu {
 
     fn governors(&self) -> Vec<String> {
         // NOTE: this eats errors
-        let gov_str: String = match usdpl_back::api::files::read_single(cpu_available_governors_path(self.index)) {
-            Ok(s) => s,
-            Err(e) => {
-                log::warn!("Error getting available CPU governors: {}", e);
-                return vec![];
-            },
-        };
+        let gov_str: String =
+            match usdpl_back::api::files::read_single(cpu_available_governors_path(self.index)) {
+                Ok(s) => s,
+                Err(e) => {
+                    log::warn!("Error getting available CPU governors: {}", e);
+                    return vec![];
+                }
+            };
         gov_str.split(' ').map(|s| s.to_owned()).collect()
     }
 
@@ -332,6 +363,8 @@ impl OnResume for Cpu {
         copy.set_all()
     }
 }
+
+impl crate::settings::OnPowerEvent for Cpu {}
 
 impl TCpu for Cpu {
     fn online(&mut self) -> &mut bool {

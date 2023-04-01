@@ -1,4 +1,4 @@
-use std::sync::mpsc::{Sender, self};
+use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use usdpl_back::core::serdes::Primitive;
 use usdpl_back::AsyncCallable;
@@ -11,10 +11,13 @@ pub fn set_persistent(
     sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
-    let setter = move |pers: bool|
-        sender.lock()
+    let setter = move |pers: bool| {
+        sender
+            .lock()
             .unwrap()
-            .send(ApiMessage::General(GeneralMessage::SetPersistent(pers))).expect("set_persistent send failed");
+            .send(ApiMessage::General(GeneralMessage::SetPersistent(pers)))
+            .expect("set_persistent send failed")
+    };
     move |params_in: super::ApiParameterType| {
         if let Some(&Primitive::Bool(new_val)) = params_in.get(0) {
             setter(new_val);
@@ -33,13 +36,18 @@ pub fn get_persistent(
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
     let getter = move || {
         let (tx, rx) = mpsc::channel();
-        let callback = move |value: bool| tx.send(value).expect("get_persistent callback send failed");
-        sender.lock().unwrap().send(ApiMessage::General(GeneralMessage::GetPersistent(Box::new(callback)))).expect("get_persistent send failed");
+        let callback =
+            move |value: bool| tx.send(value).expect("get_persistent callback send failed");
+        sender
+            .lock()
+            .unwrap()
+            .send(ApiMessage::General(GeneralMessage::GetPersistent(
+                Box::new(callback),
+            )))
+            .expect("get_persistent send failed");
         rx.recv().expect("get_persistent callback recv failed")
     };
-    move |_: super::ApiParameterType| {
-        vec![getter().into()]
-    }
+    move |_: super::ApiParameterType| vec![getter().into()]
 }
 
 /// Generate load app settings from file web method
@@ -47,21 +55,26 @@ pub fn load_settings(
     sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
-    let setter = move |path: String, name: String|
-        sender.lock()
+    let setter = move |path: u64, name: String| {
+        sender
+            .lock()
             .unwrap()
-            .send(ApiMessage::LoadSettings(path, name)).expect("load_settings send failed");
+            .send(ApiMessage::LoadSettings(path, name))
+            .expect("load_settings send failed")
+    };
     move |params_in: super::ApiParameterType| {
-        if let Some(Primitive::String(path)) = params_in.get(0) {
+        if let Some(Primitive::String(id)) = params_in.get(0) {
             if let Some(Primitive::String(name)) = params_in.get(1) {
-                setter(path.to_owned(), name.to_owned());
+                setter(id.parse().unwrap_or_default(), name.to_owned());
                 vec![true.into()]
             } else {
+                log::warn!("load_settings missing name parameter");
                 vec!["load_settings missing name parameter".into()]
             }
             //let mut general_lock = unwrap_lock(settings.general.lock(), "general");
         } else {
-            vec!["load_settings missing path parameter".into()]
+            log::warn!("load_settings missing id parameter");
+            vec!["load_settings missing id parameter".into()]
         }
     }
 }
@@ -71,10 +84,13 @@ pub fn load_default_settings(
     sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
-    let setter = move ||
-        sender.lock()
+    let setter = move || {
+        sender
+            .lock()
             .unwrap()
-            .send(ApiMessage::LoadMainSettings).expect("load_default_settings send failed");
+            .send(ApiMessage::LoadMainSettings)
+            .expect("load_default_settings send failed")
+    };
     move |_: super::ApiParameterType| {
         setter();
         vec![true.into()]
@@ -97,10 +113,13 @@ pub fn load_system_settings(
     sender: Sender<ApiMessage>,
 ) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
-    let setter = move ||
-        sender.lock()
+    let setter = move || {
+        sender
+            .lock()
             .unwrap()
-            .send(ApiMessage::LoadSystemSettings).expect("load_default_settings send failed");
+            .send(ApiMessage::LoadSystemSettings)
+            .expect("load_default_settings send failed")
+    };
     move |_: super::ApiParameterType| {
         setter();
         vec![true.into()]
@@ -119,46 +138,75 @@ pub fn load_system_settings(
 }
 
 /// Generate get current settings name
-pub fn get_name(
-    sender: Sender<ApiMessage>,
-) -> impl AsyncCallable {
+pub fn get_name(sender: Sender<ApiMessage>) -> impl AsyncCallable {
     let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
     let getter = move || {
         let sender2 = sender.clone();
         move || {
             let (tx, rx) = mpsc::channel();
-            let callback = move |name: String| tx.send(name).expect("get_name callback send failed");
-            sender2.lock().unwrap().send(ApiMessage::General(GeneralMessage::GetCurrentProfileName(Box::new(callback)))).expect("get_name send failed");
+            let callback =
+                move |name: String| tx.send(name).expect("get_name callback send failed");
+            sender2
+                .lock()
+                .unwrap()
+                .send(ApiMessage::General(GeneralMessage::GetCurrentProfileName(
+                    Box::new(callback),
+                )))
+                .expect("get_name send failed");
             rx.recv().expect("get_name callback recv failed")
         }
     };
     super::async_utils::AsyncIshGetter {
         set_get: getter,
-        trans_getter: |result| {
-            vec![result.into()]
+        trans_getter: |result| vec![result.into()],
+    }
+}
+
+/// Generate get current settings name
+pub fn get_path(sender: Sender<ApiMessage>) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move || {
+            let (tx, rx) = mpsc::channel();
+            let callback = move |name: std::path::PathBuf| {
+                tx.send(name).expect("get_path callback send failed")
+            };
+            sender2
+                .lock()
+                .unwrap()
+                .send(ApiMessage::General(GeneralMessage::GetPath(Box::new(
+                    callback,
+                ))))
+                .expect("get_name send failed");
+            rx.recv().expect("get_path callback recv failed")
         }
+    };
+    super::async_utils::AsyncIshGetter {
+        set_get: getter,
+        trans_getter: |result| vec![result.to_string_lossy().to_string().into()],
     }
 }
 
 /// Generate wait for all locks to be available web method
-pub fn lock_unlock_all(
-    sender: Sender<ApiMessage>,
-) -> impl AsyncCallable {
+pub fn lock_unlock_all(sender: Sender<ApiMessage>) -> impl AsyncCallable {
     let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
     let getter = move || {
         let sender2 = sender.clone();
         move || {
             let (tx, rx) = mpsc::channel();
             let callback = move |x| tx.send(x).expect("lock_unlock_all callback send failed");
-            sender2.lock().unwrap().send(ApiMessage::WaitForEmptyQueue(Box::new(callback))).expect("lock_unlock_all send failed");
+            sender2
+                .lock()
+                .unwrap()
+                .send(ApiMessage::WaitForEmptyQueue(Box::new(callback)))
+                .expect("lock_unlock_all send failed");
             rx.recv().expect("lock_unlock_all callback recv failed")
         }
     };
     super::async_utils::AsyncIshGetter {
         set_get: getter,
-        trans_getter: |_| {
-            vec![true.into()]
-        }
+        trans_getter: |_| vec![true.into()],
     }
 }
 
@@ -169,8 +217,14 @@ pub fn get_limits(
     let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
     let getter = move || {
         let (tx, rx) = mpsc::channel();
-        let callback = move |value: super::SettingsLimits| tx.send(value).expect("get_limits callback send failed");
-        sender.lock().unwrap().send(ApiMessage::GetLimits(Box::new(callback))).expect("get_limits send failed");
+        let callback = move |value: super::SettingsLimits| {
+            tx.send(value).expect("get_limits callback send failed")
+        };
+        sender
+            .lock()
+            .unwrap()
+            .send(ApiMessage::GetLimits(Box::new(callback)))
+            .expect("get_limits send failed");
         rx.recv().expect("get_limits callback recv failed")
     };
     move |_: super::ApiParameterType| {
@@ -179,16 +233,20 @@ pub fn get_limits(
 }
 
 /// Generate get current driver name
-pub fn get_provider(
-    sender: Sender<ApiMessage>,
-) -> impl AsyncCallable {
+pub fn get_provider(sender: Sender<ApiMessage>) -> impl AsyncCallable {
     let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
     let getter = move || {
         let sender2 = sender.clone();
         move |provider_name: String| {
             let (tx, rx) = mpsc::channel();
-            let callback = move |name: crate::persist::DriverJson| tx.send(name).expect("get_provider callback send failed");
-            sender2.lock().unwrap().send(ApiMessage::GetProvider(provider_name, Box::new(callback))).expect("get_provider send failed");
+            let callback = move |name: crate::persist::DriverJson| {
+                tx.send(name).expect("get_provider callback send failed")
+            };
+            sender2
+                .lock()
+                .unwrap()
+                .send(ApiMessage::GetProvider(provider_name, Box::new(callback)))
+                .expect("get_provider send failed");
             rx.recv().expect("get_provider callback recv failed")
         }
     };
@@ -201,9 +259,7 @@ pub fn get_provider(
             }
         },
         set_get: getter,
-        trans_getter: |result| {
-            vec![format!("{:?}", result).into()]
-        }
+        trans_getter: |result| vec![format!("{:?}", result).into()],
     }
 }
 
@@ -248,3 +304,20 @@ fn log_msg_by_level(level: u8, msg: &str) {
     }
 }
 
+/// Generate set battery charge rate web method
+pub fn force_apply(
+    sender: Sender<ApiMessage>,
+) -> impl Fn(super::ApiParameterType) -> super::ApiParameterType {
+    let sender = Mutex::new(sender); // Sender is not Sync; this is required for safety
+    let setter = move |_: ()| {
+        sender
+            .lock()
+            .unwrap()
+            .send(ApiMessage::General(GeneralMessage::ApplyNow))
+            .expect("force_apply send failed")
+    };
+    move |_params_in: super::ApiParameterType| {
+        setter(());
+        vec![true.into()]
+    }
+}

@@ -2,9 +2,9 @@ use std::convert::Into;
 
 use limits_core::json::GenericBatteryLimit;
 
-use crate::settings::{OnResume, OnSet, SettingError};
-use crate::settings::TBattery;
 use crate::persist::BatteryJson;
+use crate::settings::TBattery;
+use crate::settings::{OnResume, OnSet, SettingError};
 
 #[derive(Debug, Clone)]
 pub struct Battery {
@@ -18,6 +18,7 @@ impl Into<BatteryJson> for Battery {
         BatteryJson {
             charge_rate: None,
             charge_mode: None,
+            events: Vec::default(),
         }
     }
 }
@@ -38,16 +39,16 @@ impl Battery {
 
     pub fn from_limits(limits: limits_core::json::GenericBatteryLimit) -> Self {
         // TODO
-        Self {
-            limits
-        }
+        Self { limits }
     }
 
-    pub fn from_json_and_limits(_other: BatteryJson, _version: u64, limits: limits_core::json::GenericBatteryLimit) -> Self {
+    pub fn from_json_and_limits(
+        _other: BatteryJson,
+        _version: u64,
+        limits: limits_core::json::GenericBatteryLimit,
+    ) -> Self {
         // TODO
-        Self {
-            limits
-        }
+        Self { limits }
     }
 }
 
@@ -65,12 +66,16 @@ impl OnResume for Battery {
     }
 }
 
+impl crate::settings::OnPowerEvent for Battery {}
+
 impl TBattery for Battery {
     fn limits(&self) -> crate::api::BatteryLimits {
         crate::api::BatteryLimits {
             charge_current: None,
             charge_current_step: 50,
             charge_modes: vec![],
+            charge_limit: None,
+            charge_limit_step: 1.0,
         }
     }
 
@@ -78,15 +83,13 @@ impl TBattery for Battery {
         self.clone().into()
     }
 
-    fn charge_rate(&mut self, _rate: Option<u64>) {
-    }
+    fn charge_rate(&mut self, _rate: Option<u64>) {}
 
     fn get_charge_rate(&self) -> Option<u64> {
         None
     }
 
-    fn charge_mode(&mut self, _rate: Option<String>) {
-    }
+    fn charge_mode(&mut self, _rate: Option<String>) {}
 
     fn get_charge_mode(&self) -> Option<String> {
         None
@@ -123,6 +126,12 @@ impl TBattery for Battery {
     }
 
     fn read_current_now(&self) -> Option<f64> {
+        None
+    }
+
+    fn charge_limit(&mut self, _limit: Option<f64>) {}
+
+    fn get_charge_limit(&self) -> Option<f64> {
         None
     }
 

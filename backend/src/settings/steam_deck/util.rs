@@ -6,7 +6,7 @@
 #![allow(dead_code)]
 
 use std::fs::OpenOptions;
-use std::io::{Error, Seek, SeekFrom, Read, Write};
+use std::io::{Error, Read, Seek, SeekFrom, Write};
 
 #[inline]
 fn write2(p0: u8, p1: u8) -> Result<usize, Error> {
@@ -27,17 +27,13 @@ fn write_read(p0: u8) -> Result<u8, Error> {
 }
 
 fn write_to(location: u64, value: u8) -> Result<usize, Error> {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .open("/dev/port")?;
+    let mut file = OpenOptions::new().write(true).open("/dev/port")?;
     file.seek(SeekFrom::Start(location))?;
     file.write(&[value])
 }
 
 fn read_from(location: u64) -> Result<u8, Error> {
-    let mut file = OpenOptions::new()
-        .read(true)
-        .open("/dev/port")?;
+    let mut file = OpenOptions::new().read(true).open("/dev/port")?;
     file.seek(SeekFrom::Start(location))?;
     let mut buffer = [0];
     file.read(&mut buffer)?;
@@ -61,21 +57,26 @@ fn wait_ready_for_read() -> Result<(), Error> {
 }
 
 pub fn set_led(red_unused: bool, green_aka_white: bool, blue_unused: bool) -> Result<usize, Error> {
-    let payload: u8 = 0x80 | (red_unused as u8 & 1) | ((green_aka_white as u8 & 1) << 1) | ((blue_unused as u8 & 1) << 2);
+    let payload: u8 = 0x80
+        | (red_unused as u8 & 1)
+        | ((green_aka_white as u8 & 1) << 1)
+        | ((blue_unused as u8 & 1) << 2);
     //log::info!("Payload: {:b}", payload);
     write2(Setting::LEDStatus as _, payload)
 }
 
 const THINGS: &[u8] = &[
-    1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-    1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0,
-    1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+    1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0,
+    0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1,
+    1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0,
+    0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0,
 ];
 
 const TIME_UNIT: std::time::Duration = std::time::Duration::from_millis(200);
 
 pub fn flash_led() {
-    let old_led_state = write_read(Setting::LEDStatus as _).map_err(|e| log::error!("Failed to read LED status: {}", e));
+    let old_led_state = write_read(Setting::LEDStatus as _)
+        .map_err(|e| log::error!("Failed to read LED status: {}", e));
     for &code in THINGS {
         let on = code != 0;
         if let Err(e) = set_led(on, on, false) {
@@ -85,7 +86,9 @@ pub fn flash_led() {
     }
     if let Ok(old_led_state) = old_led_state {
         log::debug!("Restoring LED state to {:#02b}", old_led_state);
-        write2(Setting::LEDStatus as _, old_led_state).map_err(|e| log::error!("Failed to restore LED status: {}", e)).unwrap();
+        write2(Setting::LEDStatus as _, old_led_state)
+            .map_err(|e| log::error!("Failed to restore LED status: {}", e))
+            .unwrap();
     }
 }
 
