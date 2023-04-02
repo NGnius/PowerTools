@@ -10,7 +10,7 @@ mkdir -p out
 echo "--- Building ryzenadj lib ---"
 git clone https://github.com/FlyGoat/RyzenAdj ryzenadj
 cd ryzenadj
-git checkout -q 187549bd0a92f84508161aabfd958b09540c7e56
+git checkout -q 160502771054d31d2f4c2fa46ad42c96336f3a74
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make

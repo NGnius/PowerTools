@@ -93,18 +93,18 @@ impl EventInstruction {
     #[inline]
     fn str_to_trigger(s: &str) -> Option<EventTrigger> {
         match s {
-            "normal" => Some(EventTrigger::PluggedIn),
-            "idle" => Some(EventTrigger::PluggedOut),
+            "plug-in" => Some(EventTrigger::PluggedIn),
+            "plug-out" => Some(EventTrigger::PluggedOut),
             s if s.starts_with('>') => s
                 .trim_start_matches('>')
                 .parse::<f64>()
                 .ok()
-                .map(|x| EventTrigger::BatteryAbove(x)),
+                .map(|x| EventTrigger::BatteryAbove(x/100.0)),
             s if s.starts_with('<') => s
                 .trim_start_matches('<')
                 .parse::<f64>()
                 .ok()
-                .map(|x| EventTrigger::BatteryBelow(x)),
+                .map(|x| EventTrigger::BatteryBelow(x/100.0)),
             _ => None,
         }
     }
