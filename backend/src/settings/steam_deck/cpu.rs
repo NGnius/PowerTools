@@ -300,14 +300,6 @@ impl Cpu {
                     setting: crate::settings::SettingVariant::Cpu,
                 })
                 .unwrap_or_else(|e| errors.push(e));
-            usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n").unwrap_or_else(
-                |e| {
-                    errors.push(SettingError {
-                        msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
-                        setting: crate::settings::SettingVariant::Cpu,
-                    });
-                },
-            );
         } else if self.state.clock_limits_set
             || (self.state.is_resuming && !self.limits.skip_resume_reclock)
             || POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual()
@@ -339,17 +331,6 @@ impl Cpu {
                         setting: crate::settings::SettingVariant::Cpu,
                     })
                     .unwrap_or_else(|e| errors.push(e));
-                usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n").unwrap_or_else(
-                    |e| {
-                        errors.push(SettingError {
-                            msg: format!(
-                                "Failed to write `c` to `{}`: {}",
-                                CPU_CLOCK_LIMITS_PATH, e
-                            ),
-                            setting: crate::settings::SettingVariant::Cpu,
-                        });
-                    },
-                );
             }
             POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_cpu(false, self.index);
             POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT
@@ -358,12 +339,16 @@ impl Cpu {
         }
         // commit changes (if no errors have already occured)
         if errors.is_empty() {
-            usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
-                vec![SettingError {
-                    msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
-                    setting: crate::settings::SettingVariant::Cpu,
-                }]
-            })
+            if POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual() {
+                usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
+                    vec![SettingError {
+                        msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
+                        setting: crate::settings::SettingVariant::Cpu,
+                    }]
+                })
+            } else {
+                Ok(())
+            }
         } else {
             Err(errors)
         }
