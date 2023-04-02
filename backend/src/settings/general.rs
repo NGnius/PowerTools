@@ -96,23 +96,23 @@ impl OnSet for Settings {
     fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
         let mut errors = Vec::new();
 
-        log::debug!("Applying settings for on_resume");
+        log::debug!("Applying settings for on_set");
         self.general
             .on_set()
             .unwrap_or_else(|mut e| errors.append(&mut e));
-        log::debug!("Resumed general");
+        log::debug!("Set general");
         self.battery
             .on_set()
             .unwrap_or_else(|mut e| errors.append(&mut e));
-        log::debug!("Resumed battery");
+        log::debug!("Set battery");
         self.cpus
             .on_set()
             .unwrap_or_else(|mut e| errors.append(&mut e));
-        log::debug!("Resumed CPUs");
+        log::debug!("Set CPUs");
         self.gpu
             .on_set()
             .unwrap_or_else(|mut e| errors.append(&mut e));
-        log::debug!("Resumed GPU");
+        log::debug!("Set GPU");
 
         if errors.is_empty() {
             Ok(())

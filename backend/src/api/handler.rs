@@ -355,7 +355,7 @@ impl ApiMessageHandler {
                         }
                     }
                 }
-                true
+                false // on_power_event() should apply everything
             }
             ApiMessage::WaitForEmptyQueue(callback) => {
                 self.on_empty.push(callback);

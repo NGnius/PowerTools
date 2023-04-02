@@ -214,7 +214,7 @@ impl Gpu {
                 });
         } else if self.state.fast_ppt_set {
             self.state.fast_ppt_set = false;
-            let fast_ppt = self.limits.fast_ppt.max;
+            let fast_ppt = self.limits.fast_ppt_default;
             let fast_ppt_path = gpu_power_path(FAST_PPT);
             usdpl_back::api::files::write_single(&fast_ppt_path, fast_ppt)
                 .map_err(|e| SettingError {
@@ -245,7 +245,7 @@ impl Gpu {
                 });
         } else if self.state.slow_ppt_set {
             self.state.slow_ppt_set = false;
-            let slow_ppt = self.limits.slow_ppt.max;
+            let slow_ppt = self.limits.slow_ppt_default;
             let slow_ppt_path = gpu_power_path(SLOW_PPT);
             usdpl_back::api::files::write_single(&slow_ppt_path, slow_ppt)
                 .map_err(|e| SettingError {

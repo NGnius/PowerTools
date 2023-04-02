@@ -111,10 +111,12 @@
       "min": 1000000,
       "max": 30000000
     },
+    "fast_ppt_default": 15000000,
     "slow_ppt": {
       "min": 1000000,
       "max": 29000000
     },
+    "slow_ppt_default": 15000000,
     "ppt_divisor": 1000000,
     "ppt_step": 1,
     "clock_min": {

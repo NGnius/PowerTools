@@ -10,7 +10,7 @@ const ALLOWED_ERROR: f64 = 100.0; // period of 10ms with 100x means sleep has to
 pub fn spawn(sender: Sender<ApiMessage>) -> JoinHandle<()> {
     thread::spawn(move || {
         log::info!("resume_worker starting...");
-        let duration = Duration::from_millis(10); // very low so it detects before Steam client does
+        let duration = Duration::from_millis(50); // very low so it detects before Steam client does
                                                   // this allows PowerTools to set some values at wakeup and Steam to override them before user notices
         let mut start = Instant::now();
         loop {
