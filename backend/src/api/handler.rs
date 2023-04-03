@@ -262,15 +262,16 @@ fn print_errors(call_name: &str, errors: Vec<crate::settings::SettingError>) {
 
 impl ApiMessageHandler {
     pub fn process_forever(&mut self, settings: &mut Settings) {
-        let mut dirty_echo = true; // set everything twice, to make sure PowerTools wins on race conditions
+        //let mut dirty_echo = true; // set everything twice, to make sure PowerTools wins on race conditions
         while let Ok(msg) = self.intake.recv() {
             let mut dirty = self.process(settings, msg);
             while let Ok(msg) = self.intake.try_recv() {
                 dirty |= self.process(settings, msg);
             }
-            if dirty || dirty_echo {
-                dirty_echo = dirty; // echo only once
-                                    // run on_set
+            if dirty /*|| dirty_echo */ {
+                //dirty_echo = dirty; // echo only once
+
+                // run on_set
                 if let Err(e) = settings.on_set() {
                     print_errors("on_set", e);
                 }
@@ -354,7 +355,7 @@ impl ApiMessageHandler {
                         }
                     }
                 }
-                true
+                false // on_power_event() should apply everything
             }
             ApiMessage::WaitForEmptyQueue(callback) => {
                 self.on_empty.push(callback);

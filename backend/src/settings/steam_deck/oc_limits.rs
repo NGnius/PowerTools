@@ -123,7 +123,9 @@ impl Default for CpuLimits {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(super) struct GpuLimits {
     pub fast_ppt: MinMax<u64>,
+    pub fast_ppt_default: u64,
     pub slow_ppt: MinMax<u64>,
+    pub slow_ppt_default: u64,
     pub ppt_divisor: u64,
     pub ppt_step: u64,
     pub clock_min: MinMax<u64>,
@@ -139,10 +141,12 @@ impl Default for GpuLimits {
                 min: 1000000,
                 max: 30_000_000,
             },
+            fast_ppt_default: 15_000_000,
             slow_ppt: MinMax {
                 min: 1000000,
                 max: 29_000_000,
             },
+            slow_ppt_default: 15_000_000,
             ppt_divisor: 1_000_000,
             ppt_step: 1,
             clock_min: MinMax {

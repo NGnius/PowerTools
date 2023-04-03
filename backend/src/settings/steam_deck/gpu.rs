@@ -199,6 +199,22 @@ impl Gpu {
         let mut errors = Vec::new();
         // set fast PPT
         if let Some(fast_ppt) = &self.fast_ppt {
+            self.state.fast_ppt_set = true;
+            let fast_ppt_path = gpu_power_path(FAST_PPT);
+            usdpl_back::api::files::write_single(&fast_ppt_path, fast_ppt)
+                .map_err(|e| SettingError {
+                    msg: format!(
+                        "Failed to write `{}` to `{}`: {}",
+                        fast_ppt, &fast_ppt_path, e
+                    ),
+                    setting: crate::settings::SettingVariant::Gpu,
+                })
+                .unwrap_or_else(|e| {
+                    errors.push(e);
+                });
+        } else if self.state.fast_ppt_set {
+            self.state.fast_ppt_set = false;
+            let fast_ppt = self.limits.fast_ppt_default;
             let fast_ppt_path = gpu_power_path(FAST_PPT);
             usdpl_back::api::files::write_single(&fast_ppt_path, fast_ppt)
                 .map_err(|e| SettingError {
@@ -214,6 +230,22 @@ impl Gpu {
         }
         // set slow PPT
         if let Some(slow_ppt) = &self.slow_ppt {
+            self.state.slow_ppt_set = true;
+            let slow_ppt_path = gpu_power_path(SLOW_PPT);
+            usdpl_back::api::files::write_single(&slow_ppt_path, slow_ppt)
+                .map_err(|e| SettingError {
+                    msg: format!(
+                        "Failed to write `{}` to `{}`: {}",
+                        slow_ppt, &slow_ppt_path, e
+                    ),
+                    setting: crate::settings::SettingVariant::Gpu,
+                })
+                .unwrap_or_else(|e| {
+                    errors.push(e);
+                });
+        } else if self.state.slow_ppt_set {
+            self.state.slow_ppt_set = false;
+            let slow_ppt = self.limits.slow_ppt_default;
             let slow_ppt_path = gpu_power_path(SLOW_PPT);
             usdpl_back::api::files::write_single(&slow_ppt_path, slow_ppt)
                 .map_err(|e| SettingError {
