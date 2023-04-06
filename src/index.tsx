@@ -173,7 +173,7 @@ const reload = function() {
       }
   });
   //@ts-ignore
-  startHook = SteamClient.Apps.RegisterForGameActionEnd((actionType, id) => {
+  startHook = SteamClient.Apps.RegisterForGameActionStart((actionType, id) => {
       //@ts-ignore
       let gameInfo: any = appStore.GetAppOverviewByGameID(id);
 
