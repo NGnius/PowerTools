@@ -59,8 +59,8 @@ body:
           description: What version of PowerTools are you using? This is the version beside `Native` near the bottom of the plugin's UI.
           options:
               - _
-              - 1.3.0 (Latest stable)
-              - 1.2.0 (Out of date)
+              - 1.3.1 (Latest stable)
+              - 1.3.0 (Out of date)
               - Alpha/Beta/RC version
               - Not listed
       validations:
