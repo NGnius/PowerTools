@@ -171,6 +171,7 @@ fn oc_limits_filepath() -> std::path::PathBuf {
 mod tests {
     use super::*;
 
+    #[cfg(not(feature = "dev_stuff"))] // this can fail due to reading from incompletely-written file otherwise
     #[test]
     fn load_pt_oc() {
         let mut file = std::fs::File::open("../pt_oc.json").unwrap();
