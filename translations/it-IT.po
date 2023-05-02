@@ -1,0 +1,244 @@
+# TEMPLATE TITLE.
+# Copyright (C) 2023 NGnius
+# This file is distributed under the same license as the PowerTools package.
+# NGnius (Graham) <ngniusness@gmail.com>, 2023.
+msgid ""
+msgstr ""
+"Project-Id-Version: v1.1\n"
+"Report-Msgid-Bugs-To: https://github.com/NGnius/PowerTools/issues\n"
+"POT-Creation-Date: 2023-01-09 19:52-0500\n"
+"PO-Revision-Date: 2023-05-02 10:04+0200\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: it_IT\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.2.2\n"
+
+# -- index.tsx --
+# (Section title)
+#: index.tsx:226
+msgid "Miscellaneous"
+msgstr "Miscellanea"
+
+# (Profile persistence toggle, a bit like SteamOS's "Use per-game profile")
+#: index.tsx:226
+msgid "Persistent Profile"
+msgstr "Profilo persistente"
+
+# (Profile persistence toggle description)
+#: index.tsx:227
+msgid "Save profile and load it next time"
+msgstr "Salva il profilo e caricalo la prossima volta"
+
+# (Profile display)
+#: index.tsx:239
+msgid "Profile"
+msgstr "Profilo"
+
+# (Button to reset everything to system defaults)
+#: index.tsx:276
+msgid "Reapply settings"
+msgstr "Riapplica impostazioni"
+
+# (Button to reset everything to system defaults)
+#: index.tsx:297
+msgid "Defaults"
+msgstr "Default"
+
+# -- components/battery.tsx --
+# (Battery section title)
+#: components/battery.tsx:42
+msgid "Battery"
+msgstr "Batteria"
+
+# (Charge of battery at this moment, with percentage of expected full charge in brackets)
+#: components/battery.tsx:46
+msgid "Now (Charge)"
+msgstr "Ora (Carica)"
+
+# (Maximum capacity of battery, with percentage of design capacity in brackets)
+#: components/battery.tsx:52
+msgid "Max (Design)"
+msgstr "Mass (Design)"
+
+# (Charge current limit override toggle)
+#: components/battery.tsx:59
+msgid "Charge Current Limits"
+msgstr "Limiti di corrente di carica"
+
+# (Charge current limit override toggle description)
+#: components/battery.tsx:60
+msgid "Control battery charge rate when awake"
+msgstr "Controlla la velocità di ricarica quando il Deck è attivo"
+
+# (Battery maximum input current with unit)
+#: components/battery.tsx:74
+msgid "Maximum (mA)"
+msgstr "Massimo (mA)"
+
+# (Battery charge mode override toggle)
+#: components/battery.tsx:97,115
+msgid "Charge Mode"
+msgstr "Modalità di ricarica"
+
+# (Battery charge mode override toggle description)
+#: components/battery.tsx:98
+msgid "Force battery charge mode"
+msgstr "Forza la modalità di ricarica della batteria"
+
+# (Battery charge mode dropdown)
+#: components/battery.tsx:112
+msgid "Mode"
+msgstr "Modalità"
+
+# (Battery electrical current display)
+#: components/battery.tsx:133
+msgid "Current"
+msgstr "Corrente"
+
+# (Battery charging maximum)
+#: components/battery.tsx:141
+msgid "Charge Limit"
+msgstr "Limite di carica"
+
+# (Battery charging maximum description)
+#: components/battery.tsx:142
+msgid "Limit battery charge when awake"
+msgstr "Limita la carica della batteria quando il Deck è attivo"
+
+# (Battery charging maximum slider)
+#: components/battery.tsx:156
+msgid "Maximum (%)"
+msgstr "Massimo (%)"
+
+# -- components/cpus.tsx --
+# (CPU section title)
+#: components/cpus.tsx:64
+msgid "CPU"
+msgstr "CPU"
+
+# (CPU advanced mode toggle)
+#: components/cpus.tsx:70
+msgid "Advanced"
+msgstr "Avanzate"
+
+# (CPU advanced mode toggle description)
+#: components/cpus.tsx:71
+msgid "Enables per-thread configuration"
+msgstr "Abilita configurazione per thread"
+
+# (CPU Simultaneous MultiThreading toggle)
+#: components/cpus.tsx:88
+msgid "SMT"
+msgstr "SMT"
+
+# (CPU SMT toggle description)
+#: components/cpus.tsx:89
+msgid "Enables odd-numbered CPUs"
+msgstr "Abilita CPU dispari"
+
+# (CPU thread count slider)
+#: components/cpus.tsx:106
+msgid "Threads"
+msgstr "Threads"
+
+# (Clock speed override toggle)
+#: components/cpus.tsx:137 components/gpu.tsx:112
+msgid "Frequency Limits"
+msgstr "Limiti di frequenza"
+
+# (Clock speed override toggle description)
+#: components/cpus.tsx:138 components/gpu.tsx:113
+msgid "Set bounds on clock speed"
+msgstr "Imposta limiti di frequenza di clock"
+
+# (Minimum clock speed with unit)
+#: components/cpus.tsx:165 components/gpu.tsx:137
+msgid "Minimum (MHz)"
+msgstr "Minimo (MHz)"
+
+# (Maximum clock speed with unit)
+#: components/cpus.tsx:195 components/gpu.tsx:160
+msgid "Maximum (MHz)"
+msgstr "Massimo (MHz)"
+
+# advanced mode
+# (CPU selection slider)
+#: components/cpus.tsx:226
+msgid "Selected CPU"
+msgstr "CPU selezionata"
+
+# (CPU Online toggle)
+#: components/cpus.tsx:246
+msgid "Online"
+msgstr "Online"
+
+# (CPU Online description)
+#: components/cpus.tsx:247
+msgid "Allow the CPU thread to do work"
+msgstr "Permetti al thread della CPU di eseguire operazioni"
+
+# (CPU scheduling governor dropdown -- governor names are not translated)
+#: components/cpus.tsx:342
+msgid "Governor"
+msgstr "Governor"
+
+# -- components/debug.tsx --
+# (Debug section title)
+#: components/debug.tsx:29
+msgid "Debug"
+msgstr "Debug"
+
+# (Version display for native back-end of PowerTools)
+#: components/debug.tsx:33
+msgid "Native"
+msgstr "Nativo"
+
+# (Mode display for framework of USDPL API)
+#: components/debug.tsx:47
+msgid "Framework"
+msgstr "Framework"
+
+# (Display for software implementation in PowerTools which applies settings)
+#: components/debug.tsx:54
+msgid "Driver"
+msgstr "Driver"
+
+# -- components/gpu.tsx --
+# (GPU section title)
+#: components/gpu.tsx:34
+msgid "GPU"
+msgstr "GPU"
+
+# (PPT Limits override toggle)
+#: components/gpu.tsx:39
+msgid "PowerPlay Limits"
+msgstr "Limiti PowerPlay"
+
+# (PPT Limits override toggle description)
+#: components/gpu.tsx:40
+msgid "Override APU TDP settings"
+msgstr "Sovrascrivi le impostazioni di TDP della APU"
+
+# (SlowPPT slider with unit)
+#: components/gpu.tsx:63
+msgid "SlowPPT (W)"
+msgstr "SlowPPT (W)"
+
+# (FastPPT slider with unit)
+#: components/gpu.tsx:87
+msgid "FastPPT (W)"
+msgstr "FastPPT (W)"
+
+# (Reduce memory clock speed toggle)
+#: components/gpu.tsx:112
+msgid "Downclock Memory"
+msgstr "Downclock RAM"
+
+# (Reduce memory clock speed toggle description)
+#: components/gpu.tsx:112
+msgid "Force RAM into low-power mode"
+msgstr "Forza la RAM in modalità a basso consumo"
