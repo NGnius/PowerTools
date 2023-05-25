@@ -8,9 +8,21 @@ body:
           label: Please confirm
           description: Issues without all checks may be ignored/closed.
           options:
-              - label: I have searched existing issues
-              - label: This issue is not a duplicate of an existing one
+              - label: I have searched existing issues and found no duplicate
+                required: true
               - label: I will fill this out to the best of my ability
+                required: true
+      validations:
+          required: true
+    - type: checkboxes
+      id: dev-options
+      attributes:
+          label: Extra details
+          description: Various things that often are forgotten.
+          options:
+              - label: I am using a custom `pt_oc.json` file
+              - label: I am using a custom `limits_cache.json` file
+              - label: I have submitted a log through the PowerTools UI
       validations:
           required: true
     - type: textarea
