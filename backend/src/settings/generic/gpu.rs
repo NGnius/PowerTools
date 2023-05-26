@@ -2,6 +2,7 @@ use std::convert::Into;
 
 use limits_core::json::GenericGpuLimit;
 
+use crate::api::RangeLimit;
 use crate::persist::GpuJson;
 use crate::settings::TGpu;
 use crate::settings::{min_max_from_json, MinMax};
@@ -97,14 +98,38 @@ impl crate::settings::OnPowerEvent for Gpu {}
 impl TGpu for Gpu {
     fn limits(&self) -> crate::api::GpuLimits {
         crate::api::GpuLimits {
-            fast_ppt_limits: self.limits.fast_ppt.clone().map(|x| x.into()),
-            slow_ppt_limits: self.limits.slow_ppt.clone().map(|x| x.into()),
+            fast_ppt_limits: self
+                .limits
+                .fast_ppt
+                .clone()
+                .map(|x| RangeLimit::new(x.min.unwrap_or(0), x.max.unwrap_or(15_000_000))),
+            slow_ppt_limits: self
+                .limits
+                .slow_ppt
+                .clone()
+                .map(|x| RangeLimit::new(x.min.unwrap_or(0), x.max.unwrap_or(15_000_000))),
             ppt_step: self.limits.ppt_step.unwrap_or(1_000_000),
-            tdp_limits: self.limits.tdp.clone().map(|x| x.into()),
-            tdp_boost_limits: self.limits.tdp_boost.clone().map(|x| x.into()),
+            tdp_limits: self
+                .limits
+                .tdp
+                .clone()
+                .map(|x| RangeLimit::new(x.min.unwrap_or(0), x.max.unwrap_or(15_000_000))),
+            tdp_boost_limits: self
+                .limits
+                .tdp_boost
+                .clone()
+                .map(|x| RangeLimit::new(x.min.unwrap_or(0), x.max.unwrap_or(15_000_000))),
             tdp_step: self.limits.tdp_step.unwrap_or(42),
-            clock_min_limits: self.limits.clock_min.clone().map(|x| x.into()),
-            clock_max_limits: self.limits.clock_max.clone().map(|x| x.into()),
+            clock_min_limits: self
+                .limits
+                .clock_min
+                .clone()
+                .map(|x| RangeLimit::new(x.min.unwrap_or(0), x.max.unwrap_or(3_000))),
+            clock_max_limits: self
+                .limits
+                .clock_max
+                .clone()
+                .map(|x| RangeLimit::new(x.min.unwrap_or(0), x.max.unwrap_or(3_000))),
             clock_step: self.limits.clock_step.unwrap_or(100),
             memory_control_capable: false,
         }
@@ -116,10 +141,20 @@ impl TGpu for Gpu {
 
     fn ppt(&mut self, fast: Option<u64>, slow: Option<u64>) {
         if let Some(fast_lims) = &self.limits.fast_ppt {
-            self.fast_ppt = fast.map(|x| x.clamp(fast_lims.min, fast_lims.max));
+            self.fast_ppt = fast.map(|x| {
+                x.clamp(
+                    fast_lims.min.unwrap_or(0),
+                    fast_lims.max.unwrap_or(u64::MAX),
+                )
+            });
         }
         if let Some(slow_lims) = &self.limits.slow_ppt {
-            self.slow_ppt = slow.map(|x| x.clamp(slow_lims.min, slow_lims.max));
+            self.slow_ppt = slow.map(|x| {
+                x.clamp(
+                    slow_lims.min.unwrap_or(0),
+                    slow_lims.max.unwrap_or(u64::MAX),
+                )
+            });
         }
     }
 

@@ -19,14 +19,18 @@ pub fn map_optional_result<T: Into<Primitive>>(
     result: Result<Option<T>, SettingError>,
 ) -> super::ApiParameterType {
     match result {
-        Ok(val) => match val {
-            Some(val) => vec![val.into()],
-            None => vec![Primitive::Empty],
-        },
+        Ok(val) => vec![map_optional(val)],
         Err(e) => {
             log::debug!("Mapping error to primitive: {}", e);
             vec![e.msg.into()]
         }
+    }
+}
+
+pub fn map_optional<T: Into<Primitive>>(option: Option<T>) -> Primitive {
+    match option {
+        Some(val) => val.into(),
+        None => Primitive::Empty,
     }
 }
 

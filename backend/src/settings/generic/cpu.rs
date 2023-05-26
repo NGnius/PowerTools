@@ -3,6 +3,7 @@ use std::convert::{AsMut, AsRef, Into};
 use limits_core::json::GenericCpuLimit;
 
 use super::FromGenericCpuInfo;
+use crate::api::RangeLimit;
 use crate::persist::CpuJson;
 use crate::settings::{min_max_from_json, MinMax};
 use crate::settings::{OnResume, OnSet, SettingError};
@@ -330,8 +331,16 @@ impl Cpu {
 
     fn limits(&self) -> crate::api::CpuLimits {
         crate::api::CpuLimits {
-            clock_min_limits: self.limits.clock_min.clone().map(|x| x.into()),
-            clock_max_limits: self.limits.clock_max.clone().map(|x| x.into()),
+            clock_min_limits: self
+                .limits
+                .clock_min
+                .clone()
+                .map(|x| RangeLimit::new(x.min.unwrap_or(0), x.max.unwrap_or(5_000))),
+            clock_max_limits: self
+                .limits
+                .clock_max
+                .clone()
+                .map(|x| RangeLimit::new(x.min.unwrap_or(0), x.max.unwrap_or(5_000))),
             clock_step: self.limits.clock_step,
             governors: self.governors(),
         }

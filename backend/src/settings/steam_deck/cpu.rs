@@ -234,6 +234,11 @@ pub struct Cpu {
 
 const CPU_CLOCK_LIMITS_PATH: &str = "/sys/class/drm/card0/device/pp_od_clk_voltage";
 
+enum ClockType {
+    Min = 0,
+    Max = 1,
+}
+
 impl Cpu {
     #[inline]
     fn from_json(other: CpuJson, version: u64, i: usize, oc_limits: CpuLimits) -> Self {
@@ -257,86 +262,91 @@ impl Cpu {
         }
     }
 
-    fn set_force_performance_related(&mut self) -> Result<(), Vec<SettingError>> {
-        let mut errors = Vec::new();
+    fn set_clock_limit(index: usize, speed: u64, mode: ClockType) -> Result<(), SettingError> {
+        let payload = format!("p {} {} {}\n", index / 2, mode as u8, speed);
+        usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload).map_err(|e| {
+            SettingError {
+                msg: format!(
+                    "Failed to write `{}` to `{}`: {}",
+                    &payload, CPU_CLOCK_LIMITS_PATH, e
+                ),
+                setting: crate::settings::SettingVariant::Cpu,
+            }
+        })
+    }
 
-        // set clock limits
-        //log::debug!("Setting {} to manual", CPU_FORCE_LIMITS_PATH);
-        //let mode: String = usdpl_back::api::files::read_single(CPU_FORCE_LIMITS_PATH.to_owned()).unwrap();
+    fn set_clock_limits(&mut self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
         if let Some(clock_limits) = &self.clock_limits {
             POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_cpu(true, self.index);
             POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level()?;
             log::debug!(
-                "Setting CPU {} (min, max) clockspeed to ({}, {})",
+                "Setting CPU {} (min, max) clockspeed to ({:?}, {:?})",
                 self.index,
                 clock_limits.min,
                 clock_limits.max
             );
             self.state.clock_limits_set = true;
             // max clock
-            let payload_max = format!("p {} 1 {}\n", self.index / 2, clock_limits.max);
-            usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_max)
-                .map_err(|e| SettingError {
-                    msg: format!(
-                        "Failed to write `{}` to `{}`: {}",
-                        &payload_max, CPU_CLOCK_LIMITS_PATH, e
-                    ),
-                    setting: crate::settings::SettingVariant::Cpu,
-                })
-                .unwrap_or_else(|e| errors.push(e));
+            if let Some(max) = clock_limits.max {
+                Self::set_clock_limit(self.index, max, ClockType::Max)
+                    .unwrap_or_else(|e| errors.push(e));
+            }
             // min clock
-            let valid_min = if clock_limits.min < self.limits.clock_min.min {
-                self.limits.clock_min.min
+            if let Some(min) = clock_limits.min {
+                let valid_min = if min < self.limits.clock_min.min {
+                    self.limits.clock_min.min
+                } else {
+                    min
+                };
+                Self::set_clock_limit(self.index, valid_min, ClockType::Min)
+                    .unwrap_or_else(|e| errors.push(e));
+            }
+
+            if errors.is_empty() {
+                Ok(())
             } else {
-                clock_limits.min
-            };
-            let payload_min = format!("p {} 0 {}\n", self.index / 2, valid_min);
-            usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_min)
-                .map_err(|e| SettingError {
-                    msg: format!(
-                        "Failed to write `{}` to `{}`: {}",
-                        &payload_min, CPU_CLOCK_LIMITS_PATH, e
-                    ),
-                    setting: crate::settings::SettingVariant::Cpu,
-                })
-                .unwrap_or_else(|e| errors.push(e));
+                Err(errors)
+            }
         } else if self.state.clock_limits_set
             || (self.state.is_resuming && !self.limits.skip_resume_reclock)
             || POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual()
         {
+            let mut errors = Vec::new();
             self.state.clock_limits_set = false;
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_cpu(false, self.index);
             if POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual() {
                 POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level()?;
                 // disable manual clock limits
                 log::debug!("Setting CPU {} to default clockspeed", self.index);
                 // max clock
-                let payload_max = format!("p {} 1 {}\n", self.index / 2, self.limits.clock_max.max);
-                usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_max)
-                    .map_err(|e| SettingError {
-                        msg: format!(
-                            "Failed to write `{}` to `{}`: {}",
-                            &payload_max, CPU_CLOCK_LIMITS_PATH, e
-                        ),
-                        setting: crate::settings::SettingVariant::Cpu,
-                    })
+                Self::set_clock_limit(self.index, self.limits.clock_max.max, ClockType::Max)
                     .unwrap_or_else(|e| errors.push(e));
                 // min clock
-                let payload_min = format!("p {} 0 {}\n", self.index / 2, self.limits.clock_min.min);
-                usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, &payload_min)
-                    .map_err(|e| SettingError {
-                        msg: format!(
-                            "Failed to write `{}` to `{}`: {}",
-                            &payload_min, CPU_CLOCK_LIMITS_PATH, e
-                        ),
-                        setting: crate::settings::SettingVariant::Cpu,
-                    })
+                Self::set_clock_limit(self.index, self.limits.clock_min.min, ClockType::Min)
                     .unwrap_or_else(|e| errors.push(e));
             }
-            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_cpu(false, self.index);
             POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT
                 .enforce_level()
                 .unwrap_or_else(|mut e| errors.append(&mut e));
+            if errors.is_empty() {
+                Ok(())
+            } else {
+                Err(errors)
+            }
+        } else {
+            Ok(())
         }
+    }
+
+    fn set_force_performance_related(&mut self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
+
+        // set clock limits
+        //log::debug!("Setting {} to manual", CPU_FORCE_LIMITS_PATH);
+        //let mode: String = usdpl_back::api::files::read_single(CPU_FORCE_LIMITS_PATH.to_owned()).unwrap();
+        self.set_clock_limits()
+            .unwrap_or_else(|mut e| errors.append(&mut e));
         // commit changes (if no errors have already occured)
         if errors.is_empty() {
             if POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual() {
@@ -351,6 +361,23 @@ impl Cpu {
             }
         } else {
             Err(errors)
+        }
+    }
+
+    fn set_governor(&self) -> Result<(), SettingError> {
+        if self.index == 0 || self.online {
+            let governor_path = cpu_governor_path(self.index);
+            usdpl_back::api::files::write_single(&governor_path, &self.governor).map_err(|e| {
+                SettingError {
+                    msg: format!(
+                        "Failed to write `{}` to `{}`: {}",
+                        &self.governor, &governor_path, e
+                    ),
+                    setting: crate::settings::SettingVariant::Cpu,
+                }
+            })
+        } else {
+            Ok(())
         }
     }
 
@@ -371,19 +398,8 @@ impl Cpu {
         self.set_force_performance_related()
             .unwrap_or_else(|mut e| errors.append(&mut e));
 
-        // set governor
-        if self.index == 0 || self.online {
-            let governor_path = cpu_governor_path(self.index);
-            usdpl_back::api::files::write_single(&governor_path, &self.governor)
-                .map_err(|e| SettingError {
-                    msg: format!(
-                        "Failed to write `{}` to `{}`: {}",
-                        &self.governor, &governor_path, e
-                    ),
-                    setting: crate::settings::SettingVariant::Cpu,
-                })
-                .unwrap_or_else(|e| errors.push(e));
-        }
+        self.set_governor().unwrap_or_else(|e| errors.push(e));
+
         if errors.is_empty() {
             Ok(())
         } else {
@@ -393,12 +409,14 @@ impl Cpu {
 
     fn clamp_all(&mut self) {
         if let Some(clock_limits) = &mut self.clock_limits {
-            clock_limits.min = clock_limits
-                .min
-                .clamp(self.limits.clock_min.min, self.limits.clock_min.max);
-            clock_limits.max = clock_limits
-                .max
-                .clamp(self.limits.clock_max.min, self.limits.clock_max.max);
+            if let Some(min) = clock_limits.min {
+                clock_limits.min =
+                    Some(min.clamp(self.limits.clock_min.min, self.limits.clock_min.max));
+            }
+            if let Some(max) = clock_limits.max {
+                clock_limits.max =
+                    Some(max.clamp(self.limits.clock_max.min, self.limits.clock_max.max));
+            }
         }
     }
 

@@ -57,16 +57,16 @@ impl Default for Base {
                     },
                     limits: vec![
                         super::Limits::Cpu(super::CpuLimit::GenericAMD(super::GenericCpuLimit {
-                            clock_min: Some(super::RangeLimit { min: 1000, max: 3700 }),
-                            clock_max: Some(super::RangeLimit { min: 1000, max: 3700 }),
+                            clock_min: Some(super::RangeLimit { min: Some(1000), max: Some(3700) }),
+                            clock_max: Some(super::RangeLimit { min: Some(1000), max: Some(3700) }),
                             clock_step: 100,
                         })),
                         super::Limits::Gpu(super::GpuLimit::GenericAMD(super::GenericGpuLimit {
-                            fast_ppt: Some(super::RangeLimit { min: 1_000_000, max: 25_000_000 }),
-                            slow_ppt: Some(super::RangeLimit { min: 1_000_000, max: 25_000_000 }),
+                            fast_ppt: Some(super::RangeLimit { min: Some(1_000_000), max: Some(25_000_000) }),
+                            slow_ppt: Some(super::RangeLimit { min: Some(1_000_000), max: Some(25_000_000) }),
                             ppt_step: Some(1_000_000),
-                            clock_min: Some(super::RangeLimit { min: 400, max: 1100 }),
-                            clock_max: Some(super::RangeLimit { min: 400, max: 1100 }),
+                            clock_min: Some(super::RangeLimit { min: Some(400), max: Some(1100) }),
+                            clock_max: Some(super::RangeLimit { min: Some(400), max: Some(1100) }),
                             clock_step: Some(100),
                             ..Default::default()
                         })),
@@ -84,16 +84,16 @@ impl Default for Base {
                     },
                     limits: vec![
                         super::Limits::Cpu(super::CpuLimit::GenericAMD(super::GenericCpuLimit {
-                            clock_min: Some(super::RangeLimit { min: 1000, max: 4000 }),
-                            clock_max: Some(super::RangeLimit { min: 1000, max: 4000 }),
+                            clock_min: Some(super::RangeLimit { min: Some(1000), max: Some(4000) }),
+                            clock_max: Some(super::RangeLimit { min: Some(1000), max: Some(4000) }),
                             clock_step: 100,
                         })),
                         super::Limits::Gpu(super::GpuLimit::GenericAMD(super::GenericGpuLimit {
-                            fast_ppt: Some(super::RangeLimit { min: 1_000_000, max: 25_000_000 }),
-                            slow_ppt: Some(super::RangeLimit { min: 1_000_000, max: 25_000_000 }),
+                            fast_ppt: Some(super::RangeLimit { min: Some(1_000_000), max: Some(25_000_000) }),
+                            slow_ppt: Some(super::RangeLimit { min: Some(1_000_000), max: Some(25_000_000) }),
                             ppt_step: Some(1_000_000),
-                            clock_min: Some(super::RangeLimit { min: 400, max: 1600 }),
-                            clock_max: Some(super::RangeLimit { min: 400, max: 1600 }),
+                            clock_min: Some(super::RangeLimit { min: Some(400), max: Some(1600) }),
+                            clock_max: Some(super::RangeLimit { min: Some(400), max: Some(1600) }),
                             clock_step: Some(100),
                             ..Default::default()
                         })),
@@ -111,16 +111,16 @@ impl Default for Base {
                     },
                     limits: vec![
                         super::Limits::Cpu(super::CpuLimit::GenericAMD(super::GenericCpuLimit {
-                            clock_min: Some(super::RangeLimit { min: 1000, max: 4500 }),
-                            clock_max: Some(super::RangeLimit { min: 1000, max: 4500 }),
+                            clock_min: Some(super::RangeLimit { min: Some(1000), max: Some(4500) }),
+                            clock_max: Some(super::RangeLimit { min: Some(1000), max: Some(4500) }),
                             clock_step: 100,
                         })),
                         super::Limits::Gpu(super::GpuLimit::GenericAMD(super::GenericGpuLimit {
-                            fast_ppt: Some(super::RangeLimit { min: 1_000_000, max: 25_000_000 }),
-                            slow_ppt: Some(super::RangeLimit { min: 1_000_000, max: 25_000_000 }),
+                            fast_ppt: Some(super::RangeLimit { min: Some(1_000_000), max: Some(25_000_000) }),
+                            slow_ppt: Some(super::RangeLimit { min: Some(1_000_000), max: Some(25_000_000) }),
                             ppt_step: Some(1_000_000),
-                            clock_min: Some(super::RangeLimit { min: 400, max: 2000 }),
-                            clock_max: Some(super::RangeLimit { min: 400, max: 2000 }),
+                            clock_min: Some(super::RangeLimit { min: Some(400), max: Some(2000) }),
+                            clock_max: Some(super::RangeLimit { min: Some(400), max: Some(2000) }),
                             clock_step: Some(100),
                             ..Default::default()
                         })),
@@ -138,16 +138,16 @@ impl Default for Base {
                     },
                     limits: vec![
                         super::Limits::Cpu(super::CpuLimit::Generic(super::GenericCpuLimit {
-                            clock_min: Some(super::RangeLimit { min: 1000, max: 4700 }),
-                            clock_max: Some(super::RangeLimit { min: 1000, max: 4700 }),
+                            clock_min: Some(super::RangeLimit { min: Some(1000), max: Some(4700) }),
+                            clock_max: Some(super::RangeLimit { min: Some(1000), max: Some(4700) }),
                             clock_step: 100,
                         })),
                         super::Limits::Gpu(super::GpuLimit::Generic(super::GenericGpuLimit {
-                            fast_ppt: Some(super::RangeLimit { min: 1_000_000, max: 28_000_000 }),
-                            slow_ppt: Some(super::RangeLimit { min: 1_000_000, max: 28_000_000 }),
+                            fast_ppt: Some(super::RangeLimit { min: Some(1_000_000), max: Some(28_000_000) }),
+                            slow_ppt: Some(super::RangeLimit { min: Some(1_000_000), max: Some(28_000_000) }),
                             ppt_step: Some(1_000_000),
-                            clock_min: Some(super::RangeLimit { min: 400, max: 2200 }),
-                            clock_max: Some(super::RangeLimit { min: 400, max: 2200 }),
+                            clock_min: Some(super::RangeLimit { min: Some(400), max: Some(2200) }),
+                            clock_max: Some(super::RangeLimit { min: Some(400), max: Some(2200) }),
                             clock_step: Some(100),
                             ..Default::default()
                         })),

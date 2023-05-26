@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use usdpl_back::core::serdes::Primitive;
 use usdpl_back::AsyncCallable;
 
+use super::utility::map_optional;
 use crate::settings::MinMax;
 //use crate::utility::{unwrap_lock, unwrap_maybe_fatal};
 use super::handler::{ApiMessage, GpuMessage};
@@ -94,8 +95,8 @@ pub fn set_clock_limits(
                 let safe_max = if max < min { min } else { max };
                 let safe_min = if min > max { max } else { min };
                 setter(MinMax {
-                    min: safe_min as _,
-                    max: safe_max as _,
+                    min: Some(safe_min as _),
+                    max: Some(safe_max as _),
                 });
                 vec![(safe_min as u64).into(), (safe_max as u64).into()]
             } else {
@@ -105,6 +106,7 @@ pub fn set_clock_limits(
             vec!["set_clock_limits missing parameter 0".into()]
         }
     }
+    // TODO allow param 0 and/or 1 to be Primitive::Empty
 }
 
 pub fn get_clock_limits(sender: Sender<ApiMessage>) -> impl AsyncCallable {
@@ -131,7 +133,7 @@ pub fn get_clock_limits(sender: Sender<ApiMessage>) -> impl AsyncCallable {
         set_get: getter,
         trans_getter: |clocks: Option<MinMax<u64>>| {
             clocks
-                .map(|x| vec![x.min.into(), x.max.into()])
+                .map(|x| vec![map_optional(x.min), map_optional(x.max)])
                 .unwrap_or_else(|| vec![Primitive::Empty, Primitive::Empty])
         },
     }

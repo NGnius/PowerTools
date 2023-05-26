@@ -1,18 +1,14 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RangeLimit<T> {
     pub min: T,
     pub max: T,
 }
 
-impl<T> From<limits_core::json::RangeLimit<T>> for RangeLimit<T> {
-    #[inline]
-    fn from(other: limits_core::json::RangeLimit<T>) -> Self {
-        RangeLimit {
-            min: other.min,
-            max: other.max,
-        }
+impl<T> RangeLimit<T> {
+    pub fn new(min: T, max: T) -> Self {
+        Self { min, max }
     }
 }
 

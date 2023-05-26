@@ -99,12 +99,12 @@ impl EventInstruction {
                 .trim_start_matches('>')
                 .parse::<f64>()
                 .ok()
-                .map(|x| EventTrigger::BatteryAbove(x/100.0)),
+                .map(|x| EventTrigger::BatteryAbove(x / 100.0)),
             s if s.starts_with('<') => s
                 .trim_start_matches('<')
                 .parse::<f64>()
                 .ok()
-                .map(|x| EventTrigger::BatteryBelow(x/100.0)),
+                .map(|x| EventTrigger::BatteryBelow(x / 100.0)),
             _ => None,
         }
     }
@@ -244,6 +244,30 @@ impl Battery {
         }
     }
 
+    fn set_charge_rate(&mut self) -> Result<(), SettingError> {
+        if let Some(charge_rate) = self.charge_rate {
+            self.state.charge_rate_set = true;
+            usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, charge_rate).map_err(
+                |e| SettingError {
+                    msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
+                    setting: crate::settings::SettingVariant::Battery,
+                },
+            )
+        } else if self.state.charge_rate_set {
+            self.state.charge_rate_set = false;
+            usdpl_back::api::files::write_single(
+                BATTERY_CHARGE_RATE_PATH,
+                self.limits.charge_rate.max,
+            )
+            .map_err(|e| SettingError {
+                msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
+                setting: crate::settings::SettingVariant::Battery,
+            })
+        } else {
+            Ok(())
+        }
+    }
+
     fn set_charge_mode(&mut self) -> Result<(), SettingError> {
         if let Some(charge_mode) = self.charge_mode {
             self.state.charge_mode_set = true;
@@ -268,26 +292,7 @@ impl Battery {
 
     fn set_all(&mut self) -> Result<(), Vec<SettingError>> {
         let mut errors = Vec::new();
-        if let Some(charge_rate) = self.charge_rate {
-            self.state.charge_rate_set = true;
-            usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, charge_rate)
-                .map_err(|e| SettingError {
-                    msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
-                    setting: crate::settings::SettingVariant::Battery,
-                })
-                .unwrap_or_else(|e| errors.push(e));
-        } else if self.state.charge_rate_set {
-            self.state.charge_rate_set = false;
-            usdpl_back::api::files::write_single(
-                BATTERY_CHARGE_RATE_PATH,
-                self.limits.charge_rate.max,
-            )
-            .map_err(|e| SettingError {
-                msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
-                setting: crate::settings::SettingVariant::Battery,
-            })
-            .unwrap_or_else(|e| errors.push(e));
-        }
+        self.set_charge_rate().unwrap_or_else(|e| errors.push(e));
         self.set_charge_mode().unwrap_or_else(|e| errors.push(e));
         if errors.is_empty() {
             Ok(())

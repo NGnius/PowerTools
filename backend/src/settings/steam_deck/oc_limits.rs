@@ -1,4 +1,4 @@
-use crate::settings::MinMax;
+use crate::api::RangeLimit as MinMax;
 use serde::{Deserialize, Serialize};
 
 const OC_LIMITS_FILEPATH: &str = "pt_oc.json";

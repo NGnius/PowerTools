@@ -268,7 +268,9 @@ impl ApiMessageHandler {
             while let Ok(msg) = self.intake.try_recv() {
                 dirty |= self.process(settings, msg);
             }
-            if dirty /*|| dirty_echo */ {
+            if dirty
+            /*|| dirty_echo */
+            {
                 //dirty_echo = dirty; // echo only once
 
                 // run on_set

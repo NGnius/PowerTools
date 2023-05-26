@@ -58,6 +58,6 @@ impl SettingsJson {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MinMaxJson<T> {
-    pub max: T,
-    pub min: T,
+    pub max: Option<T>,
+    pub min: Option<T>,
 }

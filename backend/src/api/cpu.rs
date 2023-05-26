@@ -6,6 +6,7 @@ use usdpl_back::AsyncCallable;
 use crate::settings::{MinMax, SettingError, SettingVariant};
 //use crate::utility::{unwrap_lock, unwrap_maybe_fatal};
 use super::handler::{ApiMessage, CpuMessage};
+use super::utility::map_optional;
 
 /// Available CPUs web method
 pub fn max_cpus(_: super::ApiParameterType) -> super::ApiParameterType {
@@ -205,8 +206,8 @@ pub fn set_clock_limits(
                     setter(
                         index as usize,
                         MinMax {
-                            min: safe_min as u64,
-                            max: safe_max as u64,
+                            min: Some(safe_min as u64),
+                            max: Some(safe_max as u64),
                         },
                     );
                     vec![safe_min.into(), safe_max.into()]
@@ -220,6 +221,7 @@ pub fn set_clock_limits(
             vec!["set_clock_limits missing parameter 0".into()]
         }
     }
+    // TODO allow param 0 and/or 1 to be Primitive::Empty
 }
 
 pub fn get_clock_limits(
@@ -245,7 +247,7 @@ pub fn get_clock_limits(
     move |params_in: super::ApiParameterType| {
         if let Some(&Primitive::F64(index)) = params_in.get(0) {
             if let Some(min_max) = getter(index as usize) {
-                vec![min_max.min.into(), min_max.max.into()]
+                vec![map_optional(min_max.min), map_optional(min_max.max)]
             } else {
                 vec![Primitive::Empty, Primitive::Empty]
             }
