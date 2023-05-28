@@ -303,6 +303,7 @@ impl DriverBuilder {
                 path: json_path,
                 name: profile_name,
                 driver: DriverJson::AutoDetect,
+                events: Default::default(),
             }),
             cpus: None,
             gpu: None,

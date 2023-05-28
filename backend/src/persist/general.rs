@@ -5,6 +5,25 @@ use serde::{Deserialize, Serialize};
 use super::JsonError;
 use super::{BatteryJson, CpuJson, DriverJson, GpuJson};
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OnEventJson {
+    pub on_save: Option<String>,
+    pub on_load: Option<String>,
+    pub on_set: Option<String>,
+    pub on_resume: Option<String>,
+}
+
+impl Default for OnEventJson {
+    fn default() -> Self {
+        Self {
+            on_save: None,
+            on_load: None,
+            on_set: None,
+            on_resume: None,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct SettingsJson {
     pub version: u64,
@@ -14,6 +33,7 @@ pub struct SettingsJson {
     pub gpu: GpuJson,
     pub battery: BatteryJson,
     pub provider: Option<DriverJson>,
+    pub events: Option<OnEventJson>,
 }
 
 impl Default for SettingsJson {
@@ -26,6 +46,7 @@ impl Default for SettingsJson {
             gpu: GpuJson::default(),
             battery: BatteryJson::default(),
             provider: None,
+            events: None,
         }
     }
 }

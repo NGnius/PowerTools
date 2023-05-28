@@ -104,6 +104,8 @@ pub trait TGeneral: OnSet + OnResume + OnPowerEvent + Debug + Send {
     fn name(&mut self, name: String);
 
     fn provider(&self) -> crate::persist::DriverJson;
+
+    fn on_event(&self) -> &'_ crate::persist::OnEventJson;
 }
 
 pub trait TBattery: OnSet + OnResume + OnPowerEvent + Debug + Send {

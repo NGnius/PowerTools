@@ -34,16 +34,43 @@ pub struct General {
     pub path: PathBuf,
     pub name: String,
     pub driver: crate::persist::DriverJson,
+    pub events: crate::persist::OnEventJson,
 }
 
 impl OnSet for General {
     fn on_set(&mut self) -> Result<(), Vec<SettingError>> {
+        if let Some(event) = &self.events.on_set {
+            if !event.is_empty() {
+                std::process::Command::new("/bin/bash")
+                    .args(&["-c", event])
+                    .spawn()
+                    .map_err(|e| {
+                        vec![SettingError {
+                            msg: format!("on_set event command error: {}", e),
+                            setting: SettingVariant::General,
+                        }]
+                    })?;
+            }
+        }
         Ok(())
     }
 }
 
 impl OnResume for General {
     fn on_resume(&self) -> Result<(), Vec<SettingError>> {
+        if let Some(event) = &self.events.on_resume {
+            if !event.is_empty() {
+                std::process::Command::new("/bin/bash")
+                    .args(&["-c", event])
+                    .spawn()
+                    .map_err(|e| {
+                        vec![SettingError {
+                            msg: format!("on_resume event command error: {}", e),
+                            setting: SettingVariant::General,
+                        }]
+                    })?;
+            }
+        }
         Ok(())
     }
 }
@@ -81,6 +108,10 @@ impl TGeneral for General {
 
     fn provider(&self) -> crate::persist::DriverJson {
         self.driver.clone()
+    }
+
+    fn on_event(&self) -> &crate::persist::OnEventJson {
+        &self.events
     }
 }
 
@@ -214,6 +245,17 @@ impl Settings {
             *self.general.persistent() = false;
         }
         self.general.path(filename);
+        if let Some(event) = &self.general.on_event().on_load {
+            if !event.is_empty() {
+                std::process::Command::new("/bin/bash")
+                    .args(&["-c", event])
+                    .spawn()
+                    .map_err(|e| SettingError {
+                        msg: format!("on_save event command error: {}", e),
+                        setting: SettingVariant::General,
+                    })?;
+            }
+        }
         Ok(*self.general.persistent())
     }
 
@@ -257,6 +299,7 @@ impl Settings {
             gpu: self.gpu.json(),
             battery: self.battery.json(),
             provider: Some(self.general.provider()),
+            events: Some(self.general.on_event().clone()),
         }
     }
 }

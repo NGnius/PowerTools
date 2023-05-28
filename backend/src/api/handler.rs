@@ -290,6 +290,16 @@ impl ApiMessageHandler {
                     let settings_clone = settings.json();
                     let save_json: SettingsJson = settings_clone.into();
                     unwrap_maybe_fatal(save_json.save(&save_path), "Failed to save settings");
+                    if let Some(event) = &settings.general.on_event().on_save {
+                        if !event.is_empty() {
+                            unwrap_maybe_fatal(
+                                std::process::Command::new("/bin/bash")
+                                    .args(&["-c", event])
+                                    .spawn(),
+                                "Failed to start on_save event command",
+                            );
+                        }
+                    }
                     log::debug!("Saved settings to {}", save_path.display());
                     if let Err(e) = crate::utility::chown_settings_dir() {
                         log::error!("Failed to change config dir permissions: {}", e);

@@ -21,6 +21,7 @@ impl Driver {
                     path: json_path,
                     name: settings.name,
                     driver: DriverJson::SteamDeck,
+                    events: settings.events.unwrap_or_default(),
                 }),
                 cpus: Box::new(super::steam_deck::Cpus::from_json(
                     settings.cpus,
@@ -51,6 +52,7 @@ impl Driver {
                         path: json_path,
                         name: settings.name,
                         driver: DriverJson::SteamDeck,
+                        events: settings.events.unwrap_or_default(),
                     }),
                     cpus: Box::new(super::steam_deck::Cpus::from_json(
                         settings.cpus,
@@ -72,6 +74,7 @@ impl Driver {
                         path: json_path,
                         name: settings.name,
                         driver: DriverJson::SteamDeckAdvance,
+                        events: settings.events.unwrap_or_default(),
                     }),
                     cpus: Box::new(super::steam_deck::Cpus::from_json(
                         settings.cpus,
