@@ -315,7 +315,10 @@ impl Cpu {
             let mut errors = Vec::new();
             self.state.clock_limits_set = false;
             POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_cpu(false, self.index);
+            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT
+                    .enforce_level()?;
             if POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual() {
+                // always set clock speeds, since it doesn't reset correctly (kernel/hardware bug)
                 POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level()?;
                 // disable manual clock limits
                 log::debug!("Setting CPU {} to default clockspeed", self.index);
@@ -326,9 +329,8 @@ impl Cpu {
                 Self::set_clock_limit(self.index, self.limits.clock_min.min, ClockType::Min)
                     .unwrap_or_else(|e| errors.push(e));
             }
-            POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT
-                .enforce_level()
-                .unwrap_or_else(|mut e| errors.append(&mut e));
+            // TODO remove this when it's no longer needed
+            self.clock_unset_workaround().unwrap_or_else(|mut e| errors.append(&mut e));
             if errors.is_empty() {
                 Ok(())
             } else {
@@ -337,6 +339,39 @@ impl Cpu {
         } else {
             Ok(())
         }
+    }
+
+    // https://github.com/NGnius/PowerTools/issues/107
+    fn clock_unset_workaround(&self) -> Result<(), Vec<SettingError>> {
+        let mut errors = Vec::new();
+        POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_cpu(true, self.index);
+        // always set clock speeds, since it doesn't reset correctly (kernel/hardware bug)
+        POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.enforce_level()?;
+        // disable manual clock limits
+        log::debug!("Setting CPU {} to default clockspeed", self.index);
+        // max clock
+        Self::set_clock_limit(self.index, self.limits.clock_max.max, ClockType::Max)
+            .unwrap_or_else(|e| errors.push(e));
+        // min clock
+        Self::set_clock_limit(self.index, self.limits.clock_min.min, ClockType::Min)
+            .unwrap_or_else(|e| errors.push(e));
+
+        Self::set_confirm().unwrap_or_else(|e| errors.push(e));
+        POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.set_cpu(false, self.index);
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+
+    fn set_confirm() -> Result<(), SettingError> {
+        usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
+            SettingError {
+                msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
+                setting: crate::settings::SettingVariant::Cpu,
+            }
+        })
     }
 
     fn set_force_performance_related(&mut self) -> Result<(), Vec<SettingError>> {
@@ -350,12 +385,7 @@ impl Cpu {
         // commit changes (if no errors have already occured)
         if errors.is_empty() {
             if POWER_DPM_FORCE_PERFORMANCE_LEVEL_MGMT.needs_manual() {
-                usdpl_back::api::files::write_single(CPU_CLOCK_LIMITS_PATH, "c\n").map_err(|e| {
-                    vec![SettingError {
-                        msg: format!("Failed to write `c` to `{}`: {}", CPU_CLOCK_LIMITS_PATH, e),
-                        setting: crate::settings::SettingVariant::Cpu,
-                    }]
-                })
+                Self::set_confirm().map_err(|e| vec![e])
             } else {
                 Ok(())
             }
