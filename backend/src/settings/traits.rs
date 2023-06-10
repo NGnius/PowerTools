@@ -129,6 +129,8 @@ pub trait TBattery: OnSet + OnResume + OnPowerEvent + Debug + Send {
 
     fn read_current_now(&self) -> Option<f64>;
 
+    fn read_charge_power(&self) -> Option<f64>;
+
     fn charge_limit(&mut self, limit: Option<f64>);
 
     fn get_charge_limit(&self) -> Option<f64>;

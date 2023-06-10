@@ -75,6 +75,10 @@ impl TBattery for Battery {
         None
     }
 
+    fn read_charge_power(&self) -> Option<f64> {
+        None
+    }
+
     fn charge_limit(&mut self, _limit: Option<f64>) {}
 
     fn get_charge_limit(&self) -> Option<f64> {

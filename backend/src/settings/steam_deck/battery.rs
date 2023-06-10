@@ -320,6 +320,12 @@ impl Battery {
         }
     }
 
+    pub fn read_charge_power() -> Result<f64, SettingError> {
+        let current = Self::read_current_now()? as f64 / 1000.0; // mA -> A
+        let voltage = Self::read_usb_voltage()?;
+        Ok(current * voltage)
+    }
+
     pub fn read_charge_now() -> Result<f64, SettingError> {
         match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_NOW_PATH) {
             Err(e) => Err(SettingError {
@@ -544,6 +550,16 @@ impl TBattery for Battery {
 
     fn read_current_now(&self) -> Option<f64> {
         match Self::read_current_now() {
+            Ok(x) => Some(x as f64),
+            Err(e) => {
+                log::warn!("read_current_now err: {}", e.msg);
+                None
+            }
+        }
+    }
+
+    fn read_charge_power(&self) -> Option<f64> {
+        match Self::read_charge_power() {
             Ok(x) => Some(x as f64),
             Err(e) => {
                 log::warn!("read_current_now err: {}", e.msg);
