@@ -67,6 +67,7 @@ import { Cpus } from "./components/cpus";
 var periodicHook: NodeJS.Timer | null = null;
 var lifetimeHook: any = null;
 var startHook: any = null;
+var endHook: any = null;
 var usdplReady = false;
 
 type MinMax = {
@@ -183,6 +184,12 @@ const reload = function() {
         backend.loadGeneralSettings(id.toString(), gameInfo.display_name),
         (ok: boolean) => {backend.log(backend.LogLevel.Debug, "Loading settings ok? " + ok)}
       );
+  });
+
+  //@ts-ignore
+  endHook = SteamClient.Apps.RegisterForGameActionEnd((actionType) => {
+      backend.log(backend.LogLevel.Info, "RegisterForGameActionEnd callback(" + actionType + ")");
+      setTimeout(() => backend.forceApplySettings(), 2000 /* ms */);
   });
 
   backend.log(backend.LogLevel.Debug, "Registered PowerTools callbacks, hello!");
@@ -321,8 +328,9 @@ export default definePlugin((serverApi: ServerAPI) => {
       backend.log(backend.LogLevel.Debug, "PowerTools shutting down");
       clearInterval(periodicHook!);
       periodicHook = null;
-      lifetimeHook!.unregister();
-      startHook!.unregister();
+      lifetimeHook?.unregister();
+      startHook?.unregister();
+      endHook?.unregister();
       //serverApi.routerHook.removeRoute("/decky-plugin-test");
       backend.log(backend.LogLevel.Debug, "Unregistered PowerTools callbacks, so long and thanks for all the fish.");
     },
