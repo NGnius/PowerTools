@@ -3,7 +3,8 @@
     "charge_rate": {
       "min": 250,
       "max": 2500
-    }
+    },
+    "extra_readouts": false
   },
   "cpus": {
     "cpus": [

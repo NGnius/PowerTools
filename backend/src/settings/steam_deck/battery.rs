@@ -179,6 +179,7 @@ const BATTERY_CHARGE_NOW_PATH: &str = "/sys/class/power_supply/BAT1/charge_now";
 const BATTERY_CHARGE_FULL_PATH: &str = "/sys/class/power_supply/BAT1/charge_full"; // read-only
 const BATTERY_CHARGE_DESIGN_PATH: &str = "/sys/class/power_supply/BAT1/charge_full_design"; // read-only
 const USB_PD_IN_MVOLTAGE_PATH: &str = "/sys/class/hwmon/hwmon5/in0_input"; // read-only
+const USB_PD_IN_CURRENT_PATH: &str = "/sys/class/hwmon/hwmon5/curr1_input"; // read-only
 
 impl Battery {
     #[inline]
@@ -321,7 +322,7 @@ impl Battery {
     }
 
     pub fn read_charge_power() -> Result<f64, SettingError> {
-        let current = Self::read_current_now()? as f64 / 1000.0; // mA -> A
+        let current = Self::read_usb_current()?;
         let voltage = Self::read_usb_voltage()?;
         Ok(current * voltage)
     }
@@ -370,6 +371,16 @@ impl Battery {
             }),
             // convert to V (from mV)
             Ok(val) => Ok((val as f64) / 1000.0),
+        }
+    }
+
+    pub fn read_usb_current() -> Result<f64, SettingError> {
+        match usdpl_back::api::files::read_single::<_, u64, _>(USB_PD_IN_CURRENT_PATH) {
+            Err(e) => Err(SettingError {
+                msg: format!("Failed to read from `{}`: {}", USB_PD_IN_CURRENT_PATH, e),
+                setting: crate::settings::SettingVariant::Battery,
+            }),
+            Ok(val) => Ok((val as f64) / 1000.0), // mA -> A
         }
     }
 
@@ -549,22 +560,30 @@ impl TBattery for Battery {
     }
 
     fn read_current_now(&self) -> Option<f64> {
-        match Self::read_current_now() {
-            Ok(x) => Some(x as f64),
-            Err(e) => {
-                log::warn!("read_current_now err: {}", e.msg);
-                None
+        if self.limits.extra_readouts {
+            match Self::read_current_now() {
+                Ok(x) => Some(x as f64),
+                Err(e) => {
+                    log::warn!("read_current_now err: {}", e.msg);
+                    None
+                }
             }
+        } else {
+            None
         }
     }
 
     fn read_charge_power(&self) -> Option<f64> {
-        match Self::read_charge_power() {
-            Ok(x) => Some(x as f64),
-            Err(e) => {
-                log::warn!("read_current_now err: {}", e.msg);
-                None
+        if self.limits.extra_readouts {
+            match Self::read_charge_power() {
+                Ok(x) => Some(x as f64),
+                Err(e) => {
+                    log::warn!("read_current_now err: {}", e.msg);
+                    None
+                }
             }
+        } else {
+            None
         }
     }
 

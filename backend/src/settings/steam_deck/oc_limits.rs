@@ -67,6 +67,7 @@ impl OverclockLimits {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(super) struct BatteryLimits {
     pub charge_rate: MinMax<u64>,
+    pub extra_readouts: bool,
 }
 
 impl Default for BatteryLimits {
@@ -76,6 +77,7 @@ impl Default for BatteryLimits {
                 min: 250,
                 max: 2500,
             },
+            extra_readouts: false,
         }
     }
 }
