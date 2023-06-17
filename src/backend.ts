@@ -117,6 +117,10 @@ export async function getBatteryChargeDesign(): Promise<number> {
     return (await call_backend("BATTERY_charge_design", []))[0];
 }
 
+export async function getBatteryChargePower(): Promise<number> {
+    return (await call_backend("BATTERY_charge_power", []))[0];
+}
+
 export async function getBatteryChargeRate(): Promise<number | null> {
     return (await call_backend("BATTERY_get_charge_rate", []))[0];
 }

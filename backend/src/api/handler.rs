@@ -39,6 +39,7 @@ pub enum BatteryMessage {
     ReadChargeNow(Callback<Option<f64>>),
     ReadChargeDesign(Callback<Option<f64>>),
     ReadCurrentNow(Callback<Option<f64>>),
+    ReadChargePower(Callback<Option<f64>>),
     SetChargeLimit(Option<f64>),
     GetChargeLimit(Callback<Option<f64>>),
 }
@@ -55,6 +56,7 @@ impl BatteryMessage {
             Self::ReadChargeNow(cb) => cb(settings.read_charge_now()),
             Self::ReadChargeDesign(cb) => cb(settings.read_charge_design()),
             Self::ReadCurrentNow(cb) => cb(settings.read_current_now()),
+            Self::ReadChargePower(cb) => cb(settings.read_charge_power()),
             Self::SetChargeLimit(limit) => settings.charge_limit(limit),
             Self::GetChargeLimit(cb) => cb(settings.get_charge_limit()),
         }

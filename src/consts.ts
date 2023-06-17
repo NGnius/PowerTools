@@ -10,6 +10,7 @@ export const CHARGE_LIMIT_BATT = "BATTERY_charge_limit";
 export const CHARGE_NOW_BATT = "BATTERY_charge_now";
 export const CHARGE_FULL_BATT = "BATTERY_charge_full";
 export const CHARGE_DESIGN_BATT = "BATTERY_charge_design";
+export const CHARGE_POWER_BATT = "BATTERY_charge_power";
 
 //export const TOTAL_CPUS = "CPUs_total";
 export const ONLINE_CPUS = "CPUs_online";

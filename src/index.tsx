@@ -39,6 +39,7 @@ import {
   CHARGE_NOW_BATT,
   CHARGE_FULL_BATT,
   CHARGE_DESIGN_BATT,
+  CHARGE_POWER_BATT,
 
   ONLINE_CPUS,
   ONLINE_STATUS_CPUS,
@@ -114,6 +115,7 @@ const reload = function() {
   backend.resolve(backend.getBatteryChargeNow(), (rate: number) => { set_value(CHARGE_NOW_BATT, rate) });
   backend.resolve(backend.getBatteryChargeFull(), (rate: number) => { set_value(CHARGE_FULL_BATT, rate) });
   backend.resolve(backend.getBatteryChargeDesign(), (rate: number) => { set_value(CHARGE_DESIGN_BATT, rate) });
+  backend.resolve(backend.getBatteryChargePower(), (rate: number) => { set_value(CHARGE_POWER_BATT, rate) });
 
   //backend.resolve(backend.getCpuCount(), (count: number) => { set_value(TOTAL_CPUS, count)});
   backend.resolve(backend.getCpusOnline(), (statii: boolean[]) => {
@@ -199,6 +201,7 @@ const periodicals = function() {
   backend.resolve(backend.getBatteryCurrent(), (rate: number) => { set_value(CURRENT_BATT, rate) });
   backend.resolve(backend.getBatteryChargeNow(), (rate: number) => { set_value(CHARGE_NOW_BATT, rate) });
   backend.resolve(backend.getBatteryChargeFull(), (rate: number) => { set_value(CHARGE_FULL_BATT, rate) });
+  backend.resolve(backend.getBatteryChargePower(), (rate: number) => { set_value(CHARGE_POWER_BATT, rate) });
 
   backend.resolve(backend.getGeneralSettingsPath(), (path: string) => {
     const oldValue = get_value(PATH_GEN);

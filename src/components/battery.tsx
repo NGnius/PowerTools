@@ -20,6 +20,7 @@ import {
     CHARGE_MODE_BATT,
     CURRENT_BATT,
     CHARGE_LIMIT_BATT,
+    CHARGE_POWER_BATT,
 } from "../consts";
 import { set_value, get_value} from "usdpl-front";
 
@@ -54,12 +55,18 @@ export class Battery extends Component<backend.IdcProps> {
           {get_value(CHARGE_FULL_BATT).toFixed(1)} Wh ({(100 * get_value(CHARGE_FULL_BATT) / get_value(CHARGE_DESIGN_BATT)).toFixed(1)}%)
         </Field>
       </PanelSectionRow>}
-      <PanelSectionRow>
+      {get_value(CHARGE_POWER_BATT) != null && get_value(CHARGE_POWER_BATT) > 0 && <PanelSectionRow>
+        <Field
+          label={tr("Charge Power")}>
+          {get_value(CHARGE_POWER_BATT).toFixed(2)} W
+        </Field>
+      </PanelSectionRow>}
+      {get_value(CURRENT_BATT) != null && <PanelSectionRow>
         <Field
           label={tr("Current")}>
           {get_value(CURRENT_BATT)} mA
         </Field>
-      </PanelSectionRow>
+      </PanelSectionRow>}
       {(get_value(LIMITS_INFO) as backend.SettingsLimits).battery.charge_current != null && <PanelSectionRow>
         <ToggleField
           checked={get_value(CHARGE_RATE_BATT) != null}

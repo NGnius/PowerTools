@@ -30,11 +30,6 @@ pub fn current_now(sender: Sender<ApiMessage>) -> impl AsyncCallable {
     }
 }
 
-/// Current current (ha!) web method
-/*pub fn current_now(_: super::ApiParameterType) -> super::ApiParameterType {
-    super::utility::map_optional_result(crate::settings::driver::read_current_now())
-}*/
-
 /// Charge now web method
 pub fn charge_now(sender: Sender<ApiMessage>) -> impl AsyncCallable {
     let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
@@ -102,6 +97,31 @@ pub fn charge_design(sender: Sender<ApiMessage>) -> impl AsyncCallable {
                 )))
                 .expect("charge_design send failed");
             rx.recv().expect("charge_design callback recv failed")
+        }
+    };
+    super::async_utils::AsyncIshGetter {
+        set_get: getter,
+        trans_getter: |result| super::utility::map_optional_result(Ok(result)),
+    }
+}
+
+/// Charge wattage web method
+pub fn charge_power(sender: Sender<ApiMessage>) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move || {
+            let (tx, rx) = mpsc::channel();
+            let callback =
+                move |val: Option<f64>| tx.send(val).expect("power_now callback send failed");
+            sender2
+                .lock()
+                .unwrap()
+                .send(ApiMessage::Battery(BatteryMessage::ReadChargePower(
+                    Box::new(callback),
+                )))
+                .expect("power_now send failed");
+            rx.recv().expect("power_now callback recv failed")
         }
     };
     super::async_utils::AsyncIshGetter {

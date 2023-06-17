@@ -126,6 +126,10 @@ fn main() -> Result<(), ()> {
             "BATTERY_charge_design",
             api::battery::charge_design(api_sender.clone()),
         )
+        .register_async(
+            "BATTERY_charge_power",
+            api::battery::charge_power(api_sender.clone()),
+        )
         .register(
             "BATTERY_set_charge_rate",
             api::battery::set_charge_rate(api_sender.clone()),

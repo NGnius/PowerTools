@@ -64,6 +64,11 @@ msgstr ""
 msgid "Max (Design)"
 msgstr ""
 
+#: components/battery.tsx:60
+# (Wattage of battery charging input)
+msgid "Charge Power"
+msgstr ""
+
 #: components/battery.tsx:59
 # (Charge current limit override toggle)
 msgid "Charge Current Limits"
