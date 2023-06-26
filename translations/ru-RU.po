@@ -82,7 +82,7 @@ msgstr "Контролируйте уровень тока заряда бата
 #: components/battery.tsx:74
 # (Battery maximum input current with unit)
 msgid "Maximum (mA)"
-msgstr "Максимум"
+msgstr "Максимум (mA)"
 
 #: components/battery.tsx:97,115
 # (Battery charge mode override toggle)
@@ -144,7 +144,7 @@ msgstr "SMT"
 #: components/cpus.tsx:89
 # (CPU SMT toggle description)
 msgid "Enables odd-numbered CPUs"
-msgstr "Активация многопоточности"
+msgstr "Активация одновременной многопоточности"
 
 #: components/cpus.tsx:106
 # (CPU thread count slider)
@@ -167,13 +167,13 @@ msgstr "Установите ограничения на тактовую час
 #: components/gpu.tsx:137
 # (Minimum clock speed with unit)
 msgid "Minimum (MHz)"
-msgstr "Минимум"
+msgstr "Минимум (MHz)"
 
 #: components/cpus.tsx:195
 #: components/gpu.tsx:160
 # (Maximum clock speed with unit)
 msgid "Maximum (MHz)"
-msgstr "Максимум"
+msgstr "Максимум (MHz)"
 
 # advanced mode
 
