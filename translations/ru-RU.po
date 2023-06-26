@@ -239,7 +239,7 @@ msgstr "Переопределить настройки TDP APU"
 #: components/gpu.tsx:63
 # (SlowPPT slider with unit)
 msgid "SlowPPT (W)"
-msgstr "Длительнрое повышение TDP (W)"
+msgstr "Длительное повышение TDP (W)"
 
 #: components/gpu.tsx:87
 # (FastPPT slider with unit)
