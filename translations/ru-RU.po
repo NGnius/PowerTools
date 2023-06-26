@@ -239,12 +239,12 @@ msgstr "Переопределить настройки TDP APU"
 #: components/gpu.tsx:63
 # (SlowPPT slider with unit)
 msgid "SlowPPT (W)"
-msgstr "Длительное повышение TDP (W)"
+msgstr "Средний PPT (W)"
 
 #: components/gpu.tsx:87
 # (FastPPT slider with unit)
 msgid "FastPPT (W)"
-msgstr "Короткое повышение TDP (W)"
+msgstr "Фактический PPT (W)"
 
 #: components/gpu.tsx:112
 # (Reduce memory clock speed toggle)
