@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: v1.1\n"
 "Report-Msgid-Bugs-To: https://github.com/NGnius/PowerTools/issues\n"
-"POT-Creation-Date: 2023-06-25 16:30-0300\n"
+"POT-Creation-Date: 2023-06-27 16:30-0300\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -180,7 +180,7 @@ msgstr "Максимум (MHz)"
 #: components/cpus.tsx:226
 # (CPU selection slider)
 msgid "Selected CPU"
-msgstr "Выбрано CPU"
+msgstr "Выбранный поток CPU"
 
 #: components/cpus.tsx:246
 # (CPU Online toggle)
@@ -190,7 +190,7 @@ msgstr "Online"
 #: components/cpus.tsx:247
 # (CPU Online description)
 msgid "Allow the CPU thread to do work"
-msgstr "Разрешить потокам процессора выполнять работу"
+msgstr "Разрешить потоку CPU выполнять работу"
 
 #: components/cpus.tsx:342
 # (CPU scheduling governor dropdown -- governor names are not translated)
