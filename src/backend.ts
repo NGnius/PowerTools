@@ -306,3 +306,22 @@ export async function onPluggedIn(): Promise<boolean> {
 export async function onUnplugged(): Promise<boolean> {
     return (await call_backend("GENERAL_on_unplugged", []))[0];
 }
+
+export type Message = {
+    /// Message identifier
+    id: number | null,
+    /// Message title
+    title: string,
+    /// Message content
+    body: string,
+    /// Link for further information
+    url: string | null,
+};
+
+export async function getMessages(since: number | null): Promise<Message[]> {
+    return (await call_backend("MESSAGE_get", [since]));
+}
+
+export async function dismissMessage(id: number): Promise<boolean> {
+    return (await call_backend("MESSAGE_dismiss", [id]))[0];
+}

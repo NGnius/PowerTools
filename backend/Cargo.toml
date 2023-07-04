@@ -29,7 +29,7 @@ limits_core = { version = "2", path = "./limits_core" }
 regex = "1"
 libryzenadj = { version = "0.12" }
 # ureq's tls feature does not like musl targets
-ureq = { version = "2.5", features = ["json", "gzip", "brotli", "charset"], default-features = false, optional = true }
+ureq = { version = "2", features = ["json", "gzip", "brotli", "charset"], default-features = false, optional = true }
 
 [features]
 default = ["online", "decky"]

@@ -96,6 +96,8 @@ fn main() -> Result<(), ()> {
     let _resume_handle = resume_worker::spawn(api_sender.clone());
     let _power_handle = power_worker::spawn(api_sender.clone());
 
+    let (message_getter, message_dismisser) = api::message::MessageHandler::new().to_callables();
+
     let instance = Instance::new(PORT)
         .register("V_INFO", |_: Vec<Primitive>| {
             #[cfg(debug_assertions)]
@@ -283,7 +285,9 @@ fn main() -> Result<(), ()> {
         .register(
             "GENERAL_on_unplugged",
             api::battery::on_unplugged(api_sender.clone()),
-        );
+        )
+        .register_async("MESSAGE_get", message_getter)
+        .register_async("MESSAGE_dismiss", message_dismisser);
 
     if let Err(e) = loaded_settings.on_set() {
         e.iter()

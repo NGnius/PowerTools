@@ -170,7 +170,14 @@ impl Default for Base {
                     ]
                 }
             ],
-            messages: Vec::new(),
+            messages: vec![
+                super::DeveloperMessage {
+                    id: 1,
+                    title: "Welcome".to_owned(),
+                    body: "Thanks for installing PowerTools! For more information, please check the wiki. For bugs and requests, please create an issue on GitHub.".to_owned(),
+                    url: Some("https://github.com/NGnius/PowerTools/wiki".to_owned()),
+                }
+            ],
             refresh: Some("http://limits.ngni.us:45000/powertools/v1".to_owned())
         }
     }

@@ -58,12 +58,15 @@ import {
   PERSISTENT_GEN,
   NAME_GEN,
   PATH_GEN,
+
+  MESSAGE_LIST,
 } from "./consts";
 import { set_value, get_value } from "usdpl-front";
 import { Debug } from "./components/debug";
 import { Gpu } from "./components/gpu";
 import { Battery } from "./components/battery";
 import { Cpus } from "./components/cpus";
+import { DevMessages } from "./components/message";
 
 var periodicHook: NodeJS.Timer | null = null;
 var lifetimeHook: any = null;
@@ -153,6 +156,8 @@ const reload = function() {
 
   backend.resolve(backend.getInfo(), (info: string) => { set_value(BACKEND_INFO, info) });
   backend.resolve(backend.getDriverProviderName("gpu"), (driver: string) => { set_value(DRIVER_INFO, driver) });
+
+  backend.resolve(backend.getMessages(null), (messages: backend.Message[]) => { set_value(MESSAGE_LIST, messages) });
 };
 
 // init USDPL WASM and connection to back-end
@@ -247,6 +252,8 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
 
   return (
     <PanelSection>
+      <DevMessages idc={idc}/>
+
       <Cpus idc={idc}/>
 
       <Gpu idc={idc}/>

@@ -1,12 +1,12 @@
 [package]
 name = "limits_srv"
-version = "2.0.0"
+version = "2.0.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-limits_core = { version = "2.0.0", path = "../limits_core" }
+limits_core = { version = "2.0.1", path = "../limits_core" }
 chrono = { version = "0.4" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

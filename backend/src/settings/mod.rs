@@ -11,7 +11,7 @@ pub mod generic_amd;
 pub mod steam_deck;
 pub mod unknown;
 
-pub use detect::{auto_detect0, auto_detect_provider, limits_worker::spawn as limits_worker_spawn};
+pub use detect::{auto_detect0, auto_detect_provider, limits_worker::spawn as limits_worker_spawn, get_dev_messages};
 pub use driver::Driver;
 pub use general::{General, SettingVariant, Settings};
 pub use min_max::{min_max_from_json, MinMax};
