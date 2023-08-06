@@ -73,10 +73,6 @@ fn main() -> Result<(), ()> {
     }
 
     let _limits_handle = crate::settings::limits_worker_spawn();
-    log::info!(
-        "Detected device automatically, starting with driver: {:?} (This can be overriden)",
-        crate::settings::auto_detect_provider()
-    );
 
     let mut loaded_settings =
         persist::SettingsJson::open(utility::settings_dir().join(DEFAULT_SETTINGS_FILE))
@@ -87,6 +83,11 @@ fn main() -> Result<(), ()> {
                     DEFAULT_SETTINGS_NAME.into(),
                 )
             });
+
+    log::info!(
+        "Detected device automatically {:?}, using driver: {:?} (This can be overriden)",
+        crate::settings::auto_detect_provider(), loaded_settings.cpus.provider()
+    );
 
     log::debug!("Settings: {:?}", loaded_settings);
 

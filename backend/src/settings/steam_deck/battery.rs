@@ -1,4 +1,8 @@
 use std::convert::Into;
+use std::sync::Arc;
+
+use sysfuss::{PowerSupplyAttribute, PowerSupplyPath, HwMonAttribute, HwMonAttributeItem, HwMonAttributeType, HwMonPath, SysEntity, SysEntityAttributesExt, SysAttribute};
+use sysfuss::capability::attributes;
 
 use super::oc_limits::{BatteryLimits, OverclockLimits};
 use super::util::ChargeMode;
@@ -15,6 +19,8 @@ pub struct Battery {
     limits: BatteryLimits,
     state: crate::state::steam_deck::Battery,
     driver_mode: crate::persist::DriverJson,
+    sysfs_bat: PowerSupplyPath,
+    sysfs_hwmon: Arc<HwMonPath>,
 }
 
 #[derive(Debug, Clone)]
@@ -32,6 +38,7 @@ struct EventInstruction {
     charge_rate: Option<u64>,
     charge_mode: Option<ChargeMode>,
     is_triggered: bool,
+    sysfs_hwmon: Arc<HwMonPath>,
 }
 
 impl OnPowerEvent for EventInstruction {
@@ -109,7 +116,7 @@ impl EventInstruction {
         }
     }
 
-    fn from_json(other: BatteryEventJson, _version: u64) -> Self {
+    fn from_json(other: BatteryEventJson, _version: u64, hwmon: Arc<HwMonPath>) -> Self {
         Self {
             trigger: Self::str_to_trigger(&other.trigger).unwrap_or(EventTrigger::Ignored),
             charge_rate: other.charge_rate,
@@ -118,6 +125,7 @@ impl EventInstruction {
                 .map(|x| Battery::str_to_charge_mode(&x))
                 .flatten(),
             is_triggered: false,
+            sysfs_hwmon: hwmon,
         }
     }
 
@@ -136,12 +144,13 @@ impl EventInstruction {
 
     fn set_charge_rate(&self) -> Result<(), SettingError> {
         if let Some(charge_rate) = self.charge_rate {
-            usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, charge_rate)
-                .map_err(|e| SettingError {
-                    msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
+            let attr = HwMonAttribute::custom("maximum_battery_charge_rate");
+            self.sysfs_hwmon.set(attr, charge_rate).map_err(
+                |e| SettingError {
+                    msg: format!("Failed to write to `{:?}`: {}", attr, e),
                     setting: crate::settings::SettingVariant::Battery,
-                })
-                .map(|_| ())
+                },
+            )
         } else {
             Ok(())
         }
@@ -173,13 +182,32 @@ impl Into<BatteryEventJson> for EventInstruction {
 
 const BATTERY_VOLTAGE: f64 = 7.7;
 
-const BATTERY_CHARGE_RATE_PATH: &str = "/sys/class/hwmon/hwmon5/maximum_battery_charge_rate"; // write-only
+/*const BATTERY_CHARGE_RATE_PATH: &str = "/sys/class/hwmon/hwmon5/maximum_battery_charge_rate"; // write-only
 const BATTERY_CURRENT_NOW_PATH: &str = "/sys/class/power_supply/BAT1/current_now"; // read-only
 const BATTERY_CHARGE_NOW_PATH: &str = "/sys/class/power_supply/BAT1/charge_now"; // read-only
 const BATTERY_CHARGE_FULL_PATH: &str = "/sys/class/power_supply/BAT1/charge_full"; // read-only
 const BATTERY_CHARGE_DESIGN_PATH: &str = "/sys/class/power_supply/BAT1/charge_full_design"; // read-only
 const USB_PD_IN_MVOLTAGE_PATH: &str = "/sys/class/hwmon/hwmon5/in0_input"; // read-only
-const USB_PD_IN_CURRENT_PATH: &str = "/sys/class/hwmon/hwmon5/curr1_input"; // read-only
+const USB_PD_IN_CURRENT_PATH: &str = "/sys/class/hwmon/hwmon5/curr1_input"; // read-only*/
+
+
+const BATTERY_NEEDS: &[PowerSupplyAttribute] = &[
+    PowerSupplyAttribute::Type,
+    PowerSupplyAttribute::CurrentNow,
+    PowerSupplyAttribute::ChargeNow,
+    PowerSupplyAttribute::ChargeFull,
+    PowerSupplyAttribute::ChargeFullDesign,
+    PowerSupplyAttribute::CycleCount,
+    PowerSupplyAttribute::Capacity,
+    PowerSupplyAttribute::CapacityLevel,
+];
+
+const HWMON_NEEDS: &[HwMonAttribute] = &[
+    HwMonAttribute::name(),
+    HwMonAttribute::new(HwMonAttributeType::In, 0, HwMonAttributeItem::Input),
+    HwMonAttribute::new(HwMonAttributeType::Curr, 1, HwMonAttributeItem::Input),
+    //HwMonAttribute::custom("maximum_battery_charge_rate"), // NOTE: Cannot filter by custom capabilities
+];
 
 impl Battery {
     #[inline]
@@ -191,6 +219,7 @@ impl Battery {
         } else {
             crate::persist::DriverJson::SteamDeckAdvance
         };
+        let hwmon_sys = Arc::new(Self::find_hwmon_sysfs(None::<&'static str>));
         match version {
             0 => Self {
                 charge_rate: other.charge_rate,
@@ -201,11 +230,13 @@ impl Battery {
                 events: other
                     .events
                     .into_iter()
-                    .map(|x| EventInstruction::from_json(x, version))
+                    .map(|x| EventInstruction::from_json(x, version, hwmon_sys.clone()))
                     .collect(),
                 limits: oc_limits,
                 state: crate::state::steam_deck::Battery::default(),
                 driver_mode: driver,
+                sysfs_bat: Self::find_battery_sysfs(None::<&'static str>),
+                sysfs_hwmon: hwmon_sys,
             },
             _ => Self {
                 charge_rate: other.charge_rate,
@@ -216,12 +247,49 @@ impl Battery {
                 events: other
                     .events
                     .into_iter()
-                    .map(|x| EventInstruction::from_json(x, version))
+                    .map(|x| EventInstruction::from_json(x, version, hwmon_sys.clone()))
                     .collect(),
                 limits: oc_limits,
                 state: crate::state::steam_deck::Battery::default(),
                 driver_mode: driver,
+                sysfs_bat: Self::find_battery_sysfs(None::<&'static str>),
+                sysfs_hwmon: hwmon_sys,
             },
+        }
+    }
+
+    fn find_battery_sysfs(root: Option<impl AsRef<std::path::Path>>) -> PowerSupplyPath {
+        let root = crate::settings::util::root_or_default_sysfs(root);
+        match root.power_supply(attributes(BATTERY_NEEDS.into_iter().copied())) {
+            Ok(mut iter) => {
+                iter.next()
+                    .unwrap_or_else(|| {
+                        log::error!("Failed to find SteamDeck battery power_supply in sysfs (no results), using naive fallback");
+                        root.power_supply_by_name("BAT1")
+                    })
+            },
+            Err(e) => {
+                log::error!("Failed to find SteamDeck battery power_supply in sysfs ({}), using naive fallback", e);
+                root.power_supply_by_name("BAT1")
+            }
+        }
+    }
+
+    fn find_hwmon_sysfs(root: Option<impl AsRef<std::path::Path>>) -> HwMonPath {
+        let root = crate::settings::util::root_or_default_sysfs(root);
+        match root.hwmon_by_name(super::util::JUPITER_HWMON_NAME) {
+            Ok(hwmon) => {
+                if hwmon.capable(attributes(HWMON_NEEDS.into_iter().copied())) {
+                    hwmon
+                } else {
+                    log::error!("Failed to find SteamDeck battery hwmon in sysfs (hwmon by name {} exists but missing attributes), using naive fallback", super::util::JUPITER_HWMON_NAME);
+                    root.hwmon_by_index(5)
+                }
+            },
+            Err(e) => {
+                log::error!("Failed to find SteamDeck battery hwmon in sysfs ({}), using naive fallback", e);
+                root.hwmon_by_index(5)
+            }
         }
     }
 
@@ -248,22 +316,24 @@ impl Battery {
     fn set_charge_rate(&mut self) -> Result<(), SettingError> {
         if let Some(charge_rate) = self.charge_rate {
             self.state.charge_rate_set = true;
-            usdpl_back::api::files::write_single(BATTERY_CHARGE_RATE_PATH, charge_rate).map_err(
+            let attr = HwMonAttribute::custom("maximum_battery_charge_rate");
+            let path = attr.path(&*self.sysfs_hwmon);
+            self.sysfs_hwmon.set(attr, charge_rate).map_err(
                 |e| SettingError {
-                    msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
+                    msg: format!("Failed to write to `{}`: {}", path.display(), e),
                     setting: crate::settings::SettingVariant::Battery,
                 },
             )
         } else if self.state.charge_rate_set {
             self.state.charge_rate_set = false;
-            usdpl_back::api::files::write_single(
-                BATTERY_CHARGE_RATE_PATH,
-                self.limits.charge_rate.max,
+            let attr = HwMonAttribute::custom("maximum_battery_charge_rate");
+            let path = attr.path(&*self.sysfs_hwmon);
+            self.sysfs_hwmon.set(attr, self.limits.charge_rate.max,).map_err(
+                |e| SettingError {
+                    msg: format!("Failed to write to `{}`: {}", path.display(), e),
+                    setting: crate::settings::SettingVariant::Battery,
+                },
             )
-            .map_err(|e| SettingError {
-                msg: format!("Failed to write to `{}`: {}", BATTERY_CHARGE_RATE_PATH, e),
-                setting: crate::settings::SettingVariant::Battery,
-            })
         } else {
             Ok(())
         }
@@ -309,10 +379,11 @@ impl Battery {
         }
     }
 
-    pub fn read_current_now() -> Result<u64, SettingError> {
-        match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CURRENT_NOW_PATH) {
+    pub fn read_current_now(&self) -> Result<u64, SettingError> {
+        let attr = PowerSupplyAttribute::CurrentNow;
+        match self.sysfs_bat.attribute::<u64, _>(attr) {
             Err(e) => Err(SettingError {
-                msg: format!("Failed to read from `{}`: {}", BATTERY_CURRENT_NOW_PATH, e),
+                msg: format!("Failed to read from `{:?}`: {}", attr, e),
                 setting: crate::settings::SettingVariant::Battery,
             }),
             // this value is in uA, while it's set in mA
@@ -321,16 +392,17 @@ impl Battery {
         }
     }
 
-    pub fn read_charge_power() -> Result<f64, SettingError> {
-        let current = Self::read_usb_current()?;
-        let voltage = Self::read_usb_voltage()?;
+    pub fn read_charge_power(&self) -> Result<f64, SettingError> {
+        let current = self.read_usb_current()?;
+        let voltage = self.read_usb_voltage()?;
         Ok(current * voltage)
     }
 
-    pub fn read_charge_now() -> Result<f64, SettingError> {
-        match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_NOW_PATH) {
+    pub fn read_charge_now(&self) -> Result<f64, SettingError> {
+        let attr = PowerSupplyAttribute::ChargeNow;
+        match self.sysfs_bat.attribute::<u64, _>(attr) {
             Err(e) => Err(SettingError {
-                msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_NOW_PATH, e),
+                msg: format!("Failed to read from `{:?}`: {}", attr, e),
                 setting: crate::settings::SettingVariant::Battery,
             }),
             // convert to Wh
@@ -338,10 +410,11 @@ impl Battery {
         }
     }
 
-    pub fn read_charge_full() -> Result<f64, SettingError> {
-        match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_FULL_PATH) {
+    pub fn read_charge_full(&self) -> Result<f64, SettingError> {
+        let attr = PowerSupplyAttribute::ChargeFull;
+        match self.sysfs_bat.attribute::<u64, _>(attr) {
             Err(e) => Err(SettingError {
-                msg: format!("Failed to read from `{}`: {}", BATTERY_CHARGE_FULL_PATH, e),
+                msg: format!("Failed to read from `{:?}`: {}", attr, e),
                 setting: crate::settings::SettingVariant::Battery,
             }),
             // convert to Wh
@@ -349,13 +422,11 @@ impl Battery {
         }
     }
 
-    pub fn read_charge_design() -> Result<f64, SettingError> {
-        match usdpl_back::api::files::read_single::<_, u64, _>(BATTERY_CHARGE_DESIGN_PATH) {
+    pub fn read_charge_design(&self) -> Result<f64, SettingError> {
+        let attr = PowerSupplyAttribute::ChargeFullDesign;
+        match self.sysfs_bat.attribute::<u64, _>(attr) {
             Err(e) => Err(SettingError {
-                msg: format!(
-                    "Failed to read from `{}`: {}",
-                    BATTERY_CHARGE_DESIGN_PATH, e
-                ),
+                msg: format!("Failed to read from `{:?}`: {}", attr, e),
                 setting: crate::settings::SettingVariant::Battery,
             }),
             // convert to Wh
@@ -363,10 +434,11 @@ impl Battery {
         }
     }
 
-    pub fn read_usb_voltage() -> Result<f64, SettingError> {
-        match usdpl_back::api::files::read_single::<_, u64, _>(USB_PD_IN_MVOLTAGE_PATH) {
+    pub fn read_usb_voltage(&self) -> Result<f64, SettingError> {
+        let attr = HwMonAttribute::new(HwMonAttributeType::In, 0, HwMonAttributeItem::Input);
+        match self.sysfs_hwmon.attribute::<u64, _>(attr) {
             Err(e) => Err(SettingError {
-                msg: format!("Failed to read from `{}`: {}", USB_PD_IN_MVOLTAGE_PATH, e),
+                msg: format!("Failed to read from `{:?}`: {}", attr, e),
                 setting: crate::settings::SettingVariant::Battery,
             }),
             // convert to V (from mV)
@@ -374,10 +446,11 @@ impl Battery {
         }
     }
 
-    pub fn read_usb_current() -> Result<f64, SettingError> {
-        match usdpl_back::api::files::read_single::<_, u64, _>(USB_PD_IN_CURRENT_PATH) {
+    pub fn read_usb_current(&self) -> Result<f64, SettingError> {
+        let attr = HwMonAttribute::new(HwMonAttributeType::Curr, 1, HwMonAttributeItem::Input);
+        match self.sysfs_hwmon.attribute::<u64, _>(attr) {
             Err(e) => Err(SettingError {
-                msg: format!("Failed to read from `{}`: {}", USB_PD_IN_CURRENT_PATH, e),
+                msg: format!("Failed to read `{:?}`: {}", attr, e),
                 setting: crate::settings::SettingVariant::Battery,
             }),
             Ok(val) => Ok((val as f64) / 1000.0), // mA -> A
@@ -399,6 +472,8 @@ impl Battery {
             limits: oc_limits,
             state: crate::state::steam_deck::Battery::default(),
             driver_mode: driver,
+            sysfs_bat: Self::find_battery_sysfs(None::<&'static str>),
+            sysfs_hwmon: Arc::new(Self::find_hwmon_sysfs(None::<&'static str>)),
         }
     }
 
@@ -438,6 +513,7 @@ impl Into<BatteryJson> for Battery {
             charge_rate: self.charge_rate,
             charge_mode: self.charge_mode.map(Self::charge_mode_to_str),
             events: self.events.into_iter().map(|x| x.into()).collect(),
+            root: self.sysfs_bat.root().or(self.sysfs_hwmon.root()).and_then(|p| p.as_ref().to_str().map(|x| x.to_owned()))
         }
     }
 }
@@ -530,7 +606,7 @@ impl TBattery for Battery {
     }
 
     fn read_charge_full(&self) -> Option<f64> {
-        match Self::read_charge_full() {
+        match self.read_charge_full() {
             Ok(x) => Some(x),
             Err(e) => {
                 log::warn!("read_charge_full err: {}", e.msg);
@@ -540,7 +616,7 @@ impl TBattery for Battery {
     }
 
     fn read_charge_now(&self) -> Option<f64> {
-        match Self::read_charge_now() {
+        match self.read_charge_now() {
             Ok(x) => Some(x),
             Err(e) => {
                 log::warn!("read_charge_now err: {}", e.msg);
@@ -550,7 +626,7 @@ impl TBattery for Battery {
     }
 
     fn read_charge_design(&self) -> Option<f64> {
-        match Self::read_charge_design() {
+        match self.read_charge_design() {
             Ok(x) => Some(x),
             Err(e) => {
                 log::warn!("read_charge_design err: {}", e.msg);
@@ -561,7 +637,7 @@ impl TBattery for Battery {
 
     fn read_current_now(&self) -> Option<f64> {
         if self.limits.extra_readouts {
-            match Self::read_current_now() {
+            match self.read_current_now() {
                 Ok(x) => Some(x as f64),
                 Err(e) => {
                     log::warn!("read_current_now err: {}", e.msg);
@@ -575,7 +651,7 @@ impl TBattery for Battery {
 
     fn read_charge_power(&self) -> Option<f64> {
         if self.limits.extra_readouts {
-            match Self::read_charge_power() {
+            match self.read_charge_power() {
                 Ok(x) => Some(x as f64),
                 Err(e) => {
                     log::warn!("read_current_now err: {}", e.msg);
@@ -601,6 +677,7 @@ impl TBattery for Battery {
                     charge_rate: None,
                     charge_mode: Some(ChargeMode::Idle),
                     is_triggered: false,
+                    sysfs_hwmon: self.sysfs_hwmon.clone(),
                 };
             } else {
                 self.events.remove(index);
@@ -615,6 +692,7 @@ impl TBattery for Battery {
                 charge_rate: None,
                 charge_mode: Some(ChargeMode::Idle),
                 is_triggered: false,
+                sysfs_hwmon: self.sysfs_hwmon.clone(),
             });
         }
         // lower limit
@@ -631,6 +709,7 @@ impl TBattery for Battery {
                     charge_rate: None,
                     charge_mode: Some(ChargeMode::Normal),
                     is_triggered: false,
+                    sysfs_hwmon: self.sysfs_hwmon.clone(),
                 };
             } else {
                 self.events.remove(index);
@@ -646,6 +725,7 @@ impl TBattery for Battery {
                 charge_rate: None,
                 charge_mode: Some(ChargeMode::Normal),
                 is_triggered: false,
+                sysfs_hwmon: self.sysfs_hwmon.clone(),
             });
         }
     }
@@ -668,7 +748,7 @@ impl TBattery for Battery {
         log::debug!("Steam Deck power vibe check");
         let mut errors = Vec::new();
         let mut events = Vec::new();
-        match (Self::read_charge_full(), Self::read_charge_now()) {
+        match (self.read_charge_full(), self.read_charge_now()) {
             (Ok(full), Ok(now)) => events.push(PowerMode::BatteryCharge(now / full)),
             (Err(e1), Err(e2)) => {
                 errors.push(e1);
@@ -677,7 +757,7 @@ impl TBattery for Battery {
             (Err(e), _) => errors.push(e),
             (_, Err(e)) => errors.push(e),
         }
-        match Self::read_usb_voltage() {
+        match self.read_usb_voltage() {
             Ok(voltage) => {
                 if voltage > 0.0
                     && self.state.charger_state != crate::state::steam_deck::ChargeState::PluggedIn

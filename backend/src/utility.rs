@@ -76,6 +76,9 @@ fn version_filepath() -> std::path::PathBuf {
 
 pub fn save_version_file() -> std::io::Result<usize> {
     let path = version_filepath();
+    if let Some(parent_dir) = path.parent() {
+        std::fs::create_dir_all(parent_dir)?;
+    }
     std::fs::File::create(path)?.write(crate::consts::PACKAGE_VERSION.as_bytes())
 }
 

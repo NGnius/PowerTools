@@ -6,6 +6,7 @@ import {
   staticClasses,
   PanelSectionRow,
   ButtonItem,
+  Navigation,
 } from "decky-frontend-lib";
 
 import { MESSAGE_LIST } from "../consts";
@@ -30,7 +31,8 @@ export class DevMessages extends Component<backend.IdcProps> {
                     {message.title}
                 </div>
                 <PanelSectionRow>
-                    <Field>
+                    <Field
+                        onClick={()=> { if (message.url) { Navigation.NavigateToExternalWeb(message.url); } }}>
                         {message.body}
                     </Field>
                     <ButtonItem

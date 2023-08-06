@@ -1053,6 +1053,7 @@ dependencies = [
  "serde",
  "serde_json",
  "simplelog",
+ "sysfuss",
  "tokio",
  "ureq",
  "usdpl-back",
@@ -1295,6 +1296,10 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "sysfuss"
+version = "0.1.0"
 
 [[package]]
 name = "termcolor"

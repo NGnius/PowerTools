@@ -14,6 +14,7 @@ impl Into<BatteryJson> for Battery {
             charge_rate: None,
             charge_mode: None,
             events: Vec::default(),
+            root: None,
         }
     }
 }

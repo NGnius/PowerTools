@@ -9,6 +9,8 @@ pub struct BatteryJson {
     pub charge_mode: Option<String>,
     #[serde(default)]
     pub events: Vec<BatteryEventJson>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub root: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -24,6 +26,7 @@ impl Default for BatteryJson {
             charge_rate: None,
             charge_mode: None,
             events: Vec::new(),
+            root: None,
         }
     }
 }

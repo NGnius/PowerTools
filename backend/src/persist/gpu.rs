@@ -10,6 +10,8 @@ pub struct GpuJson {
     pub slow_ppt: Option<u64>,
     pub clock_limits: Option<MinMaxJson<u64>>,
     pub slow_memory: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub root: Option<String>,
 }
 
 impl Default for GpuJson {
@@ -19,6 +21,7 @@ impl Default for GpuJson {
             slow_ppt: None,
             clock_limits: None,
             slow_memory: false,
+            root: None,
         }
     }
 }

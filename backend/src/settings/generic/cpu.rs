@@ -202,6 +202,7 @@ pub struct Cpu {
     limits: GenericCpuLimit,
     index: usize,
     state: crate::state::steam_deck::Cpu,
+    root: std::path::PathBuf,
 }
 
 /*impl Cpu {
@@ -235,6 +236,7 @@ impl FromGenericCpuInfo for Cpu {
             limits,
             index: cpu_index,
             state: crate::state::steam_deck::Cpu::default(),
+            root: "/".into(),
         }
     }
 
@@ -258,6 +260,7 @@ impl FromGenericCpuInfo for Cpu {
                 limits,
                 index: i,
                 state: crate::state::steam_deck::Cpu::default(),
+                root: other.root.unwrap_or_else(|| "/".to_string()).into(),
             },
             _ => Self {
                 online: other.online,
@@ -266,6 +269,7 @@ impl FromGenericCpuInfo for Cpu {
                 limits,
                 index: i,
                 state: crate::state::steam_deck::Cpu::default(),
+                root: other.root.unwrap_or_else(|| "/".to_string()).into(),
             },
         }
     }
@@ -354,6 +358,7 @@ impl Into<CpuJson> for Cpu {
             online: self.online,
             clock_limits: self.clock_limits.map(|x| x.into()),
             governor: self.governor,
+            root: self.root.to_str().map(|s| s.to_owned()),
         }
     }
 }

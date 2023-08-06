@@ -1,6 +1,7 @@
 use std::convert::Into;
 
 use limits_core::json::GenericGpuLimit;
+use sysfuss::{BasicEntityPath, SysEntity};
 
 use crate::api::RangeLimit;
 use crate::persist::GpuJson;
@@ -15,6 +16,7 @@ pub struct Gpu {
     pub slow_ppt: Option<u64>,
     pub clock_limits: Option<MinMax<u64>>,
     limits: GenericGpuLimit,
+    sysfs: BasicEntityPath,
 }
 
 impl Gpu {
@@ -31,6 +33,23 @@ impl Gpu {
         }
     }*/
 
+    fn find_card_sysfs(root: Option<impl AsRef<std::path::Path>>) -> BasicEntityPath {
+        let root = crate::settings::util::root_or_default_sysfs(root);
+        match root.class("drm", crate::settings::util::always_satisfied) {
+            Ok(mut iter) => {
+                iter.next()
+                    .unwrap_or_else(|| {
+                        log::error!("Failed to find generic gpu drm in sysfs (no results), using naive fallback");
+                        BasicEntityPath::new(root.as_ref().join("sys/class/drm/card0"))
+                    })
+            },
+            Err(e) => {
+                log::error!("Failed to find generic gpu drm in sysfs ({}), using naive fallback", e);
+                BasicEntityPath::new(root.as_ref().join("sys/class/drm/card0"))
+            }
+        }
+    }
+
     pub fn from_limits(limits: limits_core::json::GenericGpuLimit) -> Self {
         Self {
             slow_memory: false,
@@ -38,6 +57,7 @@ impl Gpu {
             slow_ppt: None,
             clock_limits: None,
             limits,
+            sysfs: Self::find_card_sysfs(None::<&'static str>),
         }
     }
 
@@ -65,6 +85,7 @@ impl Gpu {
             },
             clock_limits: clock_lims,
             limits,
+            sysfs: Self::find_card_sysfs(other.root)
         }
     }
 }
@@ -77,6 +98,7 @@ impl Into<GpuJson> for Gpu {
             slow_ppt: self.slow_ppt,
             clock_limits: self.clock_limits.map(|x| x.into()),
             slow_memory: false,
+            root: self.sysfs.root().and_then(|p| p.as_ref().to_str().map(|s| s.to_owned()))
         }
     }
 }

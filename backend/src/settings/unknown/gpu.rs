@@ -29,6 +29,7 @@ impl Into<GpuJson> for Gpu {
             slow_ppt: None,
             clock_limits: None,
             slow_memory: false,
+            root: None,
         }
     }
 }

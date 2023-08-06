@@ -180,6 +180,7 @@ pub struct Cpu {
     pub governor: String,
     index: usize,
     state: crate::state::steam_deck::Cpu,
+    root: std::path::PathBuf,
 }
 
 impl Cpu {
@@ -191,12 +192,14 @@ impl Cpu {
                 governor: other.governor,
                 index: i,
                 state: crate::state::steam_deck::Cpu::default(),
+                root: other.root.unwrap_or_else(|| "/".to_owned()).into(),
             },
             _ => Self {
                 online: other.online,
                 governor: other.governor,
                 index: i,
                 state: crate::state::steam_deck::Cpu::default(),
+                root: other.root.unwrap_or_else(|| "/".to_owned()).into(),
             },
         }
     }
@@ -243,6 +246,7 @@ impl Cpu {
                 .unwrap_or("schedutil".to_owned()),
             index: cpu_index,
             state: crate::state::steam_deck::Cpu::default(),
+            root: "/".into()
         }
     }
 
@@ -263,6 +267,7 @@ impl Into<CpuJson> for Cpu {
             online: self.online,
             clock_limits: None,
             governor: self.governor,
+            root: self.root.to_str().map(|s| s.to_owned()),
         }
     }
 }

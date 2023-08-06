@@ -6,6 +6,18 @@ pub fn guess_smt(cpus: &Vec<crate::persist::CpuJson>) -> bool {
     guess
 }
 
+pub fn root_or_default_sysfs(root: Option<impl AsRef<std::path::Path>>) -> sysfuss::SysPath {
+    if let Some(root) = root {
+        sysfuss::SysPath::path(root)
+    } else {
+        sysfuss::SysPath::default()
+    }
+}
+
+pub fn always_satisfied<'a, X>(_: &'a X) -> bool {
+    true
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

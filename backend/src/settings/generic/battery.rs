@@ -1,6 +1,7 @@
 use std::convert::Into;
 
 use limits_core::json::GenericBatteryLimit;
+use sysfuss::SysEntity;
 
 use crate::persist::BatteryJson;
 use crate::settings::TBattery;
@@ -10,6 +11,7 @@ use crate::settings::{OnResume, OnSet, SettingError};
 pub struct Battery {
     #[allow(dead_code)]
     limits: GenericBatteryLimit,
+    sysfs: sysfuss::PowerSupplyPath,
 }
 
 impl Into<BatteryJson> for Battery {
@@ -19,6 +21,7 @@ impl Into<BatteryJson> for Battery {
             charge_rate: None,
             charge_mode: None,
             events: Vec::default(),
+            root: self.sysfs.root().and_then(|p| p.as_ref().to_str().map(|s| s.to_owned())),
         }
     }
 }
@@ -37,18 +40,41 @@ impl Battery {
         }
     }
 
+    fn find_psu_sysfs(root: Option<impl AsRef<std::path::Path>>) -> sysfuss::PowerSupplyPath {
+        let root = crate::settings::util::root_or_default_sysfs(root);
+        match root.power_supply(crate::settings::util::always_satisfied) {
+            Ok(mut iter) => {
+                iter.next()
+                    .unwrap_or_else(|| {
+                        log::error!("Failed to find generic battery power_supply in sysfs (no results), using naive fallback");
+                        root.power_supply_by_name("BAT0")
+                    })
+            },
+            Err(e) => {
+                log::error!("Failed to find generic battery power_supply in sysfs ({}), using naive fallback", e);
+                root.power_supply_by_name("BAT0")
+            }
+        }
+    }
+
     pub fn from_limits(limits: limits_core::json::GenericBatteryLimit) -> Self {
         // TODO
-        Self { limits }
+        Self {
+            limits,
+            sysfs: Self::find_psu_sysfs(None::<&'static str>),
+        }
     }
 
     pub fn from_json_and_limits(
-        _other: BatteryJson,
+        other: BatteryJson,
         _version: u64,
         limits: limits_core::json::GenericBatteryLimit,
     ) -> Self {
         // TODO
-        Self { limits }
+        Self {
+            limits,
+            sysfs: Self::find_psu_sysfs(other.root)
+        }
     }
 }
 

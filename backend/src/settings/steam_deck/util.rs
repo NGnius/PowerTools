@@ -8,6 +8,9 @@
 use std::fs::OpenOptions;
 use std::io::{Error, Read, Seek, SeekFrom, Write};
 
+pub const JUPITER_HWMON_NAME: &'static str = "jupiter";
+pub const GPU_HWMON_NAME: &'static str = "amdgpu";
+
 #[inline]
 fn write2(p0: u8, p1: u8) -> Result<usize, Error> {
     write_to(0x6c, 0x81)?;
