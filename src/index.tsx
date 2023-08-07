@@ -206,19 +206,20 @@ const reload = function() {
 })();
 
 const periodicals = function() {
-  backend.resolve(backend.getBatteryCurrent(), (rate: number) => { set_value(CURRENT_BATT, rate) });
-  backend.resolve(backend.getBatteryChargeNow(), (rate: number) => { set_value(CHARGE_NOW_BATT, rate) });
-  backend.resolve(backend.getBatteryChargeFull(), (rate: number) => { set_value(CHARGE_FULL_BATT, rate) });
-  backend.resolve(backend.getBatteryChargePower(), (rate: number) => { set_value(CHARGE_POWER_BATT, rate) });
+  backend.resolve(backend.getPeriodicals(), (periodicals) => {
+    set_value(CURRENT_BATT, periodicals.battery_current);
+    set_value(CHARGE_NOW_BATT, periodicals.battery_charge_now);
+    set_value(CHARGE_FULL_BATT, periodicals.battery_charge_full);
+    set_value(CHARGE_POWER_BATT, periodicals.battery_charge_power);
 
-  backend.resolve(backend.getGeneralSettingsPath(), (path: string) => {
+    const path = periodicals.settings_path;
     const oldValue = get_value(PATH_GEN);
     set_value(PATH_GEN, path);
     if (path != oldValue) {
       backend.log(backend.LogLevel.Info, "Frontend values reload triggered by path change: " + oldValue + " -> " + path);
       reload();
     }
-  });
+  })
 };
 
 const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {

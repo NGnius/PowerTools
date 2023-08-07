@@ -287,6 +287,10 @@ fn main() -> Result<(), ()> {
             "GENERAL_on_unplugged",
             api::battery::on_unplugged(api_sender.clone()),
         )
+        .register_async(
+            "GENERAL_get_periodicals",
+            api::general::get_periodicals(api_sender.clone())
+        )
         .register_async("MESSAGE_get", message_getter)
         .register_async("MESSAGE_dismiss", message_dismisser);
 

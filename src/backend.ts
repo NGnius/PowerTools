@@ -325,3 +325,22 @@ export async function getMessages(since: number | null): Promise<Message[]> {
 export async function dismissMessage(id: number): Promise<boolean> {
     return (await call_backend("MESSAGE_dismiss", [id]))[0];
 }
+
+export type Periodicals = {
+    battery_current: number | null,
+    battery_charge_now: number | null,
+    battery_charge_full: number | null,
+    battery_charge_power: number | null,
+    settings_path: string | null,
+};
+
+export async function getPeriodicals(): Promise<Periodicals> {
+    const result: any[] = await call_backend("GENERAL_get_periodicals", []);
+    return {
+        battery_current: result[0],
+        battery_charge_now: result[1],
+        battery_charge_full: result[2],
+        battery_charge_power: result[3],
+        settings_path: result[4],
+    };
+}

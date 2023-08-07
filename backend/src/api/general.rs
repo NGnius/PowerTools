@@ -321,3 +321,57 @@ pub fn force_apply(
         vec![true.into()]
     }
 }
+
+/// Generate get periodicals aggregate method
+pub fn get_periodicals(sender: Sender<ApiMessage>) -> impl AsyncCallable {
+    let sender = Arc::new(Mutex::new(sender)); // Sender is not Sync; this is required for safety
+    let getter = move || {
+        let sender2 = sender.clone();
+        move || {
+            let (rx_curr, callback_curr) = build_comms("battery current callback send failed");
+            let (rx_charge_now, callback_charge_now) = build_comms("battery charge now callback send failed");
+            let (rx_charge_full, callback_charge_full) = build_comms("battery charge full callback send failed");
+            let (rx_charge_power, callback_charge_power) = build_comms("battery charge power callback send failed");
+
+            let (rx_path, callback_path) = build_comms("general get path (periodical) send failed");
+
+            let sender_locked = sender2
+                .lock()
+                .unwrap();
+            let curr = wait_for_response(&*sender_locked, rx_curr,
+                    ApiMessage::Battery(super::handler::BatteryMessage::ReadCurrentNow(callback_curr)), "battery current");
+            let charge_now = wait_for_response(&*sender_locked, rx_charge_now,
+                    ApiMessage::Battery(super::handler::BatteryMessage::ReadChargeNow(callback_charge_now)), "battery charge now");
+            let charge_full = wait_for_response(&*sender_locked, rx_charge_full,
+                    ApiMessage::Battery(super::handler::BatteryMessage::ReadChargeFull(callback_charge_full)), "battery charge full");
+            let charge_power = wait_for_response(&*sender_locked, rx_charge_power,
+                    ApiMessage::Battery(super::handler::BatteryMessage::ReadChargePower(callback_charge_power)), "battery charge power");
+
+            let settings_path = wait_for_response(&*sender_locked, rx_path,
+                    ApiMessage::General(GeneralMessage::GetPath(callback_path)), "general get path");
+            vec![
+                super::utility::map_optional(curr),
+                super::utility::map_optional(charge_now),
+                super::utility::map_optional(charge_full),
+                super::utility::map_optional(charge_power),
+
+                super::utility::map_optional(settings_path.to_str()),
+            ]
+        }
+    };
+    super::async_utils::AsyncIshGetter {
+        set_get: getter,
+        trans_getter: |result| result,
+    }
+}
+
+fn build_comms<'a, T: Send + 'a>(msg: &'static str) -> (mpsc::Receiver<T>, Box<dyn FnOnce(T) + Send + 'a>) {
+    let (tx, rx) = mpsc::channel();
+    let callback = move |t: T| tx.send(t).expect(msg);
+    (rx, Box::new(callback))
+}
+
+fn wait_for_response<T>(sender: &Sender<ApiMessage>, rx: mpsc::Receiver<T>, api_msg: ApiMessage, op: &str) -> T {
+    sender.send(api_msg).expect(&format!("{} send failed", op));
+    rx.recv().expect(&format!("{} callback recv failed", op))
+}
