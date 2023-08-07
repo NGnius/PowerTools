@@ -119,8 +119,8 @@ impl AsyncCallable for AsyncMessageDismisser {
         let id = if let Some(param0) = params.get(0) {
             if let Primitive::Empty = param0 {
                 None
-            } else if let Primitive::U64(since) = param0 {
-                Some(*since)
+            } else if let Primitive::F64(since) = param0 {
+                Some(*since as u64)
             } else {
                 return vec!["dismiss message invalid parameter 0".into()];
             }
