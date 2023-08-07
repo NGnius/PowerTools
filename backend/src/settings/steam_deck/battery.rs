@@ -279,12 +279,10 @@ impl Battery {
         let root = crate::settings::util::root_or_default_sysfs(root);
         match root.hwmon_by_name(super::util::JUPITER_HWMON_NAME) {
             Ok(hwmon) => {
-                if hwmon.capable(attributes(HWMON_NEEDS.into_iter().copied())) {
-                    hwmon
-                } else {
-                    log::error!("Failed to find SteamDeck battery hwmon in sysfs (hwmon by name {} exists but missing attributes), using naive fallback", super::util::JUPITER_HWMON_NAME);
-                    root.hwmon_by_index(5)
+                if !hwmon.capable(attributes(HWMON_NEEDS.into_iter().copied())) {
+                    log::warn!("Found incapable SteamDeck battery hwmon in sysfs (hwmon by name {} exists but missing attributes), persevering because ignorance is bliss", super::util::JUPITER_HWMON_NAME);
                 }
+                hwmon
             },
             Err(e) => {
                 log::error!("Failed to find SteamDeck battery hwmon in sysfs ({}), using naive fallback", e);
