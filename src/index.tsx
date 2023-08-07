@@ -60,6 +60,9 @@ import {
   PATH_GEN,
 
   MESSAGE_LIST,
+
+  PERIODICAL_BACKEND_PERIOD,
+  AUTOMATIC_REAPPLY_WAIT,
 } from "./consts";
 import { set_value, get_value } from "usdpl-front";
 import { Debug } from "./components/debug";
@@ -196,7 +199,7 @@ const reload = function() {
   //@ts-ignore
   endHook = SteamClient.Apps.RegisterForGameActionEnd((actionType) => {
       backend.log(backend.LogLevel.Info, "RegisterForGameActionEnd callback(" + actionType + ")");
-      setTimeout(() => backend.forceApplySettings(), 2000 /* ms */);
+      setTimeout(() => backend.forceApplySettings(), AUTOMATIC_REAPPLY_WAIT);
   });
 
   backend.log(backend.LogLevel.Debug, "Registered PowerTools callbacks, hello!");
@@ -230,7 +233,7 @@ const Content: VFC<{ serverAPI: ServerAPI }> = ({}) => {
   periodicHook = setInterval(function() {
       periodicals();
       reloadGUI("periodic" + (new Date()).getTime().toString());
-  }, 1000);
+  }, PERIODICAL_BACKEND_PERIOD);
 
   if (!usdplReady || !get_value(LIMITS_INFO)) {
     // Not translated on purpose (to avoid USDPL issues)

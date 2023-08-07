@@ -33,3 +33,6 @@ export const PATH_GEN = "GENERAL_path";
 
 export const MESSAGE_LIST = "MESSAGE_messages";
 
+export const PERIODICAL_BACKEND_PERIOD = 5000; // milliseconds
+export const AUTOMATIC_REAPPLY_WAIT = 2000; // milliseconds
+
