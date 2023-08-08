@@ -144,7 +144,11 @@ impl EventInstruction {
 
     fn set_charge_rate(&self) -> Result<(), SettingError> {
         if let Some(charge_rate) = self.charge_rate {
-            let attr = HwMonAttribute::custom("maximum_battery_charge_rate");
+            let attr = if MAX_BATTERY_CHARGE_RATE_ATTR.exists(&*self.sysfs_hwmon) {
+                MAX_BATTERY_CHARGE_RATE_ATTR
+            } else {
+                MAXIMUM_BATTERY_CHARGE_RATE_ATTR
+            };
             self.sysfs_hwmon.set(attr, charge_rate).map_err(
                 |e| SettingError {
                     msg: format!("Failed to write to `{:?}`: {}", attr, e),
@@ -208,6 +212,10 @@ const HWMON_NEEDS: &[HwMonAttribute] = &[
     HwMonAttribute::new(HwMonAttributeType::Curr, 1, HwMonAttributeItem::Input),
     //HwMonAttribute::custom("maximum_battery_charge_rate"), // NOTE: Cannot filter by custom capabilities
 ];
+
+const MAXIMUM_BATTERY_CHARGE_RATE_ATTR: HwMonAttribute = HwMonAttribute::custom("maximum_battery_charge_rate");
+const MAX_BATTERY_CHARGE_RATE_ATTR: HwMonAttribute = HwMonAttribute::custom("maximum_battery_charge_rate");
+const MAX_BATTERY_CHARGE_LEVEL_ATTR: HwMonAttribute = HwMonAttribute::custom("max_battery_charge_level");
 
 impl Battery {
     #[inline]
@@ -298,6 +306,7 @@ impl Battery {
                         log::error!("Failed to find SteamDeck battery hwmon in sysfs ({}), using naive fallback", e);
                         root.hwmon_by_index(5)
                     }
+                }
             }
         }
     }
@@ -325,7 +334,11 @@ impl Battery {
     fn set_charge_rate(&mut self) -> Result<(), SettingError> {
         if let Some(charge_rate) = self.charge_rate {
             self.state.charge_rate_set = true;
-            let attr = HwMonAttribute::custom("maximum_battery_charge_rate");
+            let attr = if MAX_BATTERY_CHARGE_RATE_ATTR.exists(&*self.sysfs_hwmon) {
+                MAX_BATTERY_CHARGE_RATE_ATTR
+            } else {
+                MAXIMUM_BATTERY_CHARGE_RATE_ATTR
+            };
             let path = attr.path(&*self.sysfs_hwmon);
             self.sysfs_hwmon.set(attr, charge_rate).map_err(
                 |e| SettingError {
@@ -335,7 +348,11 @@ impl Battery {
             )
         } else if self.state.charge_rate_set {
             self.state.charge_rate_set = false;
-            let attr = HwMonAttribute::custom("maximum_battery_charge_rate");
+            let attr = if MAX_BATTERY_CHARGE_RATE_ATTR.exists(&*self.sysfs_hwmon) {
+                MAX_BATTERY_CHARGE_RATE_ATTR
+            } else {
+                MAXIMUM_BATTERY_CHARGE_RATE_ATTR
+            };
             let path = attr.path(&*self.sysfs_hwmon);
             self.sysfs_hwmon.set(attr, self.limits.charge_rate.max,).map_err(
                 |e| SettingError {
@@ -561,17 +578,16 @@ impl OnPowerEvent for Battery {
             PowerMode::BatteryCharge(_) => Ok(()),
         }
         .unwrap_or_else(|mut e| errors.append(&mut e));
-        let new_charge_control_attr = HwMonAttribute::custom("max_battery_charge_level");
-        let attr_exists = new_charge_control_attr.exists(&*self.sysfs_hwmon);
+        let attr_exists = MAX_BATTERY_CHARGE_LEVEL_ATTR.exists(&*self.sysfs_hwmon);
         log::info!("Does battery limit attribute (max_battery_charge_level) exist? {}", attr_exists);
         for ev in &mut self.events {
             if attr_exists {
                 if let EventTrigger::BatteryAbove(level) = ev.trigger {
                     if let Some(ChargeMode::Idle) = ev.charge_mode {
-                        self.sysfs_hwmon.set(new_charge_control_attr, (level * 100.0).round() as u64)
+                        self.sysfs_hwmon.set(MAX_BATTERY_CHARGE_LEVEL_ATTR, (level * 100.0).round() as u64)
                             .unwrap_or_else(|e| errors.push(
                                 SettingError {
-                                    msg: format!("Failed to write to {:?}: {}", new_charge_control_attr, e),
+                                    msg: format!("Failed to write to {:?}: {}", MAX_BATTERY_CHARGE_LEVEL_ATTR, e),
                                     setting: crate::settings::SettingVariant::Battery,
                                 }
                             ));
