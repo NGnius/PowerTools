@@ -9,6 +9,7 @@ use std::fs::OpenOptions;
 use std::io::{Error, Read, Seek, SeekFrom, Write};
 
 pub const JUPITER_HWMON_NAME: &'static str = "jupiter";
+pub const STEAMDECK_HWMON_NAME: &'static str = "steamdeck_hwmon";
 pub const GPU_HWMON_NAME: &'static str = "amdgpu";
 
 #[inline]

@@ -285,8 +285,19 @@ impl Battery {
                 hwmon
             },
             Err(e) => {
-                log::error!("Failed to find SteamDeck battery hwmon in sysfs ({}), using naive fallback", e);
-                root.hwmon_by_index(5)
+                log::warn!("Failed to find SteamDeck battery hwmon {} in sysfs ({}), trying alternate name",
+                           super::util::JUPITER_HWMON_NAME, e);
+                match root.hwmon_by_name(super::util::STEAMDECK_HWMON_NAME) {
+                    Ok(hwmon) => {
+                        if !hwmon.capable(attributes(HWMON_NEEDS.into_iter().copied())) {
+                            log::warn!("Found incapable SteamDeck battery hwmon in sysfs (hwmon by name {} exists but missing attributes), persevering because ignorance is bliss", super::util::STEAMDECK_HWMON_NAME);
+                        }
+                        hwmon
+                    },
+                    Err(e) => {
+                        log::error!("Failed to find SteamDeck battery hwmon in sysfs ({}), using naive fallback", e);
+                        root.hwmon_by_index(5)
+                    }
             }
         }
     }
@@ -550,7 +561,23 @@ impl OnPowerEvent for Battery {
             PowerMode::BatteryCharge(_) => Ok(()),
         }
         .unwrap_or_else(|mut e| errors.append(&mut e));
+        let new_charge_control_attr = HwMonAttribute::custom("max_battery_charge_level");
+        let attr_exists = new_charge_control_attr.exists(&*self.sysfs_hwmon);
+        log::info!("Does battery limit attribute (max_battery_charge_level) exist? {}", attr_exists);
         for ev in &mut self.events {
+            if attr_exists {
+                if let EventTrigger::BatteryAbove(level) = ev.trigger {
+                    if let Some(ChargeMode::Idle) = ev.charge_mode {
+                        self.sysfs_hwmon.set(new_charge_control_attr, (level * 100.0).round() as u64)
+                            .unwrap_or_else(|e| errors.push(
+                                SettingError {
+                                    msg: format!("Failed to write to {:?}: {}", new_charge_control_attr, e),
+                                    setting: crate::settings::SettingVariant::Battery,
+                                }
+                            ));
+                    }
+                }
+            }
             ev.on_power_event(new_mode)
                 .unwrap_or_else(|mut e| errors.append(&mut e));
         }
