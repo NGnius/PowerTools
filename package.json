@@ -1,6 +1,6 @@
 {
   "name": "PowerTools",
-  "version": "1.4.0-beta1",
+  "version": "1.4.0-beta2",
   "description": "Power tweaks for power users",
   "scripts": {
     "build": "shx rm -rf dist && rollup -c",

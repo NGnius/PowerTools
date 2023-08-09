@@ -13,7 +13,7 @@ use crate::settings::{TCpu, TCpus};
 const CPU_PRESENT_PATH: &str = "/sys/devices/system/cpu/present";
 const CPU_SMT_PATH: &str = "/sys/devices/system/cpu/smt/control";
 
-const CARD_NEEDS: &[&'static str] = &[
+const CARD_EXTENSIONS: &[&'static str] = &[
     super::DPM_FORCE_LIMITS_ATTRIBUTE
 ];
 
@@ -274,13 +274,18 @@ impl Cpu {
 
     fn find_card_sysfs(root: Option<impl AsRef<std::path::Path>>) -> BasicEntityPath {
         let root = crate::settings::util::root_or_default_sysfs(root);
-        match root.class("drm", sysfuss::capability::attributes(CARD_NEEDS.into_iter().map(|s| s.to_string()))) {
-            Ok(mut iter) => {
-                iter.next()
+        match root.class("drm", sysfuss::capability::attributes(crate::settings::util::CARD_NEEDS.into_iter().map(|s| s.to_string()))) {
+            Ok(iter) => {
+                let card = iter
+                    .filter(|ent| if let Ok(name) = ent.name() { name.starts_with("card")} else { false })
+                    .filter(|ent| super::util::card_also_has(ent, CARD_EXTENSIONS))
+                    .next()
                     .unwrap_or_else(|| {
-                        log::error!("Failed to find SteamDeck drm in sysfs (no results), trying naive fallback");
+                        log::error!("Failed to find SteamDeck drm in sysfs (no results), using naive fallback");
                         BasicEntityPath::new(root.as_ref().join("sys/class/drm/card0"))
-                    })
+                    });
+                log::info!("Found SteamDeck drm in sysfs: {}", card.as_ref().display());
+                card
             },
             Err(e) => {
                 log::error!("Failed to find SteamDeck drm in sysfs ({}), using naive fallback", e);

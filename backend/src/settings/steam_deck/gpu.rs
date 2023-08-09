@@ -34,7 +34,7 @@ pub struct Gpu {
 const GPU_CLOCK_LIMITS_ATTRIBUTE: &str = "device/pp_od_clk_voltage";
 const GPU_MEMORY_DOWNCLOCK_ATTRIBUTE: &str = "device/pp_dpm_fclk";
 
-const CARD_NEEDS: &[&'static str] = &[
+const CARD_EXTENSIONS: &[&'static str] = &[
     GPU_CLOCK_LIMITS_ATTRIBUTE,
     GPU_MEMORY_DOWNCLOCK_ATTRIBUTE,
     super::DPM_FORCE_LIMITS_ATTRIBUTE,
@@ -82,13 +82,18 @@ impl Gpu {
 
     fn find_card_sysfs(root: Option<impl AsRef<std::path::Path>>) -> BasicEntityPath {
         let root = crate::settings::util::root_or_default_sysfs(root);
-        match root.class("drm", attributes(CARD_NEEDS.into_iter().map(|s| s.to_string()))) {
-            Ok(mut iter) => {
-                iter.next()
+        match root.class("drm", attributes(crate::settings::util::CARD_NEEDS.into_iter().map(|s| s.to_string()))) {
+            Ok(iter) => {
+                let card = iter
+                    .filter(|ent| if let Ok(name) = ent.name() { name.starts_with("card")} else { false })
+                    .filter(|ent| super::util::card_also_has(ent, CARD_EXTENSIONS))
+                    .next()
                     .unwrap_or_else(|| {
-                        log::error!("Failed to find SteamDeck gpu drm in sysfs (no results), trying naive fallback");
+                        log::error!("Failed to find SteamDeck gpu drm in sysfs (no results), using naive fallback");
                         BasicEntityPath::new(root.as_ref().join("sys/class/drm/card0"))
-                    })
+                    });
+                log::info!("Found SteamDeck gpu drm in sysfs: {}", card.as_ref().display());
+                card
             },
             Err(e) => {
                 log::error!("Failed to find SteamDeck gpu drm in sysfs ({}), using naive fallback", e);
@@ -99,10 +104,12 @@ impl Gpu {
 
     fn find_hwmon_sysfs(root: Option<impl AsRef<std::path::Path>>) -> HwMonPath {
         let root = crate::settings::util::root_or_default_sysfs(root);
-        root.hwmon_by_name(super::util::GPU_HWMON_NAME).unwrap_or_else(|e| {
+        let hwmon = root.hwmon_by_name(super::util::GPU_HWMON_NAME).unwrap_or_else(|e| {
             log::error!("Failed to find SteamDeck gpu hwmon in sysfs ({}), using naive fallback", e);
             root.hwmon_by_index(4)
-        })
+        });
+        log::info!("Found SteamDeck gpu hwmon {} in sysfs: {}", super::util::GPU_HWMON_NAME, hwmon.as_ref().display());
+        hwmon
     }
 
     fn set_clock_limit(&self, speed: u64, mode: ClockType) -> Result<(), SettingError> {

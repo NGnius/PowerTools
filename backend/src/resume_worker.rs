@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use crate::api::handler::ApiMessage;
 //use crate::utility::unwrap_maybe_fatal;
 
-const ALLOWED_ERROR: f64 = 100.0; // period of 10ms with 100x means sleep has to be >= 1s to be detected
+const ALLOWED_ERROR: f64 = 20.0; // period of 50ms with 20x means sleep has to be >= 1s to be detected
 
 pub fn spawn(sender: Sender<ApiMessage>) -> JoinHandle<()> {
     thread::spawn(move || {

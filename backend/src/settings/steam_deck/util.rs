@@ -12,6 +12,11 @@ pub const JUPITER_HWMON_NAME: &'static str = "jupiter";
 pub const STEAMDECK_HWMON_NAME: &'static str = "steamdeck_hwmon";
 pub const GPU_HWMON_NAME: &'static str = "amdgpu";
 
+pub fn card_also_has(card: &dyn sysfuss::SysEntity, extensions: &'static [&'static str]) -> bool {
+    extensions.iter()
+        .all(|ext| card.as_ref().join(ext).exists())
+}
+
 #[inline]
 fn write2(p0: u8, p1: u8) -> Result<usize, Error> {
     write_to(0x6c, 0x81)?;

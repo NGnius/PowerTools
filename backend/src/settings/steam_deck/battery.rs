@@ -270,11 +270,13 @@ impl Battery {
         let root = crate::settings::util::root_or_default_sysfs(root);
         match root.power_supply(attributes(BATTERY_NEEDS.into_iter().copied())) {
             Ok(mut iter) => {
-                iter.next()
+                let psu = iter.next()
                     .unwrap_or_else(|| {
                         log::error!("Failed to find SteamDeck battery power_supply in sysfs (no results), using naive fallback");
                         root.power_supply_by_name("BAT1")
-                    })
+                    });
+                log::info!("Found SteamDeck battery power_supply in sysfs: {}", psu.as_ref().display());
+                psu
             },
             Err(e) => {
                 log::error!("Failed to find SteamDeck battery power_supply in sysfs ({}), using naive fallback", e);
@@ -289,6 +291,8 @@ impl Battery {
             Ok(hwmon) => {
                 if !hwmon.capable(attributes(HWMON_NEEDS.into_iter().copied())) {
                     log::warn!("Found incapable SteamDeck battery hwmon in sysfs (hwmon by name {} exists but missing attributes), persevering because ignorance is bliss", super::util::JUPITER_HWMON_NAME);
+                }   else {
+                    log::info!("Found SteamDeck battery hwmon {} in sysfs: {}", super::util::JUPITER_HWMON_NAME, hwmon.as_ref().display());
                 }
                 hwmon
             },
@@ -299,11 +303,13 @@ impl Battery {
                     Ok(hwmon) => {
                         if !hwmon.capable(attributes(HWMON_NEEDS.into_iter().copied())) {
                             log::warn!("Found incapable SteamDeck battery hwmon in sysfs (hwmon by name {} exists but missing attributes), persevering because ignorance is bliss", super::util::STEAMDECK_HWMON_NAME);
+                        } else {
+                            log::info!("Found SteamDeck battery hwmon {} in sysfs: {}", super::util::STEAMDECK_HWMON_NAME, hwmon.as_ref().display());
                         }
                         hwmon
                     },
                     Err(e) => {
-                        log::error!("Failed to find SteamDeck battery hwmon in sysfs ({}), using naive fallback", e);
+                        log::error!("Failed to find SteamDeck battery hwmon {} in sysfs ({}), using naive fallback", super::util::STEAMDECK_HWMON_NAME, e);
                         root.hwmon_by_index(5)
                     }
                 }
